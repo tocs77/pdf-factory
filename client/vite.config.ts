@@ -11,16 +11,19 @@ export default defineConfig(({  mode }) => {
         src: "/src",
       },
     },
-  server: {
-    port: Number(env.APP_URL),
-    proxy: {
-      '/api': {
-        target: env.SERVER_URL,
-        changeOrigin: true,
-        secure: false,
-        ws: true,
+    build: {
+      target: 'esnext',
+    },
+    server: {
+      port: Number(env.APP_URL),
+      proxy: {
+        '/api': {
+          target: env.SERVER_URL,
+          changeOrigin: true,
+          secure: false,
+          ws: true,
+        }
       }
-    }
     }
   }
 })

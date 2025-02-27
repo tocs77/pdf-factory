@@ -1,7 +1,7 @@
 import { Action, EnhancedStore, Reducer, ReducersMapObject } from '@reduxjs/toolkit';
 import { AxiosInstance } from 'axios';
 import { rtkApi } from '@/shared/api';
-import { NavigateFunction } from 'react-router-dom';
+import { NavigateFunction } from 'react-router';
 import { OptionalRecord } from '@/shared/helpers';
 
 export interface StateSchema {

@@ -23,9 +23,23 @@ interface PdfViewerProps {
    * Whether to show the thumbnail sidebar (default: true)
    */
   showThumbnails?: boolean;
+  /**
+   * Drawing color for annotation when text layer is disabled (default: blue)
+   */
+  drawingColor?: string;
+  /**
+   * Drawing line width for annotation (default: 2)
+   */
+  drawingLineWidth?: number;
 }
 
-export const PdfViewer = ({ url, quality = 1, showThumbnails = true }: PdfViewerProps) => {
+export const PdfViewer = ({ 
+  url, 
+  quality = 1, 
+  showThumbnails = true,
+  drawingColor = '#2196f3',
+  drawingLineWidth = 2
+}: PdfViewerProps) => {
   const [pdfRef, setPdfRef] = useState<PDFDocumentProxy | null>(null);
   const [scale, setScale] = useState(1.5);
   const [pages, setPages] = useState<PDFPageProxy[]>([]);
@@ -34,7 +48,9 @@ export const PdfViewer = ({ url, quality = 1, showThumbnails = true }: PdfViewer
   const [loadingMessage, setLoadingMessage] = useState('Loading PDF...');
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [textLayerEnabled, setTextLayerEnabled] = useState(false);
+  const [textLayerEnabled, setTextLayerEnabled] = useState(true);
+  const [currentDrawingColor, setCurrentDrawingColor] = useState(drawingColor);
+  const [currentLineWidth, setCurrentLineWidth] = useState(drawingLineWidth);
 
   // Validate quality value
   const renderQuality = Math.max(0.5, Math.min(4, quality));
@@ -132,6 +148,16 @@ export const PdfViewer = ({ url, quality = 1, showThumbnails = true }: PdfViewer
     setTextLayerEnabled(prev => !prev);
   };
 
+  // Change drawing color
+  const changeDrawingColor = (color: string) => {
+    setCurrentDrawingColor(color);
+  };
+
+  // Change line width
+  const changeLineWidth = (width: number) => {
+    setCurrentLineWidth(width);
+  };
+
   const handleThumbnailClick = (pageNumber: number) => {
     setSelectedPage(pageNumber);
 
@@ -201,24 +227,84 @@ export const PdfViewer = ({ url, quality = 1, showThumbnails = true }: PdfViewer
             <button 
               onClick={toggleTextLayer} 
               className={`${styles.textLayerToggle} ${textLayerEnabled ? styles.active : ''}`}
-              title={textLayerEnabled ? "Disable text selection" : "Enable text selection"}
+              title={textLayerEnabled ? "Switch to drawing mode" : "Switch to text selection mode"}
             >
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='16'
-                height='16'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'>
-                <path d='M17 8h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3'></path>
-                <path d='M7 8H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h3'></path>
-                <line x1='12' y1='2' x2='12' y2='22'></line>
-              </svg>
-              <span>Text selection {textLayerEnabled ? 'enabled' : 'disabled'}</span>
+              {textLayerEnabled ? (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
+                  <span>Switch to Drawing Mode</span>
+                </>
+              ) : (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round">
+                    <path d="M17 8h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3"></path>
+                    <path d="M7 8H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h3"></path>
+                    <line x1="12" y1="2" x2="12" y2="22"></line>
+                  </svg>
+                  <span>Switch to Text Selection</span>
+                </>
+              )}
             </button>
+            
+            {!textLayerEnabled && (
+              <div className={styles.drawingControls}>
+                <div className={styles.colorPicker}>
+                  {['#2196f3', '#4caf50', '#f44336', '#ff9800', '#9c27b0'].map(color => (
+                    <button
+                      key={color}
+                      className={`${styles.colorButton} ${currentDrawingColor === color ? styles.active : ''}`}
+                      style={{ backgroundColor: color }}
+                      onClick={() => changeDrawingColor(color)}
+                      title={`Change drawing color to ${color}`}
+                    />
+                  ))}
+                </div>
+                <div className={styles.lineWidthControls}>
+                  <button 
+                    className={`${styles.lineWidthButton} ${currentLineWidth === 1 ? styles.active : ''}`}
+                    onClick={() => changeLineWidth(1)}
+                    title="Thin line"
+                  >
+                    <div className={styles.linePreview} style={{ height: '1px' }}></div>
+                  </button>
+                  <button 
+                    className={`${styles.lineWidthButton} ${currentLineWidth === 2 ? styles.active : ''}`}
+                    onClick={() => changeLineWidth(2)}
+                    title="Medium line"
+                  >
+                    <div className={styles.linePreview} style={{ height: '2px' }}></div>
+                  </button>
+                  <button 
+                    className={`${styles.lineWidthButton} ${currentLineWidth === 4 ? styles.active : ''}`}
+                    onClick={() => changeLineWidth(4)}
+                    title="Thick line"
+                  >
+                    <div className={styles.linePreview} style={{ height: '4px' }}></div>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="pdf-container">
@@ -231,6 +317,8 @@ export const PdfViewer = ({ url, quality = 1, showThumbnails = true }: PdfViewer
               id={`page-${index + 1}`}
               quality={renderQuality}
               textLayerEnabled={textLayerEnabled}
+              drawingColor={currentDrawingColor}
+              drawingLineWidth={currentLineWidth}
             />
           ))}
         </div>

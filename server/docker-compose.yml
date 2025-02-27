@@ -7,6 +7,7 @@ services:
     volumes:
       - ./:/app
       - ./uploads:/app/uploads
+      - ./public:/app/public
     depends_on:
       - db
     restart: always

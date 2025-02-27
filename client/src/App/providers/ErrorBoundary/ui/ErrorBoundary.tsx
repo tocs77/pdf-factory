@@ -1,5 +1,5 @@
 import React, { ErrorInfo, Suspense } from 'react';
-import { Button } from '@/shared/UI/Button';
+
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -30,11 +30,11 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
             <h2>Произошла ошибка в приложении.</h2>
             <h3> Обновите страницу</h3>
-            <Button onClick={() => this.setState({ showDetails: !this.state.showDetails })} title='Технические детали' />
+            <button onClick={() => this.setState({ showDetails: !this.state.showDetails })} title='Технические детали' />
             {this.state.showDetails && (
               <div style={{ margin: '20px', width: '80%' }}>
                 <h3>{this.state?.error?.message}</h3>
-                {this.state?.errorInfo?.componentStack.split('\n').map((s, i) => (
+                {this.state?.errorInfo?.componentStack?.split('\n').map((s, i) => (
                   <div key={i}>{s}</div>
                 ))}
               </div>
