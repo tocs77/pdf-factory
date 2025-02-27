@@ -255,8 +255,8 @@ export const Page = ({ page, scale, pageNumber, id, quality = 1, textLayerEnable
       try {
         // Create a custom render progress tracker
         const progressTracker = {
-          onRenderProgress: (progress: { loaded?: number; total?: number }) => {
-            if (progress.total && progress.loaded !== undefined) {
+          onProgress: (progress: { loaded: number; total: number }) => {
+            if (progress.total > 0) {
               const percentage = Math.round((progress.loaded / progress.total) * 100);
               setRenderProgress(percentage);
             }
@@ -268,6 +268,17 @@ export const Page = ({ page, scale, pageNumber, id, quality = 1, textLayerEnable
           ...renderContext,
           ...progressTracker,
         });
+
+        // Set up progress monitoring
+        renderTask.onContinue = (cont: () => void) => {
+          // This ensures the progress is updated during rendering
+          if (renderProgress < 90) {
+            // Increment progress to show activity
+            setRenderProgress(prev => Math.min(prev + 5, 90));
+          }
+          cont();
+          return true;
+        };
 
         // Get the text content of the page if text layer is enabled
         if (textLayerEnabled && textLayerRef.current) {
@@ -282,7 +293,9 @@ export const Page = ({ page, scale, pageNumber, id, quality = 1, textLayerEnable
 
           try {
             // Get text content
-            const textContent = await page.getTextContent();
+            const textContent = await page.getTextContent({
+              includeMarkedContent: true,
+            });
 
             // Wait for canvas rendering to complete
             await renderTask;
@@ -339,10 +352,14 @@ export const Page = ({ page, scale, pageNumber, id, quality = 1, textLayerEnable
         } else {
           await renderTask;
         }
+        
+        // Set progress to 100% when rendering is complete
+        setRenderProgress(100);
       } catch (error) {
         console.error('Error rendering PDF page:', error);
-      } finally {
+        // Even on error, set progress to 100% to remove the loading indicator
         setRenderProgress(100);
+      } finally {
         setIsRendering(false);
       }
     };
@@ -382,8 +399,7 @@ export const Page = ({ page, scale, pageNumber, id, quality = 1, textLayerEnable
 
       {isRendering && (
         <div className={styles.renderingOverlay}>
-          <div>Rendering...</div>
-          <div className={styles.progressText}>{renderProgress}%</div>
+          <div>Rendering{renderProgress > 0 ? ` (${renderProgress}%)` : '...'}</div>
           <div className={styles.progressBar}>
             <div className={styles.progressFill} style={{ width: `${renderProgress}%` }}></div>
           </div>

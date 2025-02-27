@@ -52,8 +52,8 @@ export const Thumbnail = ({ page, pageNumber, isSelected, onClick, quality = 1 }
       try {
         // Create a custom render progress tracker
         const progressTracker = {
-          onRenderProgress: (progress: { loaded?: number, total?: number }) => {
-            if (progress.total && progress.loaded !== undefined) {
+          onProgress: (progress: { loaded: number, total: number }) => {
+            if (progress.total > 0) {
               const percentage = Math.round((progress.loaded / progress.total) * 100);
               setRenderProgress(percentage);
             }
@@ -61,14 +61,31 @@ export const Thumbnail = ({ page, pageNumber, isSelected, onClick, quality = 1 }
         };
         
         // Pass the progress tracker to the render method
-        await page.render({
+        const renderTask = page.render({
           ...renderContext,
           ...progressTracker
         });
+        
+        // Set up progress monitoring
+        renderTask.onContinue = (cont: () => void) => {
+          // This ensures the progress is updated during rendering
+          if (renderProgress < 90) {
+            // Increment progress to show activity
+            setRenderProgress(prev => Math.min(prev + 5, 90));
+          }
+          cont();
+          return true;
+        };
+        
+        await renderTask;
+        
+        // Set progress to 100% when rendering is complete
+        setRenderProgress(100);
       } catch (error) {
         console.error('Error rendering thumbnail:', error);
-      } finally {
+        // Even on error, set progress to 100% to remove the loading indicator
         setRenderProgress(100);
+      } finally {
         setIsRendering(false);
       }
     };
@@ -88,8 +105,7 @@ export const Thumbnail = ({ page, pageNumber, isSelected, onClick, quality = 1 }
       
       {isRendering && (
         <div className={styles.renderingOverlay}>
-          <div>Loading...</div>
-          <div className={styles.progressText}>{renderProgress}%</div>
+          <div>Loading{renderProgress > 0 ? ` (${renderProgress}%)` : '...'}</div>
           <div className={styles.progressBar}>
             <div 
               className={styles.progressFill} 
