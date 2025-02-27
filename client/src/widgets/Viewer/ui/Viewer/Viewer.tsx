@@ -13,15 +13,19 @@ interface OnProgressParameters {
 const MAX_ZOOM = 10;
 interface PdfViewerProps {
   url: string;
-  /** 
+  /**
    * Quality multiplier for rendering resolution (default: 1)
    * Higher values improve quality but may impact performance
    * Recommended values: 1-3
    */
   quality?: number;
+  /**
+   * Whether to show the thumbnail sidebar (default: true)
+   */
+  showThumbnails?: boolean;
 }
 
-export const PdfViewer = ({ url, quality = 1 }: PdfViewerProps) => {
+export const PdfViewer = ({ url, quality = 1, showThumbnails = true }: PdfViewerProps) => {
   const [pdfRef, setPdfRef] = useState<PDFDocumentProxy | null>(null);
   const [scale, setScale] = useState(1.5);
   const [pages, setPages] = useState<PDFPageProxy[]>([]);
@@ -33,7 +37,7 @@ export const PdfViewer = ({ url, quality = 1 }: PdfViewerProps) => {
 
   // Validate quality value
   const renderQuality = Math.max(0.5, Math.min(4, quality));
-  
+
   // Use a lower quality for thumbnails to improve performance
   const thumbnailQuality = Math.max(0.5, renderQuality * 0.5);
 
@@ -45,7 +49,7 @@ export const PdfViewer = ({ url, quality = 1 }: PdfViewerProps) => {
       try {
         setLoadingMessage('Loading pages...');
         setLoadingProgress(0);
-        
+
         const pagesPromises = [];
         for (let i = 1; i <= pdfRef.numPages; i++) {
           pagesPromises.push(pdfRef.getPage(i));
@@ -54,16 +58,16 @@ export const PdfViewer = ({ url, quality = 1 }: PdfViewerProps) => {
         // Track progress of loading pages
         const totalPages = pdfRef.numPages;
         let loadedPages = 0;
-        
+
         const loadedPagesArray = await Promise.all(
           pagesPromises.map(async (pagePromise) => {
             const page = await pagePromise;
             loadedPages++;
             setLoadingProgress(Math.round((loadedPages / totalPages) * 100));
             return page;
-          })
+          }),
         );
-        
+
         setPages(loadedPagesArray);
         setIsLoading(false);
       } catch (err) {
@@ -83,7 +87,7 @@ export const PdfViewer = ({ url, quality = 1 }: PdfViewerProps) => {
         setLoadingMessage('Loading PDF document...');
         setLoadingProgress(0);
         setError(null);
-        
+
         // Create a progress callback
         const progressCallback = (data: OnProgressParameters) => {
           if (data.total > 0) {
@@ -91,14 +95,14 @@ export const PdfViewer = ({ url, quality = 1 }: PdfViewerProps) => {
             setLoadingProgress(percentage);
           }
         };
-        
+
         // Use the documented API for loading with progress
         const loadingTask = pdfjs.getDocument({
           url: url,
           // @ts-ignore - The type definitions are incomplete, but this is the correct API
-          onProgress: progressCallback
+          onProgress: progressCallback,
         });
-        
+
         const loadedPdf = await loadingTask.promise;
         setPdfRef(loadedPdf);
       } catch (err) {
@@ -112,7 +116,7 @@ export const PdfViewer = ({ url, quality = 1 }: PdfViewerProps) => {
   }, [url]);
 
   const zoomIn = () => {
-    setScale((prevScale) => Math.min(prevScale + 0.25, MAX_ZOOM));    
+    setScale((prevScale) => Math.min(prevScale + 0.25, MAX_ZOOM));
   };
 
   const zoomOut = () => {
@@ -139,44 +143,41 @@ export const PdfViewer = ({ url, quality = 1 }: PdfViewerProps) => {
       <div className={styles.loadingContainer}>
         {isLoading ? (
           <div className={styles.loadingBox}>
-            <div className={styles.loadingTitle}>
-              {loadingMessage}
-            </div>
-            <div className={styles.loadingPercentage}>
-              {loadingProgress}%
-            </div>
+            <div className={styles.loadingTitle}>{loadingMessage}</div>
+            <div className={styles.loadingPercentage}>{loadingProgress}%</div>
             <div className={styles.progressBar}>
-              <div 
-                className={styles.progressFill} 
-                style={{ width: `${loadingProgress}%` }}
-              ></div>
+              <div className={styles.progressFill} style={{ width: `${loadingProgress}%` }}></div>
             </div>
             <div className={styles.spinner}></div>
           </div>
         ) : (
-          <div className={styles.errorBox}>
-            {error}
-          </div>
+          <div className={styles.errorBox}>{error}</div>
         )}
       </div>
     );
   }
 
   return (
-    <div className={styles.container}>
+    <div className={`${styles.container} ${!showThumbnails ? styles.noThumbnails : ''}`}>
       {/* Thumbnails sidebar */}
-      <div className={styles.thumbnailSidebar}>
-        {pages.map((page, index) => (
-          <Thumbnail
-            key={`thumb-${index + 1}`}
-            page={page}
-            pageNumber={index + 1}
-            isSelected={selectedPage === index + 1}
-            onClick={handleThumbnailClick}
-            quality={thumbnailQuality}
-          />
-        ))}
-      </div>
+      {showThumbnails && (
+        <div className={styles.thumbnailSidebar}>
+          <div className={styles.thumbnailHeader}>
+            <h3>Pages</h3>
+            <span className={styles.pageCount}>{pages.length} pages</span>
+          </div>
+          {pages.map((page, index) => (
+            <Thumbnail
+              key={`thumb-${index + 1}`}
+              page={page}
+              pageNumber={index + 1}
+              isSelected={selectedPage === index + 1}
+              onClick={handleThumbnailClick}
+              quality={thumbnailQuality}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Main content */}
       <div className={styles.mainContent}>
@@ -191,14 +192,33 @@ export const PdfViewer = ({ url, quality = 1 }: PdfViewerProps) => {
           <span className={styles.zoomPercentage}>
             {Math.round(scale * 100)}% {renderQuality > 1 && `(${renderQuality}x quality)`}
           </span>
+          <div className={styles.featureInfo}>
+            <span className={styles.textSelectionInfo}>
+              <svg
+                xmlns='http://www.w3.org/2000/svg'
+                width='16'
+                height='16'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+                strokeLinecap='round'
+                strokeLinejoin='round'>
+                <path d='M17 8h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3'></path>
+                <path d='M7 8H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h3'></path>
+                <line x1='12' y1='2' x2='12' y2='22'></line>
+              </svg>
+              Text selection enabled
+            </span>
+          </div>
         </div>
-        <div className="pdf-container">
+        <div className='pdf-container'>
           {pages.map((page, index) => (
-            <Page 
-              key={`page-${index + 1}`} 
-              page={page} 
-              scale={scale} 
-              pageNumber={index + 1} 
+            <Page
+              key={`page-${index + 1}`}
+              page={page}
+              scale={scale}
+              pageNumber={index + 1}
               id={`page-${index + 1}`}
               quality={renderQuality}
             />
