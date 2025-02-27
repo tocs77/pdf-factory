@@ -1,2 +1,2 @@
 export type { FileDto } from './model/File';
-export { useGetFilesListQuery } from './api/fileApi';
+export { useGetFilesListQuery, useDeleteFileMutation, useUploadFileMutation, useGetFileBlobUrlQuery } from './api/fileApi';

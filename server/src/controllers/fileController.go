@@ -85,3 +85,45 @@ func GetFilesList(c *fiber.Ctx) error {
 	database.DB.Find(&files)
 	return c.JSON(files)
 }
+
+func DeleteFile(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	// Find the file in the database first
+	var file models.File
+	result := database.DB.First(&file, id)
+	if result.Error != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "File not found",
+		})
+	}
+
+	// Delete the file from the uploads directory
+	hashDir := "./uploads/" + file.Hash
+	filePath := hashDir + "/" + file.Filename
+	if err := os.Remove(filePath); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to delete file from uploads",
+		})
+	}
+
+	// Try to remove the directory if it's empty
+	os.Remove(hashDir) // Ignore error if directory is not empty
+
+	// Delete the file record from the database
+	database.DB.Delete(&file)
+
+	return c.JSON(fiber.Map{
+		"message": "File deleted successfully",
+	})
+
+}
+
+func DownloadFile(c *fiber.Ctx) error {
+	id := c.Params("id")
+	var file models.File
+	database.DB.First(&file, id)
+
+	filePath := "./uploads/" + file.Hash + "/" + file.Filename
+	return c.Download(filePath)
+}

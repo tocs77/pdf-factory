@@ -34,7 +34,8 @@ services:
     ports:
       - "5051:80" 
     depends_on:
-      - db  
-
+      - db 
+    volumes:
+      - ./pgadmin:/pgadmin
 volumes:
   pdf_data:  # Volume for PostgreSQL data persistence

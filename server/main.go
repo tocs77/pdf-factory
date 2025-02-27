@@ -12,7 +12,10 @@ import (
 func main() {
 	database.Connect()
 	migration.AutoMigrate()
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		Prefork:   true,
+		BodyLimit: 1024 * 1024 * 1000,
+	})
 	routes.SetupRoutes(app)
 	app.Listen(":" + os.Getenv("APP_PORT"))
 }

@@ -1,12 +1,17 @@
-import { useGetFilesListQuery } from '@/entities/File';
-import { fileController } from '@/shared/api/controllers/fileController';
 import { useState, useMemo } from 'react';
-import { columns } from '../model/columns';
+import { useNavigate } from 'react-router';
+import { useGetFilesListQuery, useDeleteFileMutation, useUploadFileMutation } from '@/entities/File';
 import { Table } from '@/shared/ui/Table';
 
+import { makeColumns } from '../model/columns';
+
+import classes from './MainPage.module.scss';
 export const MainPage = () => {
   const [file, setFile] = useState<File | null>(null);
   const { data: files } = useGetFilesListQuery();
+  const [deleteFile] = useDeleteFileMutation();
+  const [uploadFile] = useUploadFileMutation();
+  const navigate = useNavigate();
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -15,27 +20,38 @@ export const MainPage = () => {
   };
   const handleSubmit = async () => {
     if (file) {
-      await fileController.uploadFile(file);
+      await uploadFile(file);
     }
   };
   const data = useMemo(() => {
     if (!files) return [];
     return files;
   }, [files]);
+  const handleDeleteFile = (id: string) => {
+    deleteFile(id);
+  };
+
+  const clickRowHandler = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    navigate(`/view/${id}`);
+  };
+
   return (
-    <div>
+    <div className={classes.MainPage}>
       <input type='file' onChange={handleFileChange} />
       <button onClick={handleSubmit}>Upload</button>
-      <Table
-        columns={columns}
-        data={data}
-        initialState={{ columnVisibility: { handle: false } }}
-        // rowContextHandler={contextMenuHandler}
-        // rowClickHandler={openProject}
-        textAlign='left'
-        //getRowId={(p) => String(p.identifier)}
-        getRowId={(p) => String(p.id)}
-      />
+      <div className={classes.table}>
+        <Table
+          columns={makeColumns(handleDeleteFile)}
+          data={data}
+          initialState={{ columnVisibility: { handle: false } }}
+          // rowContextHandler={contextMenuHandler}
+          rowClickHandler={clickRowHandler}
+          textAlign='left'
+          //getRowId={(p) => String(p.identifier)}
+          getRowId={(p) => String(p.id)}
+        />
+      </div>
     </div>
   );
 };

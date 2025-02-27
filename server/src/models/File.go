@@ -1,9 +1,7 @@
 package models
 
-import "gorm.io/gorm"
-
 type File struct {
-	gorm.Model
-	Filename string `gorm:"not null"`
-	Hash     string `gorm:"not null"`
+	GormModel
+	Filename string `json:"filename" gorm:"not null"`
+	Hash     string `json:"hash" gorm:"not null"`
 }
