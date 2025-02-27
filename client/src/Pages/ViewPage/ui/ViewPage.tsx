@@ -5,5 +5,5 @@ export const ViewPage = () => {
   const { id } = useParams();
   const { data: fileBlobUrl, isLoading } = useGetFileBlobUrlQuery(id || '');
   if (isLoading) return <div>Loading...</div>;
-  return <PdfViewer url={fileBlobUrl || ''} />;
+  return <PdfViewer url={fileBlobUrl || ''} quality={1} />;
 };
