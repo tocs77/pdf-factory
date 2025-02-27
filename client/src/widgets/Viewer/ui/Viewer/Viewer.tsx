@@ -34,7 +34,7 @@ export const PdfViewer = ({ url, quality = 1, showThumbnails = true }: PdfViewer
   const [loadingMessage, setLoadingMessage] = useState('Loading PDF...');
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [textLayerEnabled, setTextLayerEnabled] = useState(true);
+  const [textLayerEnabled, setTextLayerEnabled] = useState(false);
 
   // Validate quality value
   const renderQuality = Math.max(0.5, Math.min(4, quality));
