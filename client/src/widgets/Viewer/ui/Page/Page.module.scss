@@ -21,7 +21,7 @@
   right: 0;
   bottom: 0;
   overflow: hidden;
-  opacity: 0.2;
+  opacity: 0.01;
   line-height: 1.0;
   user-select: text;
   -webkit-user-select: text;
@@ -34,23 +34,90 @@
   /* Ensures text layer is above canvas but below UI elements */
   z-index: 2;
   
-  /* Make text layer transparent to clicks when not selecting */
-  pointer-events: none;
+  /* Always allow pointer events for text selection */
+  pointer-events: auto;
+  
+  /* Fix for text layer positioning */
+  transform: none;
+  
+  /* When actively selecting text, keep it visible */
+  &.selecting {
+    opacity: 0.3 !important;
+  }
+  
+  span {
+    /* Transparent color but still selectable */
+    color: transparent;
+    position: absolute;
+    white-space: pre;
+    transform-origin: 0% 0%;
+    cursor: text;
+    
+    /* Ensure spans can be interacted with */
+    pointer-events: auto;
+    
+    /* Make selection visible even when not hovering */
+    &::selection {
+      background: rgba(0, 0, 255, 0.3) !important;
+      color: transparent !important;
+    }
+  }
   
   &:hover {
-    opacity: 0.5;
-    pointer-events: auto;
+    opacity: 0.2;
   }
   
   /* When actively selecting text */
   &:active {
-    opacity: 0.7;
-    pointer-events: auto;
+    opacity: 0.3;
+  }
+}
+
+/* Global selection styles to ensure visibility everywhere */
+::selection {
+  background: rgba(0, 0, 255, 0.3) !important;
+  color: inherit !important;
+}
+
+/* Specific selection style for text layer content */
+.textLayer ::selection,
+.textLayer *::selection {
+  background: rgba(0, 0, 255, 0.3) !important;
+  color: transparent !important;
+}
+
+/* Ensure selected text remains visible */
+.textLayer.hasSelection,
+.textLayer.selecting {
+  opacity: 0.3 !important;
+}
+
+.copyButton {
+  position: fixed;
+  background-color: #2196f3;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+  user-select: none;
+  white-space: nowrap;
+  
+  &:hover {
+    background-color: #0d8bf2;
   }
   
-  /* Style for selected text */
-  ::selection {
-    background: rgba(0, 0, 255, 0.3);
+  &:active {
+    background-color: #0a7ad1;
+    transform: translate(-50%, -100%) scale(0.98);
+  }
+  
+  /* Animation for copy success */
+  &.success {
+    background-color: #4caf50;
+    transition: background-color 0.3s ease;
   }
 }
 

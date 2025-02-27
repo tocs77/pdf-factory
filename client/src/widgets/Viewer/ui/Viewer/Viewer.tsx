@@ -34,6 +34,7 @@ export const PdfViewer = ({ url, quality = 1, showThumbnails = true }: PdfViewer
   const [loadingMessage, setLoadingMessage] = useState('Loading PDF...');
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [textLayerEnabled, setTextLayerEnabled] = useState(true);
 
   // Validate quality value
   const renderQuality = Math.max(0.5, Math.min(4, quality));
@@ -127,6 +128,10 @@ export const PdfViewer = ({ url, quality = 1, showThumbnails = true }: PdfViewer
     setScale(1.5);
   };
 
+  const toggleTextLayer = () => {
+    setTextLayerEnabled(prev => !prev);
+  };
+
   const handleThumbnailClick = (pageNumber: number) => {
     setSelectedPage(pageNumber);
 
@@ -193,7 +198,11 @@ export const PdfViewer = ({ url, quality = 1, showThumbnails = true }: PdfViewer
             {Math.round(scale * 100)}% {renderQuality > 1 && `(${renderQuality}x quality)`}
           </span>
           <div className={styles.featureInfo}>
-            <span className={styles.textSelectionInfo}>
+            <button 
+              onClick={toggleTextLayer} 
+              className={`${styles.textLayerToggle} ${textLayerEnabled ? styles.active : ''}`}
+              title={textLayerEnabled ? "Disable text selection" : "Enable text selection"}
+            >
               <svg
                 xmlns='http://www.w3.org/2000/svg'
                 width='16'
@@ -208,11 +217,11 @@ export const PdfViewer = ({ url, quality = 1, showThumbnails = true }: PdfViewer
                 <path d='M7 8H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h3'></path>
                 <line x1='12' y1='2' x2='12' y2='22'></line>
               </svg>
-              Text selection enabled
-            </span>
+              <span>Text selection {textLayerEnabled ? 'enabled' : 'disabled'}</span>
+            </button>
           </div>
         </div>
-        <div className='pdf-container'>
+        <div className="pdf-container">
           {pages.map((page, index) => (
             <Page
               key={`page-${index + 1}`}
@@ -221,6 +230,7 @@ export const PdfViewer = ({ url, quality = 1, showThumbnails = true }: PdfViewer
               pageNumber={index + 1}
               id={`page-${index + 1}`}
               quality={renderQuality}
+              textLayerEnabled={textLayerEnabled}
             />
           ))}
         </div>

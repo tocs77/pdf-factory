@@ -101,6 +101,42 @@
   }
 }
 
+.textLayerToggle {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: #666;
+  background-color: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  
+  &:hover {
+    background-color: #e5e5e5;
+  }
+  
+  &.active {
+    background-color: #e0f2f1;
+    border-color: #80cbc4;
+    color: #00796b;
+    
+    svg {
+      stroke: #00796b;
+    }
+  }
+  
+  svg {
+    margin-right: 5px;
+    width: 14px;
+    height: 14px;
+  }
+  
+  span {
+    white-space: nowrap;
+  }
+}
+
 .loadingContainer {
   display: flex;
   justify-content: center;
