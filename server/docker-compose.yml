@@ -1,0 +1,40 @@
+services:
+  backend:
+    build: .
+    container_name: pdf-backend
+    ports:
+      - "4050:${APP_PORT}"
+    volumes:
+      - ./:/app
+      - ./uploads:/app/uploads
+    depends_on:
+      - db
+    restart: always
+    env_file:
+      - .env
+
+  db:
+    image: postgres:latest
+    container_name: pdf-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME}      
+      POSTGRES_USER: ${DB_USER}      
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pdf_data:/var/lib/postgresql/data 
+
+  pgadmin:
+    image: dpage/pgadmin4:latest  
+    container_name: pdf-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com  
+      PGADMIN_DEFAULT_PASSWORD: admin          
+    ports:
+      - "5051:80" 
+    depends_on:
+      - db  
+
+volumes:
+  pdf_data:  # Volume for PostgreSQL data persistence

@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2021",
+    "strict": true,
+    "lib": ["es2021", "dom"],
+    "sourceMap": true,
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "moduleResolution": "node",
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noEmit": true,
+    "noEmitOnError": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "plugins": [{ "name": "typescript-plugin-css-modules" }],
+    "baseUrl": ".",
+    "forceConsistentCasingInFileNames": true,
+    "paths": { "@/*": ["./src/*"] }
+  },
+  "exclude": ["node_modules", "build", "scripts", "acceptance-tests", "webpack", "jest", "src/setupTests.ts"],
+  "include": ["src/**/*", "src/assets/js/pdf.worker.min.js", "./config/jest/setupTests.ts"],
+  "types": ["typePatches"],
+  "ts-node": {
+    "compilerOptions": { "module": "CommonJS" }
+  }
+}

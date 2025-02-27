@@ -1,0 +1,126 @@
+:root {
+  --header-font-size: 1.3rem;
+  --cell-font-size: 1.3rem;
+  --header-font-size-mobile: 1.1rem;
+  --cell-font-size-mobile: 1rem;
+}
+
+.table {
+  overflow: auto;
+  max-height: 98%;
+  display: block;
+  width: 100%;
+  position: relative;
+  box-sizing: border-box;
+  padding-right: 1rem;
+  color: var(--text-color);
+  fill: var(--text-color);
+  border-collapse: collapse;
+}
+
+.tableHeader {
+  background-color: var(--menu-background);
+  font-size: var(--header-font-size);
+  font-weight: 700;
+  border-bottom: var(--border);
+  box-sizing: border-box;
+  position: sticky;
+  height: 4rem;
+  top: 0;
+  z-index: calc(var(--modal-z-index) - 1);
+  user-select: none;
+  padding: 1rem 0;
+}
+
+.mobile .tableHeader {
+  font-size: var(--header-font-size-mobile);
+  padding: 0.2rem 0;
+}
+
+.tableColumn {
+  padding: 0.7rem 0.5rem;
+  text-align: left;
+  position: relative;
+  text-overflow: ellipsis;
+  word-break: break-all;
+  overflow: hidden;
+  height: 100%;
+}
+
+.headerCellContent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0;
+  height: 2rem;
+}
+
+.table_row {
+  border-bottom: var(--border);
+  padding-bottom: 1rem;
+  min-height: 37rem;
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.table_cell {
+  padding: 1rem 0.4rem;
+  font-size: var(--cell-font-size);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-all;
+  word-wrap: break-word;
+  width: 200px;
+}
+
+.tableCellContent {
+  padding: 0.4rem 0;
+}
+
+.mobile .table_cell {
+  padding: 0.1rem 0.2rem;
+
+  /* padding-left: 2rem; */
+  font-size: var(--cell-font-size-mobile);
+}
+
+.sortable {
+  cursor: pointer;
+}
+
+.resizer {
+  display: inline-block;
+  background: lightgray;
+  width: 3px;
+  height: 100%;
+  position: absolute;
+  right: 0;
+  top: 0;
+  cursor: col-resize;
+  transform: translateX(50%);
+  z-index: 3;
+  touch-action: none;
+}
+
+.isResizing {
+  background: gray;
+}
+
+.edited_cell {
+  all: unset;
+  border: none;
+  font-size: var(--cell-font-size);
+  width: 100%;
+  padding: 0;
+  background-color: transparent;
+}
+
+.edited_cell:active {
+  border: none;
+  outline: none;
+}

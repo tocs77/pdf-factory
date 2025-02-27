@@ -1,0 +1,37 @@
+.dark {
+  // colors
+  --primary: #00b5e2;
+  --primary-rgb: 0 181 226;
+  --primary-hover: #00a3ff;
+  --primary-pressed: #40b3f4;
+  --link-visited: #9a58ce;
+  --secondary: #34aaa3;
+  --secondary-hover: #36d5cb;
+  --secondary-pressed: #6ee0d9;
+  --text-color: #d2d2d2;
+  --text-color-rgb: 210 210 210;
+  --text-color-transparent: rgb(var(--text-color-rgb) / 75%);
+  --border-color: #4b4949;
+  --text-color-light: #727479;
+  --grey-dark: #a8aaaf;
+  --grey-medium: #5e5a5a;
+  --grey-medium-rgb: 94 94 94;
+  --menu-background: #0a0a0a;
+  --background: #1d1d1d;
+  --alert: #d92936;
+  --alert-background: #fce1e3;
+  --attention: #e09e1e;
+  --attention-background: #faf4c2;
+  --successfull: #3cba76;
+  --successfull-background: #cbf7dc;
+  --primary-transparent: rgb(var(--primary-rgb) / 40%);
+  --grey-medium-transparent: rgb(var(--grey-medium-rgb) / 40%);
+  --tooltip-background: #fff;
+  --tooltip-text: #1d262e;
+  --checkbox-background: #333;
+
+  // element styles
+  --border: 1px solid var(--border-color);
+  --border-bold: 2px solid var(--border-color);
+  --shadow: 0px 2px 7px 0px var(--text-color);
+}

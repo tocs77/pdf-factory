@@ -1,0 +1,47 @@
+.light {
+  // colors
+  --primary: #287aff;
+  --primary-hover: #4169e1;
+  --primary-pressed: #0d6efd;
+  --link-visited: #c08aeb;
+  --secondary: #34aaa3;
+  --secondary-hover: #36d5cb;
+  --secondary-pressed: #6ee0d9;
+  --text-color: #001223;
+  --text-color-transparent: rgb(from var(--text-color) r g b / 75%);
+  --text-color-light: #84868b;
+  --grey-dark: #abafb2;
+  --dark-light: #747A80;
+  --grey-medium: #d2d2d2;
+  --border-color: #dedede;
+  --menu-background: #f1f1f2;
+  --background: #fff;
+  --alert: #eb4855;
+  --alert-background: #fcebec;
+  --attention: #ec9e05;
+  --attention-background: #faf4c2;
+  --successfull: #00945f;
+  --successfull-background: #e1f7ea;
+  --primary-transparent: rgb(from var(--primary) r g b / 40%);
+  --grey-medium-transparent: rgb(from var(--grey-medium) r g b / 40%);
+  --tooltip-background: #1d1d1d;
+  --tooltip-text: #fff;
+  --checkbox-background: #fff;
+
+
+  // element styles
+  --border: 1px solid var(--border-color);
+  --border-bold: 2px solid var(--border-color);
+  --shadow: 0px 2px 7px 0px var(--text-color);
+
+  // react tooltip overwrites
+  --rt-color-white: var(--background);
+  --rt-color-dark: var(--text-color);
+  --rt-color-success: var(--successfull);
+  --rt-color-error: var(--alert);
+  --rt-color-warning: var(--attention);
+  --rt-color-info: var(--primary);
+  --rt-opacity: 0.9;
+  --rt-transition-show-delay: 0.15s;
+  --rt-transition-closing-delay: 0.15s;
+}

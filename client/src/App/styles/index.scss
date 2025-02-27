@@ -1,0 +1,87 @@
+@use './reset';
+@use './variables';
+@use './theme/light';
+@use './theme/dark';
+
+@font-face {
+  font-family: Roboto;
+  src:
+    local('RobotoCondensed-Regular.ttf'),
+    url('../../shared/assets/fonts/RobotoCondensed-Regular.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: Montserrat;
+  src:
+    local('Montserrat-Regular.ttf'),
+    url('../../shared/assets/fonts/Montserrat-Regular.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: Montserrat-Medium;
+  src:
+    local('Montserrat-Regular.ttf'),
+    url('../../shared/assets/fonts/Montserrat-Medium.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Montserrat Alternates';
+  src:
+    local('MontserratAlternates-Regular.ttf'),
+    url('../../shared/assets/fonts/MontserratAlternates-Regular.ttf') format('truetype');
+}
+
+html {
+  font-size: 62.5%;
+}
+
+body {
+  margin: 0;
+  font-family: Montserrat-Medium, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans',
+    'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  position: relative;
+  box-sizing: border-box;
+  color: var(--text-color);
+  background-color: var(--background);
+  scrollbar-color: var(--text-color) var(--text-color-light);
+
+}
+
+* {
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar-button {
+  display: none;
+}
+
+// *::-webkit-scrollbar {
+//   width: 10px;
+//   background: var(--text-color-light);
+// }
+
+// *::-webkit-scrollbar-thumb {
+//   background-color: var(--text-color);
+//   border-radius: 20px;
+// }
+
+
+
+
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+.app {
+    min-height: 100vh;
+    background: var(--bg-color);
+    color: var(--primary-color);
+    font: var(--font-m);
+}
+
+.content-page {
+    display: flex;
+}
