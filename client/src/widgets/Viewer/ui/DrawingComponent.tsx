@@ -36,6 +36,30 @@ const DrawingComponent = ({ scale, drawingColor, drawingLineWidth, textLayerEnab
 
     console.log('Canvas dimensions:', drawingCanvas.width, drawingCanvas.height);
 
+    // Redraw all stored paths
+    const redrawPaths = () => {
+      ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+      drawingPathsRef.current.forEach(path => {
+        if (path.points.length < 2) return;
+
+        ctx.strokeStyle = path.color;
+        ctx.lineWidth = path.lineWidth;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        ctx.beginPath();
+        ctx.moveTo(path.points[0].x, path.points[0].y);
+
+        for (let i = 1; i < path.points.length; i++) {
+          ctx.lineTo(path.points[i].x, path.points[i].y);
+        }
+
+        ctx.stroke();
+      });
+    };
+
+    redrawPaths();
+
     const startDrawing = (e: MouseEvent) => {
       const rect = drawingCanvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
