@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import * as pdfjs from 'pdfjs-dist';
 import styles from './Page.module.scss';
+import { classNames } from '../../../../shared/utils/classNames/classNames';
 
 // Page component for rendering a single PDF page
 interface PageProps {
@@ -19,6 +20,7 @@ interface PageProps {
   drawingLineWidth?: number;
   /** Whether the page is currently visible in the viewport (default: false) */
   isVisible?: boolean;
+  className?: string;
 }
 
 export const Page = ({ 
@@ -30,7 +32,8 @@ export const Page = ({
   textLayerEnabled = true,
   drawingColor = '#2196f3',
   drawingLineWidth = 2,
-  isVisible = false
+  isVisible = false,
+  className
 }: PageProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
@@ -51,6 +54,23 @@ export const Page = ({
   const prevScaleRef = useRef(scale);
   const prevQualityRef = useRef(quality);
   const renderProgressRef = useRef(renderProgress);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const canvasWrapperRef = useRef<HTMLDivElement>(null);
+  const hasDrawnRef = useRef(false);
+  // Store last position directly in a ref for immediate access during drawing
+  const lastPositionRef = useRef({ x: 0, y: 0 });
+  // Store drawing paths to redraw them when needed
+  const drawingPathsRef = useRef<Array<{
+    points: Array<{x: number, y: number}>,
+    color: string,
+    lineWidth: number
+  }>>([]);
+  // Current drawing path
+  const currentPathRef = useRef<{
+    points: Array<{x: number, y: number}>,
+    color: string,
+    lineWidth: number
+  } | null>(null);
 
   // Use Intersection Observer to detect when the page is visible
   useEffect(() => {
@@ -223,29 +243,6 @@ export const Page = ({
     };
   }, [textLayerEnabled, isSelecting, hasSelection]);
 
-  // Handle copy button click
-  const handleCopy = () => {
-    if (selectedText) {
-      navigator.clipboard
-        .writeText(selectedText)
-        .then(() => {
-          setCopySuccess(true);
-          setTimeout(() => {
-            setCopySuccess(false);
-            setShowCopyButton(false);
-            setHasSelection(false);
-            
-            // Remove hasSelection class after copying
-            if (textLayerRef.current) {
-              textLayerRef.current.classList.remove(styles.hasSelection);
-            }
-          }, 1500);
-        })
-        .catch((err) => {
-          console.error('Failed to copy text: ', err);
-        });
-    }
-  };
 
   // Hide copy button when clicking elsewhere
   useEffect(() => {
@@ -264,20 +261,64 @@ export const Page = ({
     };
   }, [showCopyButton]);
 
-  // Handle drawing on canvas when text layer is disabled
+  // Set up drawing canvas if text layer is disabled
   useEffect(() => {
-    if (textLayerEnabled || !drawingCanvasRef.current) return;
-
+    if (!drawingCanvasRef.current || textLayerEnabled) return;
+    
+    const viewport = page.getViewport({ scale });
     const drawingCanvas = drawingCanvasRef.current;
+    
+    // Set drawing canvas to same display size as content
+    drawingCanvas.style.width = `${Math.floor(viewport.width)}px`;
+    drawingCanvas.style.height = `${Math.floor(viewport.height)}px`;
+    
+    // Set actual size in memory (1:1 with display size for accurate drawing)
+    drawingCanvas.width = Math.floor(viewport.width);
+    drawingCanvas.height = Math.floor(viewport.height);
+    
+    // Ensure drawing canvas is positioned correctly
+    drawingCanvas.style.position = 'absolute';
+    drawingCanvas.style.left = '0';
+    drawingCanvas.style.top = '0';
+    drawingCanvas.style.zIndex = '2';
+    
+    // Get the drawing context
     const ctx = drawingCanvas.getContext('2d');
     if (!ctx) return;
-
-    // Set up drawing styles
+    
+    // Clear the canvas initially
+    ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+    
+    // Redraw any saved paths
+    if (drawingPathsRef.current.length > 0) {
+      hasDrawnRef.current = true;
+      
+      // Draw all stored paths
+      drawingPathsRef.current.forEach(path => {
+        if (path.points.length < 2) return;
+        
+        ctx.strokeStyle = path.color;
+        ctx.lineWidth = path.lineWidth;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        ctx.beginPath();
+        ctx.moveTo(path.points[0].x, path.points[0].y);
+        
+        for (let i = 1; i < path.points.length; i++) {
+          ctx.lineTo(path.points[i].x, path.points[i].y);
+        }
+        
+        ctx.stroke();
+      });
+    }
+    
+    // Set up drawing styles for new drawings
     ctx.strokeStyle = drawingColor;
     ctx.lineWidth = drawingLineWidth;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-
+    
     const startDrawing = (e: MouseEvent) => {
       // Get canvas-relative coordinates
       const rect = drawingCanvas.getBoundingClientRect();
@@ -285,41 +326,91 @@ export const Page = ({
       const y = e.clientY - rect.top;
       
       setIsDrawing(true);
+      // Store position in both state and ref
       setLastPosition({ x, y });
+      lastPositionRef.current = { x, y };
+      hasDrawnRef.current = true;
       
       // Start a new path
+      currentPathRef.current = {
+        points: [{ x, y }],
+        color: drawingColor,
+        lineWidth: drawingLineWidth
+      };
+      
+      // Important: Set the context properties right before drawing
+      ctx.strokeStyle = drawingColor;
+      ctx.lineWidth = drawingLineWidth;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
       ctx.beginPath();
       ctx.moveTo(x, y);
     };
-
+    
     const draw = (e: MouseEvent) => {
-      if (!isDrawing) return;
+      if (!isDrawing || !currentPathRef.current) return;
       
       // Get canvas-relative coordinates
       const rect = drawingCanvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       
+      // Add point to current path
+      currentPathRef.current.points.push({ x, y });
+      
+      // Important: Set the context properties right before drawing
+      ctx.strokeStyle = drawingColor;
+      ctx.lineWidth = drawingLineWidth;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
       // Draw line from last position to current position
       ctx.beginPath();
-      ctx.moveTo(lastPosition.x, lastPosition.y);
+      // Use the ref for immediate access to last position
+      ctx.moveTo(lastPositionRef.current.x, lastPositionRef.current.y);
       ctx.lineTo(x, y);
       ctx.stroke();
       
-      // Update last position
+      // Update last position for the next segment - both state and ref
       setLastPosition({ x, y });
+      lastPositionRef.current = { x, y };
     };
-
-    const stopDrawing = () => {
+    
+    const stopDrawing = (e: MouseEvent) => {
+      if (isDrawing && currentPathRef.current) {
+        // Make sure we capture the final position
+        const rect = drawingCanvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        // Add the final point if it's different from the last one
+        const lastPoint = currentPathRef.current.points[currentPathRef.current.points.length - 1];
+        if (lastPoint.x !== x || lastPoint.y !== y) {
+          currentPathRef.current.points.push({ x, y });
+          
+          // Draw the final segment
+          ctx.beginPath();
+          // Use the ref for immediate access to last position
+          ctx.moveTo(lastPositionRef.current.x, lastPositionRef.current.y);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+        }
+        
+        // Save current path to paths array
+        drawingPathsRef.current.push(currentPathRef.current);
+        currentPathRef.current = null;
+      }
+      
       setIsDrawing(false);
     };
-
+    
     // Add event listeners
     drawingCanvas.addEventListener('mousedown', startDrawing);
     drawingCanvas.addEventListener('mousemove', draw);
     drawingCanvas.addEventListener('mouseup', stopDrawing);
     drawingCanvas.addEventListener('mouseleave', stopDrawing);
-
+    
     // Clean up
     return () => {
       drawingCanvas.removeEventListener('mousedown', startDrawing);
@@ -327,7 +418,7 @@ export const Page = ({
       drawingCanvas.removeEventListener('mouseup', stopDrawing);
       drawingCanvas.removeEventListener('mouseleave', stopDrawing);
     };
-  }, [textLayerEnabled, isDrawing, lastPosition, drawingColor, drawingLineWidth]);
+  }, [page, scale, textLayerEnabled, isDrawing, lastPosition, drawingColor, drawingLineWidth]);
 
   // Clear drawing canvas
   const clearDrawing = () => {
@@ -338,6 +429,11 @@ export const Page = ({
     if (!ctx) return;
     
     ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+    hasDrawnRef.current = false;
+    
+    // Clear all stored paths
+    drawingPathsRef.current = [];
+    currentPathRef.current = null;
   };
 
   // Update ref when renderProgress changes
@@ -378,18 +474,7 @@ export const Page = ({
       const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
       ctx.scale(totalScale, totalScale);
 
-      // Set up drawing canvas if text layer is disabled
-      if (!textLayerEnabled && drawingCanvasRef.current) {
-        const drawingCanvas = drawingCanvasRef.current;
-        
-        // Set drawing canvas to same display size as content
-        drawingCanvas.style.width = `${Math.floor(viewport.width)}px`;
-        drawingCanvas.style.height = `${Math.floor(viewport.height)}px`;
-        
-        // Set actual size in memory (1:1 with display size for accurate drawing)
-        drawingCanvas.width = Math.floor(viewport.width);
-        drawingCanvas.height = Math.floor(viewport.height);
-      }
+      // We don't set up the drawing canvas here anymore - it's handled in a separate useEffect
 
       const renderContext = {
         canvasContext: ctx,
@@ -638,7 +723,7 @@ export const Page = ({
     return (
       <div 
         id={id} 
-        className={styles.pageContainer} 
+        className={classNames(styles.page, {}, [className])} 
         ref={containerRef}
       >
         <div className={styles.pageInfo}>
@@ -657,7 +742,15 @@ export const Page = ({
   }
 
   return (
-    <div id={id} className={styles.pageContainer} ref={containerRef}>
+    <div
+      className={classNames(styles.page, {}, [className])}
+      style={{
+        width: `${Math.floor(page.getViewport({ scale }).width)}px`,
+        height: `${Math.floor(page.getViewport({ scale }).height)}px`,
+      }}
+      data-page-number={page.pageNumber}
+      ref={pageRef}
+    >
       <div className={styles.pageInfo}>
         Page {pageNumber} ({Math.round(page.view[2])} × {Math.round(page.view[3])} px)
         {quality > 1 && <span> - {quality}x quality</span>}
@@ -671,40 +764,24 @@ export const Page = ({
         )}
       </div>
       <div className={styles.pageContent}>
-        {/* Use a wrapper div to ensure perfect alignment between canvas and text layer */}
-        <div className={styles.canvasWrapper}>
-          {/* Render canvas first, so text layer appears on top in the DOM */}
-          <canvas ref={canvasRef} className={styles.pageCanvas} />
-          
-          {textLayerEnabled && (
-            <div
-              ref={textLayerRef}
-              className={`${styles.textLayer} ${hasSelection ? styles.hasSelection : ''}`}
-              title='Text can be selected and copied'
-              data-page-number={pageNumber} />
+        <div className={styles.canvasWrapper} ref={canvasWrapperRef}>
+          <canvas
+            className={styles.pageCanvas}
+            width={page.getViewport({ scale }).width}
+            height={page.getViewport({ scale }).height}
+            ref={canvasRef}
+          />
+          {!textLayerEnabled && (
+            <canvas
+              className={styles.drawingLayer}
+              width={page.getViewport({ scale }).width}
+              height={page.getViewport({ scale }).height}
+              ref={drawingCanvasRef}
+            />
           )}
         </div>
-        
-        {!textLayerEnabled && (
-          <canvas 
-            ref={drawingCanvasRef} 
-            className={styles.drawingLayer}
-            title='Click and drag to draw'
-          />
-        )}
-
-        {showCopyButton && (
-          <button
-            className={`${styles.copyButton} ${copySuccess ? styles.success : ''}`}
-            style={{
-              left: `${copyButtonPosition.x}px`,
-              top: `${copyButtonPosition.y}px`,
-              transform: 'translate(-50%, -100%)',
-            }}
-            onClick={handleCopy}
-            type="button">
-            {copySuccess ? 'Copied!' : 'Copy'}
-          </button>
+        {textLayerEnabled && (
+          <div className={styles.textLayer} ref={textLayerRef} />
         )}
       </div>
 
