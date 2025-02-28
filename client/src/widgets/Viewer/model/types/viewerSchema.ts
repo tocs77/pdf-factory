@@ -1,12 +1,12 @@
-export type ViewerSchema = {
+export interface ViewerSchema {
   scale: number;
-};
-
-export type ActionTypes = 'setScale';
-
-interface SetScaleAction {
-  type: 'setScale';
-  payload: number;
+  drawingColor: string;
+  drawingLineWidth: number;
+  textLayerEnabled: boolean;
 }
 
-export type Action = SetScaleAction;
+export type Action = 
+  | { type: 'setScale'; payload: number }
+  | { type: 'setDrawingColor'; payload: string }
+  | { type: 'setDrawingLineWidth'; payload: number }
+  | { type: 'toggleTextLayer' };

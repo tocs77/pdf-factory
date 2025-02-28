@@ -8,6 +8,8 @@ interface ViewerContextType {
 }
 
 const MAX_ZOOM = 5;
+const DEFAULT_DRAWING_COLOR = '#2196f3';
+
 export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema => {
   switch (action.type) {
     case 'setScale':
@@ -18,6 +20,16 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
         return { ...state, scale: MAX_ZOOM };
       }
       return { ...state, scale: action.payload };
+    
+    case 'setDrawingColor':
+      return { ...state, drawingColor: action.payload };
+    
+    case 'setDrawingLineWidth':
+      return { ...state, drawingLineWidth: action.payload };
+    
+    case 'toggleTextLayer':
+      return { ...state, textLayerEnabled: !state.textLayerEnabled };
+    
     default:
       return state;
   }
@@ -25,6 +37,11 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
 
 // Create context with proper typing
 export const ViewerContext = createContext<ViewerContextType>({
-  state: { scale: 1 },
+  state: { 
+    scale: 1.5,
+    drawingColor: DEFAULT_DRAWING_COLOR,
+    drawingLineWidth: 2,
+    textLayerEnabled: true
+  },
   dispatch: () => null,
 });

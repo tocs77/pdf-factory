@@ -3,9 +3,10 @@ import * as pdfjs from 'pdfjs-dist';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import { Thumbnail } from '../Thumbnail/Thumbnail';
 import { Page } from '../Page/Page';
-import classes from './Viewer.module.scss';
-import { ViewerProvider } from '../../model/context/ViewerProvider';
+import { ViewerMenu } from '../ViewerMenu/ViewerMenu';
 import { ViewerContext } from '../../model/context/viewerContext';
+import { ViewerProvider } from '../../model/context/ViewerProvider';
+import classes from './Viewer.module.scss';
 
 interface PdfViewerProps {
   url: string;
@@ -24,16 +25,18 @@ interface PdfViewerProps {
 }
 
 // Internal viewer component that will be wrapped with the provider
-const PdfViewerInternal = ({ url, showThumbnails = true, drawingColor = '#2196f3', drawingLineWidth = 2 }: PdfViewerProps) => {
+const PdfViewerInternal = ({
+  url,      
+  showThumbnails = true,
+}: PdfViewerProps) => {
+  const { state } = useContext(ViewerContext);
+  const { scale, drawingColor, drawingLineWidth, textLayerEnabled } = state;
+  
   const [pdfRef, setPdfRef] = useState<PDFDocumentProxy | null>(null);
-  const { state, dispatch } = useContext(ViewerContext);
   const [pages, setPages] = useState<PDFPageProxy[]>([]);
   const [selectedPage, setSelectedPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [textLayerEnabled, setTextLayerEnabled] = useState(true);
-  const [currentDrawingColor, setCurrentDrawingColor] = useState(drawingColor);
-  const [currentLineWidth, setCurrentLineWidth] = useState(drawingLineWidth);
 
   // Validate quality value
   const renderQuality = Math.max(0.5, Math.min(4, 1));
@@ -83,32 +86,6 @@ const PdfViewerInternal = ({ url, showThumbnails = true, drawingColor = '#2196f3
 
     loadPdf();
   }, [url]);
-
-  const zoomIn = () => {
-    dispatch({ type: 'setScale', payload: state.scale + 0.25 });
-  };
-
-  const zoomOut = () => {
-    dispatch({ type: 'setScale', payload: state.scale - 0.25 });
-  };
-
-  const resetZoom = () => {
-    dispatch({ type: 'setScale', payload: 1.5 });
-  };
-
-  const toggleTextLayer = () => {
-    setTextLayerEnabled((prev) => !prev);
-  };
-
-  // Change drawing color
-  const changeDrawingColor = (color: string) => {
-    setCurrentDrawingColor(color);
-  };
-
-  // Change line width
-  const changeLineWidth = (width: number) => {
-    setCurrentLineWidth(width);
-  };
 
   const handleThumbnailClick = (pageNumber: number) => {
     setSelectedPage(pageNumber);
@@ -160,108 +137,20 @@ const PdfViewerInternal = ({ url, showThumbnails = true, drawingColor = '#2196f3
 
       {/* Main content */}
       <div className={classes.mainContent}>
-        <div className={classes.zoomControls}>
-          <button onClick={zoomOut} className={classes.zoomButton}>
-            Zoom Out
-          </button>
-          <button onClick={resetZoom} className={classes.zoomButton}>
-            Reset Zoom
-          </button>
-          <button onClick={zoomIn}>Zoom In</button>
-          <span className={classes.zoomPercentage}>
-            {Math.round(state.scale * 100)}% {renderQuality > 1 && `(${renderQuality}x quality)`}
-          </span>
-          <div className={classes.featureInfo}>
-            <button
-              onClick={toggleTextLayer}
-              className={`${classes.textLayerToggle} ${textLayerEnabled ? classes.active : ''}`}
-              title={textLayerEnabled ? 'Switch to drawing mode' : 'Switch to text selection mode'}>
-              {textLayerEnabled ? (
-                <>
-                  <svg
-                    xmlns='http://www.w3.org/2000/svg'
-                    width='16'
-                    height='16'
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeWidth='2'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'>
-                    <path d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7'></path>
-                    <path d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z'></path>
-                  </svg>
-                  <span>Switch to Drawing Mode</span>
-                </>
-              ) : (
-                <>
-                  <svg
-                    xmlns='http://www.w3.org/2000/svg'
-                    width='16'
-                    height='16'
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeWidth='2'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'>
-                    <path d='M17 8h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3'></path>
-                    <path d='M7 8H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h3'></path>
-                    <line x1='12' y1='2' x2='12' y2='22'></line>
-                  </svg>
-                  <span>Switch to Text Selection</span>
-                </>
-              )}
-            </button>
-
-            {!textLayerEnabled && (
-              <div className={classes.drawingControls}>
-                <div className={classes.colorPicker}>
-                  {['#2196f3', '#4caf50', '#f44336', '#ff9800', '#9c27b0'].map((color) => (
-                    <button
-                      key={color}
-                      className={`${classes.colorButton} ${currentDrawingColor === color ? classes.active : ''}`}
-                      style={{ backgroundColor: color }}
-                      onClick={() => changeDrawingColor(color)}
-                      title={`Change drawing color to ${color}`}
-                    />
-                  ))}
-                </div>
-                <div className={classes.lineWidthControls}>
-                  <button
-                    className={`${classes.lineWidthButton} ${currentLineWidth === 1 ? classes.active : ''}`}
-                    onClick={() => changeLineWidth(1)}
-                    title='Thin line'>
-                    <div className={classes.linePreview} style={{ height: '1px' }}></div>
-                  </button>
-                  <button
-                    className={`${classes.lineWidthButton} ${currentLineWidth === 2 ? classes.active : ''}`}
-                    onClick={() => changeLineWidth(2)}
-                    title='Medium line'>
-                    <div className={classes.linePreview} style={{ height: '2px' }}></div>
-                  </button>
-                  <button
-                    className={`${classes.lineWidthButton} ${currentLineWidth === 4 ? classes.active : ''}`}
-                    onClick={() => changeLineWidth(4)}
-                    title='Thick line'>
-                    <div className={classes.linePreview} style={{ height: '4px' }}></div>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Viewer Menu with zoom and drawing controls */}
+        <ViewerMenu renderQuality={renderQuality} />
+        
         <div className={classes.pdfContainer}>
           {pages.map((page, index) => (
             <Page
               key={`page-${index + 1}`}
               page={page}
-              scale={state.scale}
+              scale={scale}
               pageNumber={index + 1}
               id={`page-${index + 1}`}
               textLayerEnabled={textLayerEnabled}
-              drawingColor={currentDrawingColor}
-              drawingLineWidth={currentLineWidth}
+              drawingColor={drawingColor}
+              drawingLineWidth={drawingLineWidth}
             />
           ))}
         </div>
