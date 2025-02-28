@@ -302,9 +302,21 @@ export const Page = ({
           textLayerDiv.style.left = '0';
           textLayerDiv.style.top = '0';
           textLayerDiv.style.position = 'absolute';
-          textLayerDiv.style.transformOrigin = '0 0';
-          // Add transform to match canvas scale
-          textLayerDiv.style.transform = `scale(${1 / outputScale})`;
+          
+          // Remove any transform or transformOrigin from the container
+          textLayerDiv.style.transform = '';
+          textLayerDiv.style.transformOrigin = '';
+          
+          // Add a border for debugging
+          if (pageNumber === 1) {
+            textLayerDiv.style.border = '1px solid rgba(255,0,0,0.2)';
+            canvas.style.border = '1px solid rgba(0,0,255,0.2)';
+          }
+          
+          // Log dimensions for debugging
+          console.log(`Page ${pageNumber} - Canvas dimensions: ${canvas.width}x${canvas.height} (device pixels), ${viewport.width}x${viewport.height} (CSS pixels)`);
+          console.log(`Page ${pageNumber} - Text layer dimensions: ${textLayerDiv.style.width}x${textLayerDiv.style.height}`);
+          console.log(`Page ${pageNumber} - Device pixel ratio: ${outputScale}`);
 
           let textLayerRendered = false;
 
@@ -378,20 +390,32 @@ export const Page = ({
                       textDiv.textContent = item.str;
                     }
 
-                    // Set positioning styles
+                    // Set positioning styles with precise calculations
                     textDiv.style.position = 'absolute';
-                    textDiv.style.left = `${tx[4]}px`;
-                    textDiv.style.top = `${tx[5] - fontHeight}px`;
+                    
+                    // Apply exact positioning based on the viewport transform
+                    // This ensures text is positioned exactly where it should be on the canvas
+                    const left = tx[4];
+                    const top = tx[5] - fontHeight;
+                    
+                    textDiv.style.left = `${left}px`;
+                    textDiv.style.top = `${top}px`;
                     textDiv.style.fontSize = `${fontHeight}px`;
                     textDiv.style.fontFamily = 'sans-serif';
-
+                    
                     // Apply rotation if needed
                     if (angle !== 0) {
                       textDiv.style.transform = `rotate(${angle}rad)`;
                       textDiv.style.transformOrigin = 'left bottom';
                     }
-
+                    
+                    // Ensure text doesn't wrap
                     textDiv.style.whiteSpace = 'pre';
+
+                    // Log the first few text elements for debugging
+                    if (pageNumber === 1 && textItems.length < 10) {
+                      console.log(`Text element: "${item.str}", position: (${left}, ${top}), font size: ${fontHeight}`);
+                    }
 
                     // Add text selection properties
                     if (item.fontName) {
@@ -526,7 +550,8 @@ export const Page = ({
       style={{ 
         width: `${Math.floor(page.getViewport({ scale }).width)}px`,
         height: `${Math.floor(page.getViewport({ scale }).height)}px`,
-        position: 'relative'
+        position: 'relative',
+        overflow: 'hidden' // Ensure nothing spills outside
       }}>
         <div className={styles.canvasWrapper} ref={canvasWrapperRef}>
           <canvas
@@ -538,7 +563,16 @@ export const Page = ({
         </div>
         
         {/* Only render the text layer if text layer is enabled */}
-        {textLayerEnabled && <div className={styles.textLayer} ref={textLayerRef} />}
+        {textLayerEnabled && (
+          <div 
+            className={styles.textLayer} 
+            ref={textLayerRef}
+            style={{
+              width: `${Math.floor(page.getViewport({ scale }).width)}px`,
+              height: `${Math.floor(page.getViewport({ scale }).height)}px`
+            }}
+          />
+        )}
         
         {/* Always render the drawing component, but it will return null if text layer is enabled */}
         <div className={styles.drawingCanvasContainer}>
