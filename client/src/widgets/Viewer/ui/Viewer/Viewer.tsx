@@ -99,6 +99,10 @@ const PdfViewerInternal = ({
   };
 
   const handleDrawingComplete = (drawing: DrawingPath) => {
+    // The drawing coordinates are already normalized to scale=1 in the DrawingComponent
+    // This ensures drawings maintain consistent size and position when zooming
+    // The drawing also includes canvas dimensions at scale=1 to ensure proper positioning
+    // when the canvas size changes (e.g., when zooming in/out)
     dispatch({ type: 'addDrawing', payload: drawing });
   };
 

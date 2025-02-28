@@ -303,6 +303,8 @@ export const Page = ({
           textLayerDiv.style.top = '0';
           textLayerDiv.style.position = 'absolute';
           textLayerDiv.style.transformOrigin = '0 0';
+          // Add transform to match canvas scale
+          textLayerDiv.style.transform = `scale(${1 / outputScale})`;
 
           let textLayerRendered = false;
 
@@ -520,7 +522,12 @@ export const Page = ({
       <div className={classNames(styles.pageContent, {
         [styles.drawingMode]: !textLayerEnabled,
         [styles.textMode]: textLayerEnabled
-      })}>
+      })}
+      style={{ 
+        width: `${Math.floor(page.getViewport({ scale }).width)}px`,
+        height: `${Math.floor(page.getViewport({ scale }).height)}px`,
+        position: 'relative'
+      }}>
         <div className={styles.canvasWrapper} ref={canvasWrapperRef}>
           <canvas
             className={styles.pageCanvas}

@@ -60,6 +60,11 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ renderQuality, currentPa
       <button onClick={zoomIn}>Zoom In</button>
       <span className={classes.zoomPercentage}>
         {Math.round(scale * 100)}% {renderQuality > 1 && `(${renderQuality}x quality)`}
+        {!textLayerEnabled && (
+          <span className={classes.drawingScaleInfo}>
+            - Drawings maintain position & size at all zoom levels
+          </span>
+        )}
       </span>
       <div className={classes.featureInfo}>
         <button
