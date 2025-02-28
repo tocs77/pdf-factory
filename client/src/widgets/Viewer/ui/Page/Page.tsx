@@ -367,13 +367,11 @@ export const Page = ({
       
       // Draw line from last position to current position
       ctx.beginPath();
-      // Use the ref for immediate access to last position
       ctx.moveTo(lastPositionRef.current.x, lastPositionRef.current.y);
       ctx.lineTo(x, y);
       ctx.stroke();
       
-      // Update last position for the next segment - both state and ref
-      setLastPosition({ x, y });
+      // Update last position for the next segment
       lastPositionRef.current = { x, y };
     };
     
