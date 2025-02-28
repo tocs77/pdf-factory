@@ -3,6 +3,7 @@ import type { PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import * as pdfjs from 'pdfjs-dist';
 import styles from './Page.module.scss';
 import { classNames } from '../../../../shared/utils/classNames/classNames';
+import DrawingComponent from '../DrawingComponent';
 
 // Page component for rendering a single PDF page
 interface PageProps {
@@ -37,18 +38,12 @@ export const Page = ({
 }: PageProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
-  const drawingCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isRendering, setIsRendering] = useState(true);
   const [renderProgress, setRenderProgress] = useState(0);
-  const [selectedText, setSelectedText] = useState('');
   const [showCopyButton, setShowCopyButton] = useState(false);
-  const [copyButtonPosition, setCopyButtonPosition] = useState({ x: 0, y: 0 });
-  const [copySuccess, setCopySuccess] = useState(false);
   const [isSelecting, setIsSelecting] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [lastPosition, setLastPosition] = useState({ x: 0, y: 0 });
   const [inView, setInView] = useState(false);
   const [hasRendered, setHasRendered] = useState(false);
   const prevScaleRef = useRef(scale);
@@ -56,21 +51,6 @@ export const Page = ({
   const renderProgressRef = useRef(renderProgress);
   const pageRef = useRef<HTMLDivElement>(null);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
-  const hasDrawnRef = useRef(false);
-  // Store last position directly in a ref for immediate access during drawing
-  const lastPositionRef = useRef({ x: 0, y: 0 });
-  // Store drawing paths to redraw them when needed
-  const drawingPathsRef = useRef<Array<{
-    points: Array<{x: number, y: number}>,
-    color: string,
-    lineWidth: number
-  }>>([]);
-  // Current drawing path
-  const currentPathRef = useRef<{
-    points: Array<{x: number, y: number}>,
-    color: string,
-    lineWidth: number
-  } | null>(null);
 
   // Use Intersection Observer to detect when the page is visible
   useEffect(() => {
@@ -131,32 +111,15 @@ export const Page = ({
       }
       
       if (isInTextLayer || isSelecting) {
-        const text = selection.toString().trim();
-        setSelectedText(text);
-
-        if (text) {
-          // Get selection coordinates to position the copy button
-          const range = selection.getRangeAt(0);
-          const rect = range.getBoundingClientRect();
-
-          // Position the button above the selection
-          setCopyButtonPosition({
-            x: rect.left + window.scrollX + rect.width / 2,
-            y: rect.top + window.scrollY - 30,
-          });
-
-          setShowCopyButton(true);
-          setHasSelection(true);
-          
-          // Add hasSelection class to keep text visible
-          textLayer.classList.add(styles.hasSelection);
-        } else {
-          setShowCopyButton(false);
-          setHasSelection(false);
-          
-          // Remove hasSelection class when no text is selected
-          textLayer.classList.remove(styles.hasSelection);
-        }
+        setHasSelection(true);
+        
+        // Add hasSelection class to keep text visible
+        textLayer.classList.add(styles.hasSelection);
+      } else {
+        setHasSelection(false);
+        
+        // Remove hasSelection class when no text is selected
+        textLayer.classList.remove(styles.hasSelection);
       }
     };
 
@@ -261,179 +224,6 @@ export const Page = ({
     };
   }, [showCopyButton]);
 
-  // Set up drawing canvas if text layer is disabled
-  useEffect(() => {
-    if (!drawingCanvasRef.current || textLayerEnabled) return;
-    
-    const viewport = page.getViewport({ scale });
-    const drawingCanvas = drawingCanvasRef.current;
-    
-    // Set drawing canvas to same display size as content
-    drawingCanvas.style.width = `${Math.floor(viewport.width)}px`;
-    drawingCanvas.style.height = `${Math.floor(viewport.height)}px`;
-    
-    // Set actual size in memory (1:1 with display size for accurate drawing)
-    drawingCanvas.width = Math.floor(viewport.width);
-    drawingCanvas.height = Math.floor(viewport.height);
-    
-    // Ensure drawing canvas is positioned correctly
-    drawingCanvas.style.position = 'absolute';
-    drawingCanvas.style.left = '0';
-    drawingCanvas.style.top = '0';
-    drawingCanvas.style.zIndex = '2';
-    
-    // Get the drawing context
-    const ctx = drawingCanvas.getContext('2d');
-    if (!ctx) return;
-    
-    // Clear the canvas initially
-    ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-    
-    // Redraw any saved paths
-    if (drawingPathsRef.current.length > 0) {
-      hasDrawnRef.current = true;
-      
-      // Draw all stored paths
-      drawingPathsRef.current.forEach(path => {
-        if (path.points.length < 2) return;
-        
-        ctx.strokeStyle = path.color;
-        ctx.lineWidth = path.lineWidth;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        
-        ctx.beginPath();
-        ctx.moveTo(path.points[0].x, path.points[0].y);
-        
-        for (let i = 1; i < path.points.length; i++) {
-          ctx.lineTo(path.points[i].x, path.points[i].y);
-        }
-        
-        ctx.stroke();
-      });
-    }
-    
-    // Set up drawing styles for new drawings
-    ctx.strokeStyle = drawingColor;
-    ctx.lineWidth = drawingLineWidth;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    
-    const startDrawing = (e: MouseEvent) => {
-      // Get canvas-relative coordinates
-      const rect = drawingCanvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      
-      setIsDrawing(true);
-      // Store position in both state and ref
-      setLastPosition({ x, y });
-      lastPositionRef.current = { x, y };
-      hasDrawnRef.current = true;
-      
-      // Start a new path
-      currentPathRef.current = {
-        points: [{ x, y }],
-        color: drawingColor,
-        lineWidth: drawingLineWidth
-      };
-      
-      // Important: Set the context properties right before drawing
-      ctx.strokeStyle = drawingColor;
-      ctx.lineWidth = drawingLineWidth;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-    };
-    
-    const draw = (e: MouseEvent) => {
-      if (!isDrawing || !currentPathRef.current) return;
-      
-      // Get canvas-relative coordinates
-      const rect = drawingCanvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      
-      // Add point to current path
-      currentPathRef.current.points.push({ x, y });
-      
-      // Important: Set the context properties right before drawing
-      ctx.strokeStyle = drawingColor;
-      ctx.lineWidth = drawingLineWidth;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      
-      // Draw line from last position to current position
-      ctx.beginPath();
-      ctx.moveTo(lastPositionRef.current.x, lastPositionRef.current.y);
-      ctx.lineTo(x, y);
-      ctx.stroke();
-      
-      // Update last position for the next segment
-      lastPositionRef.current = { x, y };
-    };
-    
-    const stopDrawing = (e: MouseEvent) => {
-      if (isDrawing && currentPathRef.current) {
-        // Make sure we capture the final position
-        const rect = drawingCanvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        
-        // Add the final point if it's different from the last one
-        const lastPoint = currentPathRef.current.points[currentPathRef.current.points.length - 1];
-        if (lastPoint.x !== x || lastPoint.y !== y) {
-          currentPathRef.current.points.push({ x, y });
-          
-          // Draw the final segment
-          ctx.beginPath();
-          // Use the ref for immediate access to last position
-          ctx.moveTo(lastPositionRef.current.x, lastPositionRef.current.y);
-          ctx.lineTo(x, y);
-          ctx.stroke();
-        }
-        
-        // Save current path to paths array
-        drawingPathsRef.current.push(currentPathRef.current);
-        currentPathRef.current = null;
-      }
-      
-      setIsDrawing(false);
-    };
-    
-    // Add event listeners
-    drawingCanvas.addEventListener('mousedown', startDrawing);
-    drawingCanvas.addEventListener('mousemove', draw);
-    drawingCanvas.addEventListener('mouseup', stopDrawing);
-    drawingCanvas.addEventListener('mouseleave', stopDrawing);
-    
-    // Clean up
-    return () => {
-      drawingCanvas.removeEventListener('mousedown', startDrawing);
-      drawingCanvas.removeEventListener('mousemove', draw);
-      drawingCanvas.removeEventListener('mouseup', stopDrawing);
-      drawingCanvas.removeEventListener('mouseleave', stopDrawing);
-    };
-  }, [page, scale, textLayerEnabled, isDrawing, lastPosition, drawingColor, drawingLineWidth]);
-
-  // Clear drawing canvas
-  const clearDrawing = () => {
-    if (!drawingCanvasRef.current) return;
-    
-    const drawingCanvas = drawingCanvasRef.current;
-    const ctx = drawingCanvas.getContext('2d');
-    if (!ctx) return;
-    
-    ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-    hasDrawnRef.current = false;
-    
-    // Clear all stored paths
-    drawingPathsRef.current = [];
-    currentPathRef.current = null;
-  };
-
   // Update ref when renderProgress changes
   useEffect(() => {
     renderProgressRef.current = renderProgress;
@@ -471,8 +261,6 @@ export const Page = ({
       // Get context and scale it
       const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
       ctx.scale(totalScale, totalScale);
-
-      // We don't set up the drawing canvas here anymore - it's handled in a separate useEffect
 
       const renderContext = {
         canvasContext: ctx,
@@ -752,14 +540,6 @@ export const Page = ({
       <div className={styles.pageInfo}>
         Page {pageNumber} ({Math.round(page.view[2])} × {Math.round(page.view[3])} px)
         {quality > 1 && <span> - {quality}x quality</span>}
-        {!textLayerEnabled && (
-          <button 
-            className={styles.clearButton} 
-            onClick={clearDrawing}
-            type="button">
-            Clear Drawing
-          </button>
-        )}
       </div>
       <div className={styles.pageContent}>
         <div className={styles.canvasWrapper} ref={canvasWrapperRef}>
@@ -770,11 +550,11 @@ export const Page = ({
             ref={canvasRef}
           />
           {!textLayerEnabled && (
-            <canvas
-              className={styles.drawingLayer}
-              width={page.getViewport({ scale }).width}
-              height={page.getViewport({ scale }).height}
-              ref={drawingCanvasRef}
+            <DrawingComponent
+              scale={scale}
+              drawingColor={drawingColor}
+              drawingLineWidth={drawingLineWidth}
+              textLayerEnabled={textLayerEnabled}
             />
           )}
         </div>
