@@ -11,8 +11,6 @@ interface PageProps {
   scale: number;
   pageNumber: number;
   id: string;
-  /** Quality multiplier for rendering resolution (default: 1) */
-  quality?: number;
   /** Whether to enable the text layer for selection (default: true) */
   textLayerEnabled?: boolean;
   /** Drawing color for annotation (default: blue) */
@@ -29,7 +27,6 @@ export const Page = ({
   scale,
   pageNumber,
   id,
-  quality = 1,
   textLayerEnabled = true,
   drawingColor = '#2196f3',
   drawingLineWidth = 2,
@@ -45,7 +42,6 @@ export const Page = ({
   const [inView, setInView] = useState(false);
   const [hasRendered, setHasRendered] = useState(false);
   const prevScaleRef = useRef(scale);
-  const prevQualityRef = useRef(quality);
   const pageRef = useRef<HTMLDivElement>(null);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
 
@@ -242,7 +238,7 @@ export const Page = ({
 
       // Apply quality multiplier to canvas dimensions for higher resolution rendering
       const outputScale = window.devicePixelRatio || 1;
-      const totalScale = outputScale * quality;
+      const totalScale = outputScale;
 
       // Set display size
       canvas.style.width = `${Math.floor(viewport.width)}px`;
@@ -321,7 +317,7 @@ export const Page = ({
 
               // Check if textContent is valid
               if (!textContent || !Array.isArray(textContent.items) || textContent.items.length === 0) {
-               // console.warn('Text content is empty or invalid:', textContent);
+                // console.warn('Text content is empty or invalid:', textContent);
                 return; // Skip further processing if invalid
               }
 
@@ -474,17 +470,16 @@ export const Page = ({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, scale, quality, textLayerEnabled, shouldRender, hasRendered]);
+  }, [page, scale, textLayerEnabled, shouldRender, hasRendered]);
 
   // Reset hasRendered when scale or quality changes to force re-rendering
   useEffect(() => {
-    if (scale !== prevScaleRef.current || quality !== prevQualityRef.current) {
+    if (scale !== prevScaleRef.current) {
       setHasRendered(false);
       prevScaleRef.current = scale;
-      prevQualityRef.current = quality;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scale, quality]);
+  }, [scale]);
 
   // Return a placeholder if the page shouldn't be rendered
   if (!shouldRender && !hasRendered) {
@@ -516,7 +511,6 @@ export const Page = ({
       ref={pageRef}>
       <div className={styles.pageInfo}>
         Page {pageNumber} ({Math.round(page.view[2])} × {Math.round(page.view[3])} px)
-        {quality > 1 && <span> - {quality}x quality</span>}
       </div>
       <div className={styles.pageContent}>
         <div className={styles.canvasWrapper} ref={canvasWrapperRef}>

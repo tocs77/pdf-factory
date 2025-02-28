@@ -14,12 +14,6 @@ const MAX_ZOOM = 10;
 interface PdfViewerProps {
   url: string;
   /**
-   * Quality multiplier for rendering resolution (default: 1)
-   * Higher values improve quality but may impact performance
-   * Recommended values: 1-3
-   */
-  quality?: number;
-  /**
    * Whether to show the thumbnail sidebar (default: true)
    */
   showThumbnails?: boolean;
@@ -34,8 +28,7 @@ interface PdfViewerProps {
 }
 
 export const PdfViewer = ({
-  url,
-  quality = 1,
+  url,      
   showThumbnails = true,
   drawingColor = '#2196f3',
   drawingLineWidth = 2,
@@ -53,7 +46,7 @@ export const PdfViewer = ({
   const [currentLineWidth, setCurrentLineWidth] = useState(drawingLineWidth);
 
   // Validate quality value
-  const renderQuality = Math.max(0.5, Math.min(4, quality));
+  const renderQuality = Math.max(0.5, Math.min(4, 1));
 
   // Use a lower quality for thumbnails to improve performance
   const thumbnailQuality = Math.max(0.5, renderQuality * 0.5);
@@ -311,7 +304,6 @@ export const PdfViewer = ({
               scale={scale}
               pageNumber={index + 1}
               id={`page-${index + 1}`}
-              quality={renderQuality}
               textLayerEnabled={textLayerEnabled}
               drawingColor={currentDrawingColor}
               drawingLineWidth={currentLineWidth}
