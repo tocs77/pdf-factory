@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import * as pdfjs from 'pdfjs-dist';
-import styles from './Page.module.scss';
+import classes from './Page.module.scss';
 import { classNames } from '@/shared/utils';
 import DrawingComponent from '../DrawingComponent/DrawingComponent';
 import { DrawingPath } from '../../model/types/viewerSchema';
@@ -36,7 +36,7 @@ export const Page = ({
   isVisible = false,
   className,
   onDrawingComplete,
-  existingDrawings = []
+  existingDrawings = [],
 }: PageProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
@@ -84,12 +84,12 @@ export const Page = ({
     const textLayer = textLayerRef.current;
 
     // Add text layer styles class
-    textLayer.classList.add(styles.textLayer);
+    textLayer.classList.add(classes.textLayer);
 
     const handleSelectionStart = (e: MouseEvent) => {
       if (textLayer.contains(e.target as Node)) {
         setIsSelecting(true);
-        textLayer.classList.add(styles.selecting);
+        textLayer.classList.add(classes.selecting);
       }
     };
 
@@ -97,7 +97,7 @@ export const Page = ({
       setIsSelecting(false);
 
       // Remove selecting class
-      textLayer.classList.remove(styles.selecting);
+      textLayer.classList.remove(classes.selecting);
 
       const selection = window.getSelection();
       if (!selection) return;
@@ -112,12 +112,12 @@ export const Page = ({
         setHasSelection(true);
 
         // Add hasSelection class to keep text visible
-        textLayer.classList.add(styles.hasSelection);
+        textLayer.classList.add(classes.hasSelection);
       } else {
         setHasSelection(false);
 
         // Remove hasSelection class when no text is selected
-        textLayer.classList.remove(styles.hasSelection);
+        textLayer.classList.remove(classes.hasSelection);
       }
     };
 
@@ -153,13 +153,13 @@ export const Page = ({
         if (intersectsTextLayer || isSelecting) {
           // Keep the text layer visible during selection
           if (textLayerRef.current) {
-            textLayerRef.current.classList.add(styles.selecting);
+            textLayerRef.current.classList.add(classes.selecting);
           }
         }
       } else if (!isSelecting && textLayerRef.current) {
         // If not actively selecting and no text is selected, remove the selecting class
         if (!hasSelection) {
-          textLayerRef.current.classList.remove(styles.selecting);
+          textLayerRef.current.classList.remove(classes.selecting);
         }
       }
     };
@@ -170,7 +170,7 @@ export const Page = ({
         hasSelection &&
         textLayerRef.current &&
         !textLayerRef.current.contains(e.target as Node) &&
-        !(e.target as HTMLElement).classList.contains(styles.copyButton)
+        !(e.target as HTMLElement).classList.contains(classes.copyButton)
       ) {
         // Only clear if we're not clicking the copy button
         const selection = window.getSelection();
@@ -185,8 +185,8 @@ export const Page = ({
 
             // Remove hasSelection class
             if (textLayerRef.current) {
-              textLayerRef.current.classList.remove(styles.hasSelection);
-              textLayerRef.current.classList.remove(styles.selecting);
+              textLayerRef.current.classList.remove(classes.hasSelection);
+              textLayerRef.current.classList.remove(classes.selecting);
             }
           }
         }
@@ -213,7 +213,7 @@ export const Page = ({
     const handleClickOutside = (e: MouseEvent) => {
       if (
         showCopyButton &&
-        !(e.target as HTMLElement).classList.contains(styles.copyButton) &&
+        !(e.target as HTMLElement).classList.contains(classes.copyButton) &&
         textLayerRef.current &&
         !textLayerRef.current.contains(e.target as Node)
       ) {
@@ -302,19 +302,21 @@ export const Page = ({
           textLayerDiv.style.left = '0';
           textLayerDiv.style.top = '0';
           textLayerDiv.style.position = 'absolute';
-          
+
           // Remove any transform or transformOrigin from the container
           textLayerDiv.style.transform = '';
           textLayerDiv.style.transformOrigin = '';
-          
+
           // Add a border for debugging
           if (pageNumber === 1) {
             textLayerDiv.style.border = '1px solid rgba(255,0,0,0.2)';
             canvas.style.border = '1px solid rgba(0,0,255,0.2)';
           }
-          
+
           // Log dimensions for debugging
-          console.log(`Page ${pageNumber} - Canvas dimensions: ${canvas.width}x${canvas.height} (device pixels), ${viewport.width}x${viewport.height} (CSS pixels)`);
+          console.log(
+            `Page ${pageNumber} - Canvas dimensions: ${canvas.width}x${canvas.height} (device pixels), ${viewport.width}x${viewport.height} (CSS pixels)`,
+          );
           console.log(`Page ${pageNumber} - Text layer dimensions: ${textLayerDiv.style.width}x${textLayerDiv.style.height}`);
           console.log(`Page ${pageNumber} - Device pixel ratio: ${outputScale}`);
 
@@ -392,23 +394,23 @@ export const Page = ({
 
                     // Set positioning styles with precise calculations
                     textDiv.style.position = 'absolute';
-                    
+
                     // Apply exact positioning based on the viewport transform
                     // This ensures text is positioned exactly where it should be on the canvas
                     const left = tx[4];
                     const top = tx[5] - fontHeight;
-                    
+
                     textDiv.style.left = `${left}px`;
                     textDiv.style.top = `${top}px`;
                     textDiv.style.fontSize = `${fontHeight}px`;
                     textDiv.style.fontFamily = 'sans-serif';
-                    
+
                     // Apply rotation if needed
                     if (angle !== 0) {
                       textDiv.style.transform = `rotate(${angle}rad)`;
                       textDiv.style.transformOrigin = 'left bottom';
                     }
-                    
+
                     // Ensure text doesn't wrap
                     textDiv.style.whiteSpace = 'pre';
 
@@ -520,12 +522,12 @@ export const Page = ({
     const height = Math.floor(viewport.height);
 
     return (
-      <div id={id} className={classNames(styles.page, {}, [className])} ref={containerRef}>
-        <div className={styles.pageInfo}>
+      <div id={id} className={classNames(classes.page, {}, [className])} ref={containerRef}>
+        <div className={classes.pageInfo}>
           Page {pageNumber} ({Math.round(page.view[2])} × {Math.round(page.view[3])} px)
         </div>
-        <div className={styles.pageContent} style={{ width: `${width}px`, height: `${height}px` }}>
-          <div className={styles.placeholderPage}>Loading page {pageNumber}...</div>
+        <div className={classes.pageContent} style={{ width: `${width}px`, height: `${height}px` }}>
+          <div className={classes.placeholderPage}>Loading page {pageNumber}...</div>
         </div>
       </div>
     );
@@ -533,49 +535,50 @@ export const Page = ({
 
   return (
     <div
-      className={classNames(styles.page, {}, [className])}
+      className={classNames(classes.page, {}, [className])}
       style={{
         width: `${Math.floor(page.getViewport({ scale }).width)}px`,
         height: `${Math.floor(page.getViewport({ scale }).height)}px`,
       }}
       data-page-number={page.pageNumber}
       ref={pageRef}>
-      <div className={styles.pageInfo}>
+      <div className={classes.pageInfo}>
         Page {pageNumber} ({Math.round(page.view[2])} × {Math.round(page.view[3])} px)
       </div>
-      <div className={classNames(styles.pageContent, {
-        [styles.drawingMode]: !textLayerEnabled,
-        [styles.textMode]: textLayerEnabled
-      })}
-      style={{ 
-        width: `${Math.floor(page.getViewport({ scale }).width)}px`,
-        height: `${Math.floor(page.getViewport({ scale }).height)}px`,
-        position: 'relative',
-        overflow: 'hidden' // Ensure nothing spills outside
-      }}>
-        <div className={styles.canvasWrapper} ref={canvasWrapperRef}>
+      <div
+        className={classNames(classes.pageContent, {
+          [classes.drawingMode]: !textLayerEnabled,
+          [classes.textMode]: textLayerEnabled,
+        })}
+        style={{
+          width: `${Math.floor(page.getViewport({ scale }).width)}px`,
+          height: `${Math.floor(page.getViewport({ scale }).height)}px`,
+          position: 'relative',
+          overflow: 'hidden', // Ensure nothing spills outside
+        }}>
+        <div className={classes.canvasWrapper} ref={canvasWrapperRef}>
           <canvas
-            className={styles.pageCanvas}
+            className={classes.pageCanvas}
             width={page.getViewport({ scale }).width}
             height={page.getViewport({ scale }).height}
             ref={canvasRef}
           />
         </div>
-        
+
         {/* Only render the text layer if text layer is enabled */}
         {textLayerEnabled && (
-          <div 
-            className={styles.textLayer} 
+          <div
+            className={classes.textLayer}
             ref={textLayerRef}
             style={{
               width: `${Math.floor(page.getViewport({ scale }).width)}px`,
-              height: `${Math.floor(page.getViewport({ scale }).height)}px`
+              height: `${Math.floor(page.getViewport({ scale }).height)}px`,
             }}
           />
         )}
-        
+
         {/* Always render the drawing component, but it will return null if text layer is enabled */}
-        <div className={styles.drawingCanvasContainer}>
+        <div className={classes.drawingCanvasContainer}>
           <DrawingComponent
             scale={scale}
             pageNumber={pageNumber}
