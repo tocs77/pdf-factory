@@ -30,6 +30,23 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
     case 'toggleTextLayer':
       return { ...state, textLayerEnabled: !state.textLayerEnabled };
     
+    case 'addDrawing':
+      return { 
+        ...state, 
+        drawings: [...state.drawings, action.payload] 
+      };
+    
+    case 'clearDrawings':
+      // If payload is provided, clear drawings for that page only
+      if (action.payload !== undefined) {
+        return {
+          ...state,
+          drawings: state.drawings.filter(drawing => drawing.pageNumber !== action.payload)
+        };
+      }
+      // Otherwise clear all drawings
+      return { ...state, drawings: [] };
+    
     default:
       return state;
   }
@@ -41,7 +58,8 @@ export const ViewerContext = createContext<ViewerContextType>({
     scale: 1.5,
     drawingColor: DEFAULT_DRAWING_COLOR,
     drawingLineWidth: 2,
-    textLayerEnabled: true
+    textLayerEnabled: true,
+    drawings: []
   },
   dispatch: () => null,
 });

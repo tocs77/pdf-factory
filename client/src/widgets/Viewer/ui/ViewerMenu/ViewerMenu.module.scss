@@ -81,6 +81,7 @@
 .lineWidthControls {
   display: flex;
   gap: 5px;
+  margin-right: 10px;
 }
 
 .lineWidthButton {
@@ -103,4 +104,24 @@
 .linePreview {
   width: 12px;
   background-color: #333;
+}
+
+.drawingActions {
+  display: flex;
+  gap: 5px;
+}
+
+.clearButton {
+  padding: 4px 8px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  color: #f44336;
+  
+  &:hover {
+    background-color: #ffebee;
+    border-color: #f44336;
+  }
 } 

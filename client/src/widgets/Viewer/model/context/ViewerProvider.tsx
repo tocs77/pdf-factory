@@ -5,7 +5,8 @@ const initialState = {
   scale: 1.5,
   drawingColor: '#2196f3',
   drawingLineWidth: 2,
-  textLayerEnabled: true
+  textLayerEnabled: true,
+  drawings: []
 };
 
 export const ViewerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

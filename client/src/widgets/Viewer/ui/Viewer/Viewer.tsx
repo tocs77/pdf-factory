@@ -6,6 +6,7 @@ import { Page } from '../Page/Page';
 import { ViewerMenu } from '../ViewerMenu/ViewerMenu';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { ViewerProvider } from '../../model/context/ViewerProvider';
+import { DrawingPath } from '../../model/types/viewerSchema';
 import classes from './Viewer.module.scss';
 
 interface PdfViewerProps {
@@ -29,8 +30,8 @@ const PdfViewerInternal = ({
   url,      
   showThumbnails = true,
 }: PdfViewerProps) => {
-  const { state } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, textLayerEnabled } = state;
+  const { state, dispatch } = useContext(ViewerContext);
+  const { scale, drawingColor, drawingLineWidth, textLayerEnabled, drawings } = state;
   
   const [pdfRef, setPdfRef] = useState<PDFDocumentProxy | null>(null);
   const [pages, setPages] = useState<PDFPageProxy[]>([]);
@@ -97,6 +98,15 @@ const PdfViewerInternal = ({
     }
   };
 
+  const handleDrawingComplete = (drawing: DrawingPath) => {
+    dispatch({ type: 'addDrawing', payload: drawing });
+  };
+
+  // Filter drawings for each page
+  const getPageDrawings = (pageNumber: number) => {
+    return drawings.filter(drawing => drawing.pageNumber === pageNumber);
+  };
+
   // Show loading message or error
   if (isLoading || error) {
     return (
@@ -138,7 +148,7 @@ const PdfViewerInternal = ({
       {/* Main content */}
       <div className={classes.mainContent}>
         {/* Viewer Menu with zoom and drawing controls */}
-        <ViewerMenu renderQuality={renderQuality} />
+        <ViewerMenu renderQuality={renderQuality} currentPage={selectedPage} />
         
         <div className={classes.pdfContainer}>
           {pages.map((page, index) => (
@@ -151,6 +161,8 @@ const PdfViewerInternal = ({
               textLayerEnabled={textLayerEnabled}
               drawingColor={drawingColor}
               drawingLineWidth={drawingLineWidth}
+              onDrawingComplete={handleDrawingComplete}
+              existingDrawings={getPageDrawings(index + 1)}
             />
           ))}
         </div>

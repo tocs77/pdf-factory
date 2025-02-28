@@ -4,11 +4,12 @@ import classes from './ViewerMenu.module.scss';
 
 interface ViewerMenuProps {
   renderQuality: number;
+  currentPage: number;
 }
 
-export const ViewerMenu: React.FC<ViewerMenuProps> = ({ renderQuality }) => {
+export const ViewerMenu: React.FC<ViewerMenuProps> = ({ renderQuality, currentPage }) => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, textLayerEnabled } = state;
+  const { scale, drawingColor, drawingLineWidth, textLayerEnabled, drawings } = state;
 
   const zoomIn = () => {
     dispatch({ type: 'setScale', payload: scale + 0.25 });
@@ -23,6 +24,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ renderQuality }) => {
   };
 
   const toggleTextLayer = () => {
+    console.log(`Toggling text layer from ${textLayerEnabled} to ${!textLayerEnabled}`);
     dispatch({ type: 'toggleTextLayer' });
   };
 
@@ -33,6 +35,19 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ renderQuality }) => {
   const changeLineWidth = (width: number) => {
     dispatch({ type: 'setDrawingLineWidth', payload: width });
   };
+
+  const clearAllDrawings = () => {
+    dispatch({ type: 'clearDrawings' });
+  };
+
+  const clearPageDrawings = () => {
+    dispatch({ type: 'clearDrawings', payload: currentPage });
+  };
+
+  // Count drawings on current page
+  const currentPageDrawingsCount = drawings.filter(d => d.pageNumber === currentPage).length;
+  // Count all drawings
+  const totalDrawingsCount = drawings.length;
 
   return (
     <div className={classes.zoomControls}>
@@ -121,6 +136,25 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ renderQuality }) => {
                 title='Thick line'>
                 <div className={classes.linePreview} style={{ height: '4px' }}></div>
               </button>
+            </div>
+            
+            <div className={classes.drawingActions}>
+              {currentPageDrawingsCount > 0 && (
+                <button 
+                  className={classes.clearButton} 
+                  onClick={clearPageDrawings}
+                  title="Clear drawings on this page">
+                  Clear Page ({currentPageDrawingsCount})
+                </button>
+              )}
+              {totalDrawingsCount > 0 && (
+                <button 
+                  className={classes.clearButton} 
+                  onClick={clearAllDrawings}
+                  title="Clear all drawings">
+                  Clear All ({totalDrawingsCount})
+                </button>
+              )}
             </div>
           </div>
         )}

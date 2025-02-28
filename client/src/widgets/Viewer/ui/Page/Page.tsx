@@ -4,6 +4,7 @@ import * as pdfjs from 'pdfjs-dist';
 import styles from './Page.module.scss';
 import { classNames } from '@/shared/utils';
 import DrawingComponent from '../DrawingComponent/DrawingComponent';
+import { DrawingPath } from '../../model/types/viewerSchema';
 
 // Page component for rendering a single PDF page
 interface PageProps {
@@ -20,6 +21,8 @@ interface PageProps {
   /** Whether the page is currently visible in the viewport (default: false) */
   isVisible?: boolean;
   className?: string;
+  onDrawingComplete?: (drawing: DrawingPath) => void;
+  existingDrawings?: DrawingPath[];
 }
 
 export const Page = ({
@@ -32,6 +35,8 @@ export const Page = ({
   drawingLineWidth = 2,
   isVisible = false,
   className,
+  onDrawingComplete,
+  existingDrawings = []
 }: PageProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
@@ -512,7 +517,10 @@ export const Page = ({
       <div className={styles.pageInfo}>
         Page {pageNumber} ({Math.round(page.view[2])} × {Math.round(page.view[3])} px)
       </div>
-      <div className={styles.pageContent}>
+      <div className={classNames(styles.pageContent, {
+        [styles.drawingMode]: !textLayerEnabled,
+        [styles.textMode]: textLayerEnabled
+      })}>
         <div className={styles.canvasWrapper} ref={canvasWrapperRef}>
           <canvas
             className={styles.pageCanvas}
@@ -520,16 +528,23 @@ export const Page = ({
             height={page.getViewport({ scale }).height}
             ref={canvasRef}
           />
-          {!textLayerEnabled && (
-            <DrawingComponent
-              scale={scale}
-              drawingColor={drawingColor}
-              drawingLineWidth={drawingLineWidth}
-              textLayerEnabled={textLayerEnabled}
-            />
-          )}
         </div>
+        
+        {/* Only render the text layer if text layer is enabled */}
         {textLayerEnabled && <div className={styles.textLayer} ref={textLayerRef} />}
+        
+        {/* Always render the drawing component, but it will return null if text layer is enabled */}
+        <div className={styles.drawingCanvasContainer}>
+          <DrawingComponent
+            scale={scale}
+            pageNumber={pageNumber}
+            drawingColor={drawingColor}
+            drawingLineWidth={drawingLineWidth}
+            textLayerEnabled={textLayerEnabled}
+            onDrawingComplete={onDrawingComplete}
+            existingDrawings={existingDrawings}
+          />
+        </div>
       </div>
     </div>
   );

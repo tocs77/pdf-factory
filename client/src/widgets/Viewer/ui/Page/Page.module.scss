@@ -1,6 +1,8 @@
 .pageContainer {
-  margin-bottom: 10px;
+  margin: 20px auto;
   position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  background-color: white;
 }
 
 .pageInfo {
@@ -14,10 +16,26 @@
 
 .pageContent {
   position: relative;
-  display: inline-block;
-  /* Ensure no extra space within the page content */
-  font-size: 0; /* Removes whitespace between inline elements */
-  line-height: 0;
+  
+  &.drawingMode {
+    .textLayer {
+      display: none; /* Completely hide the text layer in drawing mode */
+    }
+    
+    .drawingCanvasContainer {
+      z-index: 3;
+    }
+  }
+  
+  &.textMode {
+    .drawingCanvasContainer {
+      z-index: 1; /* Lower z-index in text mode */
+    }
+    
+    .textLayer {
+      z-index: 2;
+    }
+  }
 }
 
 /* Canvas wrapper to ensure perfect alignment */
@@ -40,79 +58,47 @@
 }
 
 .pageCanvas {
-  /* Ensure the canvas is properly positioned */
   display: block;
-  position: relative;
-  z-index: 1;
-  margin: 0;
-  padding: 0;
+}
+
+.pageNumber {
+  text-align: center;
+  margin-bottom: 5px;
+  font-size: 12px;
+  color: #666;
 }
 
 .textLayer {
   position: absolute;
-  left: 0;
   top: 0;
+  left: 0;
   right: 0;
   bottom: 0;
   overflow: hidden;
-  opacity: 0.01;
+  opacity: 0.2;
   line-height: 1.0;
   user-select: text;
-  -webkit-user-select: text;
-  -moz-user-select: text;
-  -ms-user-select: text;
-  
-  /* Improves text selection */
-  cursor: text;
-  
-  /* Ensures text layer is above canvas but below UI elements */
   z-index: 2;
   
-  /* Always allow pointer events for text selection */
-  pointer-events: auto !important;
-  
-  /* Fix for text layer positioning - ensure perfect alignment */
-  transform: none !important;
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  
-  /* When actively selecting text, keep it visible */
-  &.selecting {
-    opacity: 0.3 !important;
-  }
-  
-  span {
-    /* Transparent color but still selectable */
+  > div {
     color: transparent;
     position: absolute;
     white-space: pre;
-    transform-origin: 0% 0%;
     cursor: text;
-    
-    /* Ensure spans can be interacted with */
-    pointer-events: auto !important;
-    user-select: text !important;
-    -webkit-user-select: text !important;
-    -moz-user-select: text !important;
-    -ms-user-select: text !important;
-    
-    /* Make selection visible even when not hovering */
-    &::selection {
-      background: rgba(0, 0, 255, 0.3) !important;
-      color: transparent !important;
-    }
+    transform-origin: 0% 0%;
   }
-  
-  &:hover {
-    opacity: 0.2;
-  }
-  
-  /* When actively selecting text */
-  &:active {
-    opacity: 0.3;
-  }
+}
+
+.loadingIndicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* Drawing layer styles */
@@ -250,4 +236,14 @@
 
 .page {
   margin-bottom: 20px;
+}
+
+.drawingCanvasContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  pointer-events: auto;
 } 
