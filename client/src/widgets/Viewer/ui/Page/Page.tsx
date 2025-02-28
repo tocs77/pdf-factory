@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import * as pdfjs from 'pdfjs-dist';
 import styles from './Page.module.scss';
-import { classNames } from '../../../../shared/utils/classNames/classNames';
-import DrawingComponent from '../DrawingComponent';
+import { classNames } from '@/shared/utils';
+import DrawingComponent from '../DrawingComponent/DrawingComponent';
 
 // Page component for rendering a single PDF page
 interface PageProps {
@@ -24,23 +24,21 @@ interface PageProps {
   className?: string;
 }
 
-export const Page = ({ 
-  page, 
-  scale, 
-  pageNumber, 
-  id, 
-  quality = 1, 
+export const Page = ({
+  page,
+  scale,
+  pageNumber,
+  id,
+  quality = 1,
   textLayerEnabled = true,
   drawingColor = '#2196f3',
   drawingLineWidth = 2,
   isVisible = false,
-  className
+  className,
 }: PageProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isRendering, setIsRendering] = useState(true);
-  const [renderProgress, setRenderProgress] = useState(0);
   const [showCopyButton, setShowCopyButton] = useState(false);
   const [isSelecting, setIsSelecting] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
@@ -48,7 +46,6 @@ export const Page = ({
   const [hasRendered, setHasRendered] = useState(false);
   const prevScaleRef = useRef(scale);
   const prevQualityRef = useRef(quality);
-  const renderProgressRef = useRef(renderProgress);
   const pageRef = useRef<HTMLDivElement>(null);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
 
@@ -63,8 +60,8 @@ export const Page = ({
       },
       {
         rootMargin: '200px 0px', // Load pages 200px above and below viewport
-        threshold: 0.01 // Trigger when at least 1% of the page is visible
-      }
+        threshold: 0.01, // Trigger when at least 1% of the page is visible
+      },
     );
 
     observer.observe(containerRef.current);
@@ -84,7 +81,7 @@ export const Page = ({
     }
 
     const textLayer = textLayerRef.current;
-    
+
     // Add text layer styles class
     textLayer.classList.add(styles.textLayer);
 
@@ -97,27 +94,27 @@ export const Page = ({
 
     const handleSelectionEnd = () => {
       setIsSelecting(false);
-      
+
       // Remove selecting class
       textLayer.classList.remove(styles.selecting);
-      
+
       const selection = window.getSelection();
       if (!selection) return;
-      
+
       // Check if selection is within our text layer or if we were in selection mode
       let isInTextLayer = false;
       if (selection.anchorNode && textLayer.contains(selection.anchorNode)) {
         isInTextLayer = true;
       }
-      
+
       if (isInTextLayer || isSelecting) {
         setHasSelection(true);
-        
+
         // Add hasSelection class to keep text visible
         textLayer.classList.add(styles.hasSelection);
       } else {
         setHasSelection(false);
-        
+
         // Remove hasSelection class when no text is selected
         textLayer.classList.remove(styles.hasSelection);
       }
@@ -129,25 +126,29 @@ export const Page = ({
       if (selection?.toString().trim()) {
         // Check if selection intersects with our text layer
         let intersectsTextLayer = false;
-        
+
         if (textLayerRef.current) {
           // Check all ranges in the selection
           for (let i = 0; i < selection.rangeCount; i++) {
             const range = selection.getRangeAt(i);
             const textLayerRect = textLayerRef.current.getBoundingClientRect();
             const rangeRect = range.getBoundingClientRect();
-            
+
             // Check if the range intersects with the text layer
-            if (!(rangeRect.right < textLayerRect.left || 
-                  rangeRect.left > textLayerRect.right || 
-                  rangeRect.bottom < textLayerRect.top || 
-                  rangeRect.top > textLayerRect.bottom)) {
+            if (
+              !(
+                rangeRect.right < textLayerRect.left ||
+                rangeRect.left > textLayerRect.right ||
+                rangeRect.bottom < textLayerRect.top ||
+                rangeRect.top > textLayerRect.bottom
+              )
+            ) {
               intersectsTextLayer = true;
               break;
             }
           }
         }
-        
+
         if (intersectsTextLayer || isSelecting) {
           // Keep the text layer visible during selection
           if (textLayerRef.current) {
@@ -164,23 +165,23 @@ export const Page = ({
 
     // Clear selection when clicking outside
     const handleClickOutside = (e: MouseEvent) => {
-      if (hasSelection && 
-          textLayerRef.current && 
-          !textLayerRef.current.contains(e.target as Node) &&
-          !(e.target as HTMLElement).classList.contains(styles.copyButton)) {
-        
+      if (
+        hasSelection &&
+        textLayerRef.current &&
+        !textLayerRef.current.contains(e.target as Node) &&
+        !(e.target as HTMLElement).classList.contains(styles.copyButton)
+      ) {
         // Only clear if we're not clicking the copy button
         const selection = window.getSelection();
         if (selection) {
           // Check if we should clear the selection
-          const shouldClear = !isSelecting && 
-                             (!selection.toString().trim() || 
-                              !textLayerRef.current.contains(selection.anchorNode as Node));
-          
+          const shouldClear =
+            !isSelecting && (!selection.toString().trim() || !textLayerRef.current.contains(selection.anchorNode as Node));
+
           if (shouldClear) {
             setHasSelection(false);
             setShowCopyButton(false);
-            
+
             // Remove hasSelection class
             if (textLayerRef.current) {
               textLayerRef.current.classList.remove(styles.hasSelection);
@@ -206,14 +207,15 @@ export const Page = ({
     };
   }, [textLayerEnabled, isSelecting, hasSelection]);
 
-
   // Hide copy button when clicking elsewhere
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (showCopyButton && 
-          !(e.target as HTMLElement).classList.contains(styles.copyButton) && 
-          textLayerRef.current && 
-          !textLayerRef.current.contains(e.target as Node)) {
+      if (
+        showCopyButton &&
+        !(e.target as HTMLElement).classList.contains(styles.copyButton) &&
+        textLayerRef.current &&
+        !textLayerRef.current.contains(e.target as Node)
+      ) {
         setShowCopyButton(false);
       }
     };
@@ -224,24 +226,16 @@ export const Page = ({
     };
   }, [showCopyButton]);
 
-  // Update ref when renderProgress changes
-  useEffect(() => {
-    renderProgressRef.current = renderProgress;
-  }, [renderProgress]);
-
   useEffect(() => {
     let isMounted = true;
     let renderTask: ReturnType<typeof page.render> | null = null;
-    
+
     const renderPage = async () => {
       // Skip rendering if the page isn't visible
       if (!canvasRef.current || !shouldRender) return;
-      
+
       // If already rendered once, don't re-render
       if (hasRendered) return;
-
-      setIsRendering(true);
-      setRenderProgress(0);
 
       const viewport = page.getViewport({ scale });
       const canvas = canvasRef.current;
@@ -273,8 +267,7 @@ export const Page = ({
           onProgress: (progress: { loaded: number; total: number }) => {
             if (!isMounted) return;
             if (progress.total > 0) {
-              const percentage = Math.round((progress.loaded / progress.total) * 100);
-              setRenderProgress(percentage);
+              // const percentage = Math.round((progress.loaded / progress.total) * 100);
             }
           },
         };
@@ -289,10 +282,6 @@ export const Page = ({
         renderTask.onContinue = (cont: () => void) => {
           // This ensures the progress is updated during rendering
           if (!isMounted) return false;
-          if (renderProgressRef.current < 90) {
-            // Increment progress to show activity
-            setRenderProgress(prev => Math.min(prev + 5, 90));
-          }
           cont();
           return true;
         };
@@ -307,7 +296,7 @@ export const Page = ({
           // Ensure text layer has the exact same dimensions as the canvas
           textLayerDiv.style.width = `${Math.floor(viewport.width)}px`;
           textLayerDiv.style.height = `${Math.floor(viewport.height)}px`;
-          
+
           // Ensure text layer is positioned exactly over the canvas
           textLayerDiv.style.left = '0';
           textLayerDiv.style.top = '0';
@@ -319,9 +308,9 @@ export const Page = ({
           try {
             // Wait for canvas rendering to complete first
             await renderTask.promise;
-            
+
             if (!isMounted) return;
-            
+
             try {
               // Get text content
               const textContent = await page.getTextContent({
@@ -330,10 +319,10 @@ export const Page = ({
 
               if (!isMounted) return;
 
-              // Safety check for textContent
+              // Check if textContent is valid
               if (!textContent || !Array.isArray(textContent.items) || textContent.items.length === 0) {
-                console.warn('Text content is empty or invalid:', textContent);
-                throw new Error('Invalid text content');
+               // console.warn('Text content is empty or invalid:', textContent);
+                return; // Skip further processing if invalid
               }
 
               // Define a proper type for text content items
@@ -353,24 +342,24 @@ export const Page = ({
                   if (item.type?.startsWith('beginMarkedContent')) {
                     return false;
                   }
-                  
+
                   // Skip items without string content
                   if (!item.str) {
                     return false;
                   }
-                  
+
                   // Skip items without transform data
                   if (!item.transform || item.transform.length < 6) {
                     return false;
                   }
-                  
+
                   return true;
                 })
                 .map((item: TextItem) => {
                   try {
                     // Transform coordinates
                     const tx = pdfjs.Util.transform(viewport.transform, item.transform);
-                    
+
                     // Skip if transform failed
                     if (!tx || tx.length < 6) {
                       return null;
@@ -416,13 +405,14 @@ export const Page = ({
                   } catch (_err) {
                     return null;
                   }
-                }).filter(item => item !== null);
+                })
+                .filter((item) => item !== null);
 
               if (!isMounted) return;
-              
+
               // Create a document fragment for better performance
               const fragment = document.createDocumentFragment();
-              
+
               // Use for...of instead of forEach
               for (const item of textItems) {
                 if (item) fragment.appendChild(item);
@@ -455,18 +445,15 @@ export const Page = ({
         } else {
           await renderTask.promise;
         }
-        
+
         // Set progress to 100% when rendering is complete
         if (isMounted) {
-          setRenderProgress(100);
-          setIsRendering(false);
           setHasRendered(true);
         }
       } catch (_error) {
         // Even on error, set progress to 100% to remove the loading indicator
         if (isMounted) {
-          setRenderProgress(100);
-          setIsRendering(false);
+          setHasRendered(true);
         }
       }
     };
@@ -476,7 +463,7 @@ export const Page = ({
       renderPage();
     } else {
       // Reset rendering state when page becomes invisible
-      setIsRendering(false);
+      setHasRendered(false);
     }
 
     // Cleanup function to cancel rendering when component unmounts or dependencies change
@@ -486,7 +473,7 @@ export const Page = ({
         renderTask.cancel();
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, scale, quality, textLayerEnabled, shouldRender, hasRendered]);
 
   // Reset hasRendered when scale or quality changes to force re-rendering
@@ -496,7 +483,7 @@ export const Page = ({
       prevScaleRef.current = scale;
       prevQualityRef.current = quality;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scale, quality]);
 
   // Return a placeholder if the page shouldn't be rendered
@@ -505,23 +492,14 @@ export const Page = ({
     const viewport = page.getViewport({ scale });
     const width = Math.floor(viewport.width);
     const height = Math.floor(viewport.height);
-    
+
     return (
-      <div 
-        id={id} 
-        className={classNames(styles.page, {}, [className])} 
-        ref={containerRef}
-      >
+      <div id={id} className={classNames(styles.page, {}, [className])} ref={containerRef}>
         <div className={styles.pageInfo}>
           Page {pageNumber} ({Math.round(page.view[2])} × {Math.round(page.view[3])} px)
         </div>
-        <div 
-          className={styles.pageContent} 
-          style={{ width: `${width}px`, height: `${height}px` }}
-        >
-          <div className={styles.placeholderPage}>
-            Loading page {pageNumber}...
-          </div>
+        <div className={styles.pageContent} style={{ width: `${width}px`, height: `${height}px` }}>
+          <div className={styles.placeholderPage}>Loading page {pageNumber}...</div>
         </div>
       </div>
     );
@@ -535,8 +513,7 @@ export const Page = ({
         height: `${Math.floor(page.getViewport({ scale }).height)}px`,
       }}
       data-page-number={page.pageNumber}
-      ref={pageRef}
-    >
+      ref={pageRef}>
       <div className={styles.pageInfo}>
         Page {pageNumber} ({Math.round(page.view[2])} × {Math.round(page.view[3])} px)
         {quality > 1 && <span> - {quality}x quality</span>}
@@ -558,19 +535,8 @@ export const Page = ({
             />
           )}
         </div>
-        {textLayerEnabled && (
-          <div className={styles.textLayer} ref={textLayerRef} />
-        )}
+        {textLayerEnabled && <div className={styles.textLayer} ref={textLayerRef} />}
       </div>
-
-      {isRendering && (
-        <div className={styles.renderingOverlay}>
-          <div>Rendering{renderProgress > 0 ? ` (${renderProgress}%)` : '...'}</div>
-          <div className={styles.progressBar}>
-            <div className={styles.progressFill} style={{ width: `${renderProgress}%` }} />
-          </div>
-        </div>
-      )}
     </div>
   );
 };
