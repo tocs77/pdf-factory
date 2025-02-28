@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import * as pdfjs from 'pdfjs-dist';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import { Thumbnail } from '../Thumbnail/Thumbnail';
 import { Page } from '../Page/Page';
 import classes from './Viewer.module.scss';
+import { ViewerProvider } from '../../model/context/ViewerProvider';
+import { ViewerContext } from '../../model/context/viewerContext';
 
-const MAX_ZOOM = 10;
 interface PdfViewerProps {
   url: string;
   /**
@@ -22,14 +23,10 @@ interface PdfViewerProps {
   drawingLineWidth?: number;
 }
 
-export const PdfViewer = ({
-  url,      
-  showThumbnails = true,
-  drawingColor = '#2196f3',
-  drawingLineWidth = 2,
-}: PdfViewerProps) => {
+// Internal viewer component that will be wrapped with the provider
+const PdfViewerInternal = ({ url, showThumbnails = true, drawingColor = '#2196f3', drawingLineWidth = 2 }: PdfViewerProps) => {
   const [pdfRef, setPdfRef] = useState<PDFDocumentProxy | null>(null);
-  const [scale, setScale] = useState(1.5);
+  const { state, dispatch } = useContext(ViewerContext);
   const [pages, setPages] = useState<PDFPageProxy[]>([]);
   const [selectedPage, setSelectedPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,15 +85,15 @@ export const PdfViewer = ({
   }, [url]);
 
   const zoomIn = () => {
-    setScale((prevScale) => Math.min(prevScale + 0.25, MAX_ZOOM));
+    dispatch({ type: 'setScale', payload: state.scale + 0.25 });
   };
 
   const zoomOut = () => {
-    setScale((prevScale) => Math.max(prevScale - 0.25, 0.5));
+    dispatch({ type: 'setScale', payload: state.scale - 0.25 });
   };
 
   const resetZoom = () => {
-    setScale(1.5);
+    dispatch({ type: 'setScale', payload: 1.5 });
   };
 
   const toggleTextLayer = () => {
@@ -172,7 +169,7 @@ export const PdfViewer = ({
           </button>
           <button onClick={zoomIn}>Zoom In</button>
           <span className={classes.zoomPercentage}>
-            {Math.round(scale * 100)}% {renderQuality > 1 && `(${renderQuality}x quality)`}
+            {Math.round(state.scale * 100)}% {renderQuality > 1 && `(${renderQuality}x quality)`}
           </span>
           <div className={classes.featureInfo}>
             <button
@@ -222,7 +219,7 @@ export const PdfViewer = ({
                 <div className={classes.colorPicker}>
                   {['#2196f3', '#4caf50', '#f44336', '#ff9800', '#9c27b0'].map((color) => (
                     <button
-                      key={color} 
+                      key={color}
                       className={`${classes.colorButton} ${currentDrawingColor === color ? classes.active : ''}`}
                       style={{ backgroundColor: color }}
                       onClick={() => changeDrawingColor(color)}
@@ -259,7 +256,7 @@ export const PdfViewer = ({
             <Page
               key={`page-${index + 1}`}
               page={page}
-              scale={scale}
+              scale={state.scale}
               pageNumber={index + 1}
               id={`page-${index + 1}`}
               textLayerEnabled={textLayerEnabled}
@@ -272,3 +269,10 @@ export const PdfViewer = ({
     </div>
   );
 };
+
+// Export the wrapped component with the provider
+export const PdfViewer = (props: PdfViewerProps) => (
+  <ViewerProvider>
+    <PdfViewerInternal {...props} />
+  </ViewerProvider>
+);
