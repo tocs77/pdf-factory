@@ -1,5 +1,5 @@
 .pageContainer {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   position: relative;
 }
 
@@ -15,6 +15,35 @@
 .pageContent {
   position: relative;
   display: inline-block;
+  /* Ensure no extra space within the page content */
+  font-size: 0; /* Removes whitespace between inline elements */
+  line-height: 0;
+}
+
+/* Canvas wrapper to ensure perfect alignment */
+.canvasWrapper {
+  position: relative;
+  display: block;
+  margin: 0;
+  padding: 0;
+  font-size: 0;
+  line-height: 0;
+}
+
+/* Canvas element styles */
+.pageContent canvas {
+  display: block; /* Removes any inline spacing */
+  position: relative;
+  z-index: 1;
+}
+
+.pageCanvas {
+  /* Ensure the canvas is properly positioned */
+  display: block;
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding: 0;
 }
 
 .textLayer {
@@ -40,8 +69,12 @@
   /* Always allow pointer events for text selection */
   pointer-events: auto !important;
   
-  /* Fix for text layer positioning */
-  transform: none;
+  /* Fix for text layer positioning - ensure perfect alignment */
+  transform: none !important;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
   
   /* When actively selecting text, keep it visible */
   &.selecting {

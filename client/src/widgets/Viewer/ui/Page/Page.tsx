@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
+import type { PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import * as pdfjs from 'pdfjs-dist';
 import styles from './Page.module.scss';
 
@@ -48,6 +48,9 @@ export const Page = ({
   const [lastPosition, setLastPosition] = useState({ x: 0, y: 0 });
   const [inView, setInView] = useState(false);
   const [hasRendered, setHasRendered] = useState(false);
+  const prevScaleRef = useRef(scale);
+  const prevQualityRef = useRef(quality);
+  const renderProgressRef = useRef(renderProgress);
 
   // Use Intersection Observer to detect when the page is visible
   useEffect(() => {
@@ -140,7 +143,7 @@ export const Page = ({
     // Track selection changes
     const handleSelectionChange = () => {
       const selection = window.getSelection();
-      if (selection && selection.toString().trim()) {
+      if (selection?.toString().trim()) {
         // Check if selection intersects with our text layer
         let intersectsTextLayer = false;
         
@@ -337,9 +340,14 @@ export const Page = ({
     ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
   };
 
+  // Update ref when renderProgress changes
+  useEffect(() => {
+    renderProgressRef.current = renderProgress;
+  }, [renderProgress]);
+
   useEffect(() => {
     let isMounted = true;
-    let renderTask: any = null;
+    let renderTask: ReturnType<typeof page.render> | null = null;
     
     const renderPage = async () => {
       // Skip rendering if the page isn't visible
@@ -410,7 +418,7 @@ export const Page = ({
         renderTask.onContinue = (cont: () => void) => {
           // This ensures the progress is updated during rendering
           if (!isMounted) return false;
-          if (renderProgress < 90) {
+          if (renderProgressRef.current < 90) {
             // Increment progress to show activity
             setRenderProgress(prev => Math.min(prev + 5, 90));
           }
@@ -428,6 +436,12 @@ export const Page = ({
           // Ensure text layer has the exact same dimensions as the canvas
           textLayerDiv.style.width = `${Math.floor(viewport.width)}px`;
           textLayerDiv.style.height = `${Math.floor(viewport.height)}px`;
+          
+          // Ensure text layer is positioned exactly over the canvas
+          textLayerDiv.style.left = '0';
+          textLayerDiv.style.top = '0';
+          textLayerDiv.style.position = 'absolute';
+          textLayerDiv.style.transformOrigin = '0 0';
 
           let textLayerRendered = false;
 
@@ -451,12 +465,21 @@ export const Page = ({
                 throw new Error('Invalid text content');
               }
 
+              // Define a proper type for text content items
+              interface TextItem {
+                str?: string;
+                type?: string;
+                transform?: number[];
+                fontName?: string;
+                [key: string]: unknown;
+              }
+
               // Create text layer items with proper positioning
               const textItems = textContent.items
-                .filter((item: any) => {
+                .filter((item: TextItem) => {
                   // Only process actual text items
                   // Skip marked content items, which have types like 'beginMarkedContentProps'
-                  if (item.type && item.type.startsWith('beginMarkedContent')) {
+                  if (item.type?.startsWith('beginMarkedContent')) {
                     return false;
                   }
                   
@@ -472,7 +495,7 @@ export const Page = ({
                   
                   return true;
                 })
-                .map((item: any) => {
+                .map((item: TextItem) => {
                   try {
                     // Transform coordinates
                     const tx = pdfjs.Util.transform(viewport.transform, item.transform);
@@ -488,7 +511,9 @@ export const Page = ({
 
                     // Create text span element
                     const textDiv = document.createElement('span');
-                    textDiv.textContent = item.str;
+                    if (item.str) {
+                      textDiv.textContent = item.str;
+                    }
 
                     // Set positioning styles
                     textDiv.style.position = 'absolute';
@@ -507,7 +532,7 @@ export const Page = ({
 
                     // Add text selection properties
                     if (item.fontName) {
-                      textDiv.dataset.fontName = item.fontName;
+                      textDiv.dataset.fontName = item.fontName as string;
                     }
 
                     // Add event listeners to improve selection behavior
@@ -526,9 +551,11 @@ export const Page = ({
               
               // Create a document fragment for better performance
               const fragment = document.createDocumentFragment();
-              textItems.forEach((item) => {
+              
+              // Use for...of instead of forEach
+              for (const item of textItems) {
                 if (item) fragment.appendChild(item);
-              });
+              }
 
               // Append all text items to the text layer at once
               if (textLayerDiv && isMounted) {
@@ -584,15 +611,21 @@ export const Page = ({
     // Cleanup function to cancel rendering when component unmounts or dependencies change
     return () => {
       isMounted = false;
-      if (renderTask && renderTask.cancel) {
+      if (renderTask?.cancel) {
         renderTask.cancel();
       }
     };
-  }, [page, scale, quality, textLayerEnabled, drawingColor, drawingLineWidth, renderProgress, shouldRender, hasRendered]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, scale, quality, textLayerEnabled, shouldRender, hasRendered]);
 
   // Reset hasRendered when scale or quality changes to force re-rendering
   useEffect(() => {
-    setHasRendered(false);
+    if (scale !== prevScaleRef.current || quality !== prevQualityRef.current) {
+      setHasRendered(false);
+      prevScaleRef.current = scale;
+      prevQualityRef.current = quality;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scale, quality]);
 
   // Return a placeholder if the page shouldn't be rendered
@@ -629,38 +662,49 @@ export const Page = ({
         Page {pageNumber} ({Math.round(page.view[2])} × {Math.round(page.view[3])} px)
         {quality > 1 && <span> - {quality}x quality</span>}
         {!textLayerEnabled && (
-          <button className={styles.clearButton} onClick={clearDrawing}>
+          <button 
+            className={styles.clearButton} 
+            onClick={clearDrawing}
+            type="button">
             Clear Drawing
           </button>
         )}
       </div>
       <div className={styles.pageContent}>
-        {textLayerEnabled ? (
-          <div
-            ref={textLayerRef}
-            className={hasSelection ? styles.hasSelection : ''}
-            title='Text can be selected and copied'
-            data-page-number={pageNumber}></div>
-        ) : (
+        {/* Use a wrapper div to ensure perfect alignment between canvas and text layer */}
+        <div className={styles.canvasWrapper}>
+          {/* Render canvas first, so text layer appears on top in the DOM */}
+          <canvas ref={canvasRef} className={styles.pageCanvas} />
+          
+          {textLayerEnabled && (
+            <div
+              ref={textLayerRef}
+              className={`${styles.textLayer} ${hasSelection ? styles.hasSelection : ''}`}
+              title='Text can be selected and copied'
+              data-page-number={pageNumber} />
+          )}
+        </div>
+        
+        {!textLayerEnabled && (
           <canvas 
             ref={drawingCanvasRef} 
             className={styles.drawingLayer}
             title='Click and drag to draw'
           />
         )}
-        <canvas ref={canvasRef} />
 
         {showCopyButton && (
-          <div
+          <button
             className={`${styles.copyButton} ${copySuccess ? styles.success : ''}`}
             style={{
               left: `${copyButtonPosition.x}px`,
               top: `${copyButtonPosition.y}px`,
               transform: 'translate(-50%, -100%)',
             }}
-            onClick={handleCopy}>
+            onClick={handleCopy}
+            type="button">
             {copySuccess ? 'Copied!' : 'Copy'}
-          </div>
+          </button>
         )}
       </div>
 
@@ -668,7 +712,7 @@ export const Page = ({
         <div className={styles.renderingOverlay}>
           <div>Rendering{renderProgress > 0 ? ` (${renderProgress}%)` : '...'}</div>
           <div className={styles.progressBar}>
-            <div className={styles.progressFill} style={{ width: `${renderProgress}%` }}></div>
+            <div className={styles.progressFill} style={{ width: `${renderProgress}%` }} />
           </div>
         </div>
       )}
