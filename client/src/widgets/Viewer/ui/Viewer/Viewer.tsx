@@ -5,11 +5,6 @@ import { Thumbnail } from '../Thumbnail/Thumbnail';
 import { Page } from '../Page/Page';
 import classes from './Viewer.module.scss';
 
-// Define the progress callback type
-interface OnProgressParameters {
-  loaded: number;
-  total: number;
-}
 const MAX_ZOOM = 10;
 interface PdfViewerProps {
   url: string;
@@ -38,8 +33,6 @@ export const PdfViewer = ({
   const [pages, setPages] = useState<PDFPageProxy[]>([]);
   const [selectedPage, setSelectedPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingMessage, setLoadingMessage] = useState('Loading PDF...');
-  const [loadingProgress, setLoadingProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [textLayerEnabled, setTextLayerEnabled] = useState(true);
   const [currentDrawingColor, setCurrentDrawingColor] = useState(drawingColor);
@@ -57,27 +50,12 @@ export const PdfViewer = ({
       if (!pdfRef) return;
 
       try {
-        setLoadingMessage('Loading pages...');
-        setLoadingProgress(0);
-
         const pagesPromises = [];
         for (let i = 1; i <= pdfRef.numPages; i++) {
           pagesPromises.push(pdfRef.getPage(i));
         }
 
-        // Track progress of loading pages
-        const totalPages = pdfRef.numPages;
-        let loadedPages = 0;
-
-        const loadedPagesArray = await Promise.all(
-          pagesPromises.map(async (pagePromise) => {
-            const page = await pagePromise;
-            loadedPages++;
-            setLoadingProgress(Math.round((loadedPages / totalPages) * 100));
-            return page;
-          }),
-        );
-
+        const loadedPagesArray = await Promise.all(pagesPromises);
         setPages(loadedPagesArray);
         setIsLoading(false);
       } catch (err) {
@@ -94,25 +72,9 @@ export const PdfViewer = ({
     const loadPdf = async () => {
       try {
         setIsLoading(true);
-        setLoadingMessage('Loading PDF document...');
-        setLoadingProgress(0);
         setError(null);
 
-        // Create a progress callback
-        const progressCallback = (data: OnProgressParameters) => {
-          if (data.total > 0) {
-            const percentage = Math.round((data.loaded / data.total) * 100);
-            setLoadingProgress(percentage);
-          }
-        };
-
-        // Use the documented API for loading with progress
-        const loadingTask = pdfjs.getDocument({
-          url: url,
-          // @ts-ignore - The type definitions are incomplete, but this is the correct API
-          onProgress: progressCallback,
-        });
-
+        const loadingTask = pdfjs.getDocument(url);
         const loadedPdf = await loadingTask.promise;
         setPdfRef(loadedPdf);
       } catch (err) {
@@ -167,11 +129,7 @@ export const PdfViewer = ({
       <div className={classes.loadingContainer}>
         {isLoading ? (
           <div className={classes.loadingBox}>
-            <div className={classes.loadingTitle}>{loadingMessage}</div>
-            <div className={classes.loadingPercentage}>{loadingProgress}%</div>
-            <div className={classes.progressBar}>
-              <div className={classes.progressFill} style={{ width: `${loadingProgress}%` }}></div>
-            </div>
+            <div className={classes.loadingTitle}>Loading PDF...</div>
             <div className={classes.spinner}></div>
           </div>
         ) : (
