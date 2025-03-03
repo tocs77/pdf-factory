@@ -304,21 +304,6 @@ export const Page = ({
           textLayerDiv.style.transform = '';
           textLayerDiv.style.transformOrigin = '';
 
-          // Add a border for debugging
-          if (pageNumber === 1) {
-            textLayerDiv.style.border = '1px solid rgba(255,0,0,0.2)';
-            canvas.style.border = '1px solid rgba(0,0,255,0.2)';
-          }
-
-          // Log dimensions for debugging
-          console.log(
-            `Page ${pageNumber} - Canvas dimensions: ${canvas.width}x${canvas.height} (device pixels), ${viewport.width}x${viewport.height} (CSS pixels)`,
-          );
-          console.log(`Page ${pageNumber} - Text layer dimensions: ${textLayerDiv.style.width}x${textLayerDiv.style.height}`);
-          console.log(`Page ${pageNumber} - Device pixel ratio: ${outputScale}`);
-
-          let textLayerRendered = false;
-
           try {
             // Wait for canvas rendering to complete first
             await renderTask.promise;
@@ -335,7 +320,6 @@ export const Page = ({
 
               // Check if textContent is valid
               if (!textContent || !Array.isArray(textContent.items) || textContent.items.length === 0) {
-                // console.warn('Text content is empty or invalid:', textContent);
                 return; // Skip further processing if invalid
               }
 
@@ -352,21 +336,36 @@ export const Page = ({
               const textItems = textContent.items
                 .filter((item: TextItem) => {
                   // Only process actual text items
-                  // Skip marked content items, which have types like 'beginMarkedContentProps'
+                  // Skip marked content items, which have types like 'beginMarkedContent'
                   if (item.type?.startsWith('beginMarkedContent')) {
                     return false;
                   }
-
-                  // Skip items without string content
-                  if (!item.str) {
+                  
+                  // Skip endMarkedContent items as well
+                  if (item.type === 'endMarkedContent') {
+                    return false;
+                  }
+  
+                  // Ensure items have string content
+                  // Allow whitespace strings if they have valid transform data
+                  if (item.str === undefined) {
+                    return false;
+                  }
+                  
+                  // Only filter out completely empty strings, not whitespace
+                  if (item.str === '') {
                     return false;
                   }
 
-                  // Skip items without transform data
-                  if (!item.transform || item.transform.length < 6) {
+                  // Ensure items have valid transform data
+                  if (!item.transform) {
                     return false;
                   }
-
+                  
+                  if (item.transform.length < 6) {
+                    return false;
+                  }
+                  
                   return true;
                 })
                 .map((item: TextItem) => {
@@ -387,6 +386,13 @@ export const Page = ({
                     const textDiv = document.createElement('span');
                     if (item.str) {
                       textDiv.textContent = item.str;
+                      
+                      // Add special handling for whitespace-only strings
+                      if (item.str.trim() === '' && item.str.length > 0) {
+                        // Ensure whitespace has a minimum width
+                        textDiv.style.minWidth = '4px';
+                        textDiv.style.display = 'inline-block';
+                      }
                     }
 
                     // Set positioning styles with precise calculations
@@ -411,11 +417,6 @@ export const Page = ({
                     // Ensure text doesn't wrap
                     textDiv.style.whiteSpace = 'pre';
 
-                    // Log the first few text elements for debugging
-                    if (pageNumber === 1 && textItems.length < 10) {
-                      console.log(`Text element: "${item.str}", position: (${left}, ${top}), font size: ${fontHeight}`);
-                    }
-
                     // Add text selection properties
                     if (item.fontName) {
                       textDiv.dataset.fontName = item.fontName as string;
@@ -436,25 +437,76 @@ export const Page = ({
 
               if (!isMounted) return;
 
-              // Create a document fragment for better performance
-              const fragment = document.createDocumentFragment();
-
-              // Use for...of instead of forEach
-              for (const item of textItems) {
-                if (item) fragment.appendChild(item);
-              }
-
-              // Append all text items to the text layer at once
-              if (textLayerDiv && isMounted) {
-                textLayerDiv.appendChild(fragment);
-                textLayerRendered = true;
+              // Fallback: If no text items passed the filter but there are actual text items in the content,
+              // create a simplified version of the text layer
+              if (textItems.length === 0 && textContent.items.length > 0) {
+                // Create a fallback text layer with just the text content
+                const fallbackItems = textContent.items
+                  .filter((item: TextItem) => {
+                    // Only include items with actual text content
+                    return item.str && item.str.trim() !== '' && item.transform && item.transform.length >= 6;
+                  })
+                  .map((item: TextItem) => {
+                    try {
+                      // Transform coordinates
+                      const tx = pdfjs.Util.transform(viewport.transform, item.transform);
+                      
+                      if (!tx || tx.length < 6) return null;
+                      
+                      // Create a simple text element
+                      const textDiv = document.createElement('span');
+                      textDiv.textContent = item.str || '';
+                      textDiv.style.position = 'absolute';
+                      
+                      // Position it based on the transform
+                      const fontHeight = Math.sqrt(tx[2] * tx[2] + tx[3] * tx[3]);
+                      textDiv.style.left = `${tx[4]}px`;
+                      textDiv.style.top = `${tx[5] - fontHeight}px`;
+                      textDiv.style.fontSize = `${fontHeight}px`;
+                      textDiv.style.fontFamily = 'sans-serif';
+                      
+                      return textDiv;
+                    } catch (_err) {
+                      return null;
+                    }
+                  })
+                  .filter(item => item !== null);
+                
+                // Use the fallback items instead
+                if (fallbackItems.length > 0) {
+                  // Create a document fragment for better performance
+                  const fragment = document.createDocumentFragment();
+                  
+                  // Append all fallback items
+                  for (const item of fallbackItems) {
+                    if (item) fragment.appendChild(item);
+                  }
+                  
+                  // Append to the text layer
+                  if (textLayerDiv && isMounted) {
+                    textLayerDiv.appendChild(fragment);
+                  }
+                }
+              } else {
+                // Create a document fragment for better performance
+                const fragment = document.createDocumentFragment();
+  
+                // Use for...of instead of forEach
+                for (const item of textItems) {
+                  if (item) fragment.appendChild(item);
+                }
+  
+                // Append all text items to the text layer at once
+                if (textLayerDiv && isMounted) {
+                  textLayerDiv.appendChild(fragment);
+                }
               }
             } catch (_textError) {
               throw new Error('Failed to render text layer');
             }
           } catch (_error) {
             // Add a fallback message to the text layer
-            if (textLayerRef.current && !textLayerRendered && isMounted) {
+            if (textLayerRef.current && isMounted) {
               const errorMessage = document.createElement('div');
               errorMessage.style.padding = '10px';
               errorMessage.style.color = '#f44336';
@@ -464,7 +516,7 @@ export const Page = ({
               errorMessage.style.top = '50%';
               errorMessage.style.left = '50%';
               errorMessage.style.transform = 'translate(-50%, -50%)';
-              errorMessage.textContent = 'Text layer could not be loaded';
+              errorMessage.textContent = 'Failed to render text layer';
               textLayerRef.current.appendChild(errorMessage);
             }
           }
@@ -473,6 +525,8 @@ export const Page = ({
         }
 
         // Set progress to 100% when rendering is complete
+        await renderTask.promise;
+
         if (isMounted) {
           setHasRendered(true);
         }
