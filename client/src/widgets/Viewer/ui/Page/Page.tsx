@@ -4,6 +4,7 @@ import * as pdfjs from 'pdfjs-dist';
 import classes from './Page.module.scss';
 import { classNames } from '@/shared/utils';
 import DrawingComponent from '../DrawingComponent/DrawingComponent';
+import CompleteDrawings from '../CompleteDrawings/CompleteDrawings';
 import { DrawingPath } from '../../model/types/viewerSchema';
 
 // Page component for rendering a single PDF page
@@ -593,52 +594,46 @@ export const Page = ({
 
   return (
     <div
-      id={id}
+      ref={pageRef}
       className={classNames(classes.page, {}, [className])}
+      id={id}
+      data-page-number={pageNumber}
       style={{
         width: `${Math.floor(page.getViewport({ scale }).width)}px`,
         height: `${Math.floor(page.getViewport({ scale }).height)}px`,
       }}
-      data-page-number={page.pageNumber}
-      ref={pageRef}>
+    >
+      <div ref={canvasWrapperRef} className={classes.canvasWrapper}>
+        <canvas ref={canvasRef} className={classes.canvas} />
+        {shouldRender && (
+          <>
+            <div 
+              ref={textLayerRef} 
+              className={classes.textLayer} 
+              style={textLayerStyle}
+            />
+            
+            {/* Always render completed drawings, even when text layer is enabled */}
+            <CompleteDrawings
+              scale={scale}
+              pageNumber={pageNumber}
+              existingDrawings={existingDrawings}
+            />
+            
+            {/* Only render drawing component when text layer is disabled */}
+            <DrawingComponent
+              scale={scale}
+              pageNumber={pageNumber}
+              drawingColor={drawingColor}
+              drawingLineWidth={drawingLineWidth}
+              textLayerEnabled={textLayerEnabled}
+              onDrawingComplete={onDrawingComplete}
+            />
+          </>
+        )}
+      </div>
       <div className={classes.pageInfo}>
         Page {pageNumber} ({Math.round(page.view[2])} × {Math.round(page.view[3])} px)
-      </div>
-      <div
-        className={classNames(classes.pageContent, {
-          [classes.drawingMode]: !textLayerEnabled,
-          [classes.textMode]: textLayerEnabled,
-        })}
-        style={{
-          width: `${Math.floor(page.getViewport({ scale }).width)}px`,
-          height: `${Math.floor(page.getViewport({ scale }).height)}px`,
-          position: 'relative',
-          overflow: 'hidden', // Ensure nothing spills outside
-        }}>
-        <div className={classes.canvasWrapper} ref={canvasWrapperRef}>
-          <canvas
-            className={classes.pageCanvas}
-            width={page.getViewport({ scale }).width}
-            height={page.getViewport({ scale }).height}
-            ref={canvasRef}
-          />
-        </div>
-
-        {/* Render the text layer and control its visibility with CSS */}
-        <div className={classes.textLayer} ref={textLayerRef} style={textLayerStyle} />
-
-        {/* Always render the drawing component, but it will return null if text layer is enabled */}
-        <div className={classes.drawingCanvasContainer}>
-          <DrawingComponent
-            scale={scale}
-            pageNumber={pageNumber}
-            drawingColor={drawingColor}
-            drawingLineWidth={drawingLineWidth}
-            textLayerEnabled={textLayerEnabled}
-            onDrawingComplete={onDrawingComplete}
-            existingDrawings={existingDrawings}
-          />
-        </div>
       </div>
     </div>
   );
