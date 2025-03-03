@@ -500,14 +500,7 @@ export const Page = ({
             // Add a fallback message to the text layer
             if (textLayerRef.current && isMounted) {
               const errorMessage = document.createElement('div');
-              errorMessage.style.padding = '10px';
-              errorMessage.style.color = '#f44336';
-              errorMessage.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
-              errorMessage.style.borderRadius = '4px';
-              errorMessage.style.position = 'absolute';
-              errorMessage.style.top = '50%';
-              errorMessage.style.left = '50%';
-              errorMessage.style.transform = 'translate(-50%, -50%)';
+              errorMessage.className = classes.textLayerError;
               errorMessage.textContent = 'Failed to render text layer';
               textLayerRef.current.appendChild(errorMessage);
             }
