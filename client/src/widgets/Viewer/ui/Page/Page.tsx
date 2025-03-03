@@ -18,8 +18,6 @@ interface PageProps {
   drawingColor?: string;
   /** Drawing line width (default: 2) */
   drawingLineWidth?: number;
-  /** Whether the page is currently visible in the viewport (default: false) */
-  isVisible?: boolean;
   className?: string;
   onDrawingComplete?: (drawing: DrawingPath) => void;
   existingDrawings?: DrawingPath[];
@@ -33,7 +31,6 @@ export const Page = ({
   textLayerEnabled = true,
   drawingColor = '#2196f3',
   drawingLineWidth = 2,
-  isVisible = false,
   className,
   onDrawingComplete,
   existingDrawings = [],
@@ -73,7 +70,7 @@ export const Page = ({
   }, []);
 
   // Only render when page is visible (or when explicitly set to visible)
-  const shouldRender = isVisible || inView;
+  const shouldRender = inView || hasRendered;
 
   // Handle text selection
   useEffect(() => {
@@ -514,6 +511,13 @@ export const Page = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scale]);
 
+  // Determine the text layer visibility based on the mode
+  const textLayerStyle = {
+    display: textLayerEnabled ? 'block' : 'none',
+    width: `${Math.floor(page.getViewport({ scale }).width)}px`,
+    height: `${Math.floor(page.getViewport({ scale }).height)}px`,
+  };
+
   // Return a placeholder if the page shouldn't be rendered
   if (!shouldRender && !hasRendered) {
     // Calculate dimensions to preserve layout
@@ -535,6 +539,7 @@ export const Page = ({
 
   return (
     <div
+      id={id}
       className={classNames(classes.page, {}, [className])}
       style={{
         width: `${Math.floor(page.getViewport({ scale }).width)}px`,
@@ -565,17 +570,8 @@ export const Page = ({
           />
         </div>
 
-        {/* Only render the text layer if text layer is enabled */}
-        {textLayerEnabled && (
-          <div
-            className={classes.textLayer}
-            ref={textLayerRef}
-            style={{
-              width: `${Math.floor(page.getViewport({ scale }).width)}px`,
-              height: `${Math.floor(page.getViewport({ scale }).height)}px`,
-            }}
-          />
-        )}
+        {/* Render the text layer and control its visibility with CSS */}
+        <div className={classes.textLayer} ref={textLayerRef} style={textLayerStyle} />
 
         {/* Always render the drawing component, but it will return null if text layer is enabled */}
         <div className={classes.drawingCanvasContainer}>
