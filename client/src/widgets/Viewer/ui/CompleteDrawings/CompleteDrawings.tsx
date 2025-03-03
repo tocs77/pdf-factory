@@ -1,25 +1,28 @@
-import React, { useEffect, useRef } from 'react';
-import { DrawingPath } from '../../model/types/viewerSchema';
+import React, { useEffect, useRef, useContext } from 'react';
+import { ViewerContext } from '../../model/context/viewerContext';
 import styles from './CompleteDrawings.module.scss';
 
 interface CompleteDrawingsProps {
-  scale: number;
   pageNumber: number;
-  existingDrawings: DrawingPath[];
 }
 
 /**
- * Component to display completed drawings
+ * Component to display completed drawings and rectangles
  * This component is always visible, even when text layer is enabled
  */
 const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({
-  scale,
-  pageNumber,
-  existingDrawings = []
+  pageNumber
 }) => {
+  const { state } = useContext(ViewerContext);
+  const { scale, drawings, rectangles } = state;
+  
+  // Filter drawings and rectangles for this page
+  const existingDrawings = drawings.filter(drawing => drawing.pageNumber === pageNumber);
+  const existingRectangles = rectangles.filter(rect => rect.pageNumber === pageNumber);
+  
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
-  // Set up canvas and render existing drawings
+  // Set up canvas and render existing drawings and rectangles
   useEffect(() => {
     if (!canvasRef.current) return;
     
@@ -89,7 +92,45 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({
       ctx.lineJoin = 'round';
       ctx.stroke();
     });
-  }, [scale, existingDrawings, pageNumber]);
+    
+    // Filter rectangles for this page
+    const pageRectangles = existingRectangles.filter(rect => rect.pageNumber === pageNumber);
+    
+    // Render existing rectangles with scale transformation
+    pageRectangles.forEach((rect) => {
+      // Get the original canvas dimensions or use current ones as fallback
+      const originalDimensions = rect.canvasDimensions || {
+        width: canvas.width / scale,
+        height: canvas.height / scale
+      };
+      
+      // Calculate the scale ratio between original and current canvas
+      const widthRatio = canvas.width / (originalDimensions.width * scale);
+      const heightRatio = canvas.height / (originalDimensions.height * scale);
+      
+      // Transform the points based on current scale and canvas dimensions
+      const startPoint = {
+        x: rect.startPoint.x * scale * widthRatio,
+        y: rect.startPoint.y * scale * heightRatio
+      };
+      
+      const endPoint = {
+        x: rect.endPoint.x * scale * widthRatio,
+        y: rect.endPoint.y * scale * heightRatio
+      };
+      
+      // Calculate width and height
+      const width = endPoint.x - startPoint.x;
+      const height = endPoint.y - startPoint.y;
+      
+      // Draw the rectangle
+      ctx.beginPath();
+      ctx.rect(startPoint.x, startPoint.y, width, height);
+      ctx.strokeStyle = rect.color;
+      ctx.lineWidth = rect.lineWidth * scale;
+      ctx.stroke();
+    });
+  }, [scale, existingDrawings, existingRectangles, pageNumber]);
 
   return (
     <canvas

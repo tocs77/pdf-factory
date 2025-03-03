@@ -6,7 +6,9 @@ const initialState = {
   drawingColor: '#2196f3',
   drawingLineWidth: 2,
   textLayerEnabled: true,
-  drawings: []
+  drawingMode: 'freehand' as const,
+  drawings: [],
+  rectangles: []
 };
 
 export const ViewerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

@@ -6,7 +6,6 @@ import { Page } from '../Page/Page';
 import { ViewerMenu } from '../ViewerMenu/ViewerMenu';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { ViewerProvider } from '../../model/context/ViewerProvider';
-import { DrawingPath } from '../../model/types/viewerSchema';
 import classes from './Viewer.module.scss';
 
 interface PdfViewerProps {
@@ -30,8 +29,8 @@ const PdfViewerInternal = ({
   url,      
   showThumbnails = true,
 }: PdfViewerProps) => {
-  const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, textLayerEnabled, drawings } = state;
+  const { state } = useContext(ViewerContext);
+  const { scale } = state;
   
   const [pdfRef, setPdfRef] = useState<PDFDocumentProxy | null>(null);
   const [pages, setPages] = useState<PDFPageProxy[]>([]);
@@ -217,19 +216,6 @@ const PdfViewerInternal = ({
     }
   };
 
-  const handleDrawingComplete = (drawing: DrawingPath) => {
-    // The drawing coordinates are already normalized to scale=1 in the DrawingComponent
-    // This ensures drawings maintain consistent size and position when zooming
-    // The drawing also includes canvas dimensions at scale=1 to ensure proper positioning
-    // when the canvas size changes (e.g., when zooming in/out)
-    dispatch({ type: 'addDrawing', payload: drawing });
-  };
-
-  // Filter drawings for each page
-  const getPageDrawings = (pageNumber: number) => {
-    return drawings.filter(drawing => drawing.pageNumber === pageNumber);
-  };
-
   // Show loading message or error
   if (isLoading || error) {
     return (
@@ -248,44 +234,32 @@ const PdfViewerInternal = ({
 
   return (
     <div className={`${classes.container} ${!showThumbnails ? classes.noThumbnails : ''}`}>
-      {/* Thumbnails sidebar */}
       {showThumbnails && (
-        <div className={classes.thumbnailSidebar}>
-          <div className={classes.thumbnailHeader}>
-            <h3>Pages</h3>
-            <span className={classes.pageCount}>{pages.length} pages</span>
-          </div>
+        <div className={classes.thumbnailsContainer}>
           {pages.map((page, index) => (
             <Thumbnail
-              key={`thumb-${index + 1}`}
+              key={index + 1}
               page={page}
               pageNumber={index + 1}
+              quality={thumbnailQuality}
               isSelected={selectedPage === index + 1}
               onClick={handleThumbnailClick}
-              quality={thumbnailQuality}
             />
           ))}
         </div>
       )}
 
-      {/* Main content */}
-      <div className={classes.mainContent}>
-        {/* Viewer Menu with zoom and drawing controls */}
+      <div className={classes.viewerContainer}>
         <ViewerMenu renderQuality={renderQuality} currentPage={selectedPage} />
-        
+
         <div className={classes.pdfContainer} ref={pdfContainerRef}>
           {pages.map((page, index) => (
             <Page
-              key={`page-${index + 1}`}
+              key={index + 1}
               page={page}
               scale={scale}
               pageNumber={index + 1}
               id={`page-${index + 1}`}
-              textLayerEnabled={textLayerEnabled}
-              drawingColor={drawingColor}
-              drawingLineWidth={drawingLineWidth}
-              onDrawingComplete={handleDrawingComplete}
-              existingDrawings={getPageDrawings(index + 1)}
             />
           ))}
         </div>
@@ -294,7 +268,7 @@ const PdfViewerInternal = ({
   );
 };
 
-// Export the wrapped component with the provider
+// Wrap the internal component with the provider
 export const PdfViewer = (props: PdfViewerProps) => (
   <ViewerProvider>
     <PdfViewerInternal {...props} />

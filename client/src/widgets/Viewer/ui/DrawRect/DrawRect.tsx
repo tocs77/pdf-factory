@@ -1,16 +1,16 @@
 import React, { useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
-import styles from './DrawingComponent.module.scss';
+import styles from './DrawRect.module.scss';
 
-interface DrawingComponentProps {
+interface DrawRectProps {
   pageNumber: number;
 }
 
 /**
- * Component for handling the drawing process
- * This component is only visible when text layer is disabled
+ * Component for drawing rectangles
+ * This component is only visible when text layer is disabled and drawing mode is 'rectangle'
  */
-const DrawingComponent: React.FC<DrawingComponentProps> = ({
+const DrawRect: React.FC<DrawRectProps> = ({
   pageNumber
 }) => {
   const { state, dispatch } = useContext(ViewerContext);
@@ -18,8 +18,8 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([]);
-  // Store canvas dimensions at the time of drawing
+  const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
+  const [endPoint, setEndPoint] = useState<{ x: number; y: number } | null>(null);
   const [canvasDimensions, setCanvasDimensions] = useState<{ width: number; height: number } | null>(null);
 
   // Set up drawing canvas
@@ -58,29 +58,19 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({
     if (!canvasRef.current || textLayerEnabled) return;
     
     const canvas = canvasRef.current;
-    
-    const handleMouseEnter = () => {
-      // Force the cursor to be a crosshair
-      canvas.style.cursor = 'crosshair';
-    };
-    
-    canvas.addEventListener('mouseenter', handleMouseEnter);
+    canvas.style.cursor = 'crosshair';
     
     return () => {
-      canvas.removeEventListener('mouseenter', handleMouseEnter);
+      canvas.style.cursor = '';
     };
   }, [textLayerEnabled]);
 
   // Drawing handlers
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (textLayerEnabled) {
-      return;
-    }
+    if (textLayerEnabled) return;
     
     const canvas = canvasRef.current;
-    if (!canvas) {
-      return;
-    }
+    if (!canvas) return;
     
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -97,25 +87,18 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({
     }
     
     setIsDrawing(true);
-    setCurrentPath([{ x, y }]);
+    setStartPoint({ x, y });
+    setEndPoint({ x, y }); // Initialize end point to start point
     
-    // Start drawing
+    // Clear canvas
     const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      return;
-    }
+    if (!ctx) return;
     
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.strokeStyle = drawingColor;
-    // Apply scale to line width for consistent visual appearance
-    ctx.lineWidth = drawingLineWidth * scale;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
   
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || textLayerEnabled) return;
+  const drawRectangle = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawing || textLayerEnabled || !startPoint) return;
     
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -124,44 +107,73 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    // Add point to current path
-    setCurrentPath(prev => [...prev, { x, y }]);
+    // Update end point
+    setEndPoint({ x, y });
     
-    // Draw line
+    // Draw rectangle
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    ctx.lineTo(x, y);
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Calculate rectangle dimensions
+    const width = x - startPoint.x;
+    const height = y - startPoint.y;
+    
+    // Set drawing style
+    ctx.strokeStyle = drawingColor;
+    ctx.lineWidth = drawingLineWidth * scale;
+    
+    // Draw rectangle
+    ctx.beginPath();
+    ctx.rect(startPoint.x, startPoint.y, width, height);
     ctx.stroke();
   };
   
   const endDrawing = () => {
-    if (!isDrawing || textLayerEnabled) return;
+    if (!isDrawing || textLayerEnabled || !startPoint || !endPoint) return;
     
     setIsDrawing(false);
     
-    // Save drawing if there are at least 2 points
-    if (currentPath.length >= 2 && canvasDimensions) {
-      // Normalize the points to scale=1 before saving to context
-      const normalizedPoints = currentPath.map(point => ({
-        x: point.x / scale,
-        y: point.y / scale
-      }));
+    // Only save if the rectangle has a non-zero area
+    if (startPoint.x !== endPoint.x && startPoint.y !== endPoint.y && canvasDimensions) {
+      // Normalize the points to scale=1 before saving
+      const normalizedStartPoint = {
+        x: startPoint.x / scale,
+        y: startPoint.y / scale
+      };
+      
+      const normalizedEndPoint = {
+        x: endPoint.x / scale,
+        y: endPoint.y / scale
+      };
       
       dispatch({
-        type: 'addDrawing',
+        type: 'addRectangle',
         payload: {
-          points: normalizedPoints,
+          startPoint: normalizedStartPoint,
+          endPoint: normalizedEndPoint,
           color: drawingColor,
           lineWidth: drawingLineWidth,
           pageNumber,
-          canvasDimensions // Store the canvas dimensions at scale=1
+          canvasDimensions
         }
       });
     }
     
-    // Reset current path
-    setCurrentPath([]);
+    // Reset points
+    setStartPoint(null);
+    setEndPoint(null);
+    
+    // Clear canvas
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
   // Don't render if text layer is enabled
@@ -172,14 +184,13 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({
   return (
     <canvas
       ref={canvasRef}
-      className={styles.drawingCanvas}
+      className={styles.rectCanvas}
       onMouseDown={startDrawing}
-      onMouseMove={draw}
+      onMouseMove={drawRectangle}
       onMouseUp={endDrawing}
       onMouseLeave={endDrawing}
-      style={{ cursor: 'crosshair' }}
     />
   );
 };
 
-export default DrawingComponent;
+export default DrawRect; 

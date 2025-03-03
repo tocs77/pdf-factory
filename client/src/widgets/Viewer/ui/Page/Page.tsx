@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useContext } from 'react';
 import type { PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import * as pdfjs from 'pdfjs-dist';
 import classes from './Page.module.scss';
 import { classNames } from '@/shared/utils';
 import DrawingComponent from '../DrawingComponent/DrawingComponent';
+import DrawRect from '../DrawRect/DrawRect';
 import CompleteDrawings from '../CompleteDrawings/CompleteDrawings';
-import { DrawingPath } from '../../model/types/viewerSchema';
+import { ViewerContext } from '../../model/context/viewerContext';
 
 // Page component for rendering a single PDF page
 interface PageProps {
@@ -13,15 +14,7 @@ interface PageProps {
   scale: number;
   pageNumber: number;
   id: string;
-  /** Whether to enable the text layer for selection (default: true) */
-  textLayerEnabled?: boolean;
-  /** Drawing color for annotation (default: blue) */
-  drawingColor?: string;
-  /** Drawing line width (default: 2) */
-  drawingLineWidth?: number;
   className?: string;
-  onDrawingComplete?: (drawing: DrawingPath) => void;
-  existingDrawings?: DrawingPath[];
 }
 
 export const Page = ({
@@ -29,13 +22,11 @@ export const Page = ({
   scale,
   pageNumber,
   id,
-  textLayerEnabled = true,
-  drawingColor = '#2196f3',
-  drawingLineWidth = 2,
   className,
-  onDrawingComplete,
-  existingDrawings = [],
 }: PageProps) => {
+  const { state } = useContext(ViewerContext);
+  const { textLayerEnabled, drawingMode } = state;
+  
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -615,20 +606,22 @@ export const Page = ({
             
             {/* Always render completed drawings, even when text layer is enabled */}
             <CompleteDrawings
-              scale={scale}
               pageNumber={pageNumber}
-              existingDrawings={existingDrawings}
             />
             
-            {/* Only render drawing component when text layer is disabled */}
-            <DrawingComponent
-              scale={scale}
-              pageNumber={pageNumber}
-              drawingColor={drawingColor}
-              drawingLineWidth={drawingLineWidth}
-              textLayerEnabled={textLayerEnabled}
-              onDrawingComplete={onDrawingComplete}
-            />
+            {/* Only render drawing component when text layer is disabled and drawing mode is freehand */}
+            {!textLayerEnabled && drawingMode === 'freehand' && (
+              <DrawingComponent
+                pageNumber={pageNumber}
+              />
+            )}
+            
+            {/* Only render rectangle component when text layer is disabled and drawing mode is rectangle */}
+            {!textLayerEnabled && drawingMode === 'rectangle' && (
+              <DrawRect
+                pageNumber={pageNumber}
+              />
+            )}
           </>
         )}
       </div>

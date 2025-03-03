@@ -27,6 +27,9 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
     case 'setDrawingLineWidth':
       return { ...state, drawingLineWidth: action.payload };
     
+    case 'setDrawingMode':
+      return { ...state, drawingMode: action.payload };
+    
     case 'toggleTextLayer':
       return { ...state, textLayerEnabled: !state.textLayerEnabled };
     
@@ -34,6 +37,12 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
       return { 
         ...state, 
         drawings: [...state.drawings, action.payload] 
+      };
+    
+    case 'addRectangle':
+      return {
+        ...state,
+        rectangles: [...state.rectangles, action.payload]
       };
     
     case 'clearDrawings':
@@ -47,6 +56,17 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
       // Otherwise clear all drawings
       return { ...state, drawings: [] };
     
+    case 'clearRectangles':
+      // If payload is provided, clear rectangles for that page only
+      if (action.payload !== undefined) {
+        return {
+          ...state,
+          rectangles: state.rectangles.filter(rect => rect.pageNumber !== action.payload)
+        };
+      }
+      // Otherwise clear all rectangles
+      return { ...state, rectangles: [] };
+    
     default:
       return state;
   }
@@ -59,7 +79,9 @@ export const ViewerContext = createContext<ViewerContextType>({
     drawingColor: DEFAULT_DRAWING_COLOR,
     drawingLineWidth: 2,
     textLayerEnabled: true,
-    drawings: []
+    drawingMode: 'freehand',
+    drawings: [],
+    rectangles: []
   },
   dispatch: () => null,
 });
