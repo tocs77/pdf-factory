@@ -16,6 +16,7 @@ export const renderPin = (
   scale: number
 ): void => {
   const pinSize = 12 * scale;
+  const arrowThickness = 3 * scale; // Fixed 3px thickness
   
   // Save context for shadow
   ctx.save();
@@ -26,132 +27,133 @@ export const renderPin = (
   ctx.shadowOffsetX = 2 * scale;
   ctx.shadowOffsetY = 2 * scale;
   
-  // Draw standard map pin shape
+  // Draw a thinner arrow with true 45-degree angle pointing part and thinner, longer arrowhead
   ctx.fillStyle = pin.color;
   
-  // Start drawing the pin (teardrop/balloon shape)
-  ctx.beginPath();
+  // Calculate arrow dimensions
+  const arrowLength = pinSize * 3; // Length of the diagonal pointing part
+  const arrowTailLength = pinSize * 5; // Length of the horizontal part
+  const arrowHeadWidth = pinSize * 0.5; // Width of the arrowhead (thinner)
   
-  // Draw the circular top
-  ctx.arc(x, y - pinSize, pinSize, 0, Math.PI * 2);
-  ctx.fill();
+  // Calculate points for a true 45-degree angle
+  // For a 45-degree angle, the x and y distances should be equal
+  const diagonalOffset = arrowLength / Math.sqrt(2); // Equal x and y offset for 45 degrees
   
-  // Draw the pointed bottom part
-  ctx.beginPath();
-  ctx.moveTo(x - pinSize, y - pinSize);
-  ctx.lineTo(x, y + pinSize * 1.2); // Point at the bottom
-  ctx.lineTo(x + pinSize, y - pinSize);
-  ctx.closePath();
-  ctx.fill();
+  // Calculate the bend point (where diagonal meets horizontal)
+  const bendX = x - diagonalOffset;
+  const bendY = y - diagonalOffset;
   
-  // Draw inner circle (white dot)
-  ctx.fillStyle = 'white';
+  // Draw the arrow shaft with stroke
   ctx.beginPath();
-  ctx.arc(x, y - pinSize, pinSize * 0.5, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.lineWidth = arrowThickness;
+  ctx.strokeStyle = pin.color;
+  ctx.lineCap = 'round'; // Round the ends of the lines
+  
+  // Draw the horizontal tail
+  ctx.moveTo(bendX - arrowTailLength, bendY);
+  ctx.lineTo(bendX, bendY);
+  
+  // Draw the 45-degree pointing part (but stop short of the tip to add arrowhead)
+  // Calculate a point further back from the tip for a longer arrowhead
+  const arrowHeadBaseX = x - (diagonalOffset * 0.2);
+  const arrowHeadBaseY = y - (diagonalOffset * 0.2);
+  ctx.lineTo(arrowHeadBaseX, arrowHeadBaseY);
+  
+  ctx.stroke();
+  
+  // Draw the arrowhead as an outline (no fill)
+  ctx.beginPath();
+  ctx.lineWidth = arrowThickness;
+  ctx.strokeStyle = pin.color;
+  
+  // Tip of the arrow
+  ctx.moveTo(x, y);
+  
+  // Calculate perpendicular direction for arrowhead sides
+  const dx = arrowHeadBaseX - x;
+  const dy = arrowHeadBaseY - y;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  
+  // Normalize and rotate for perpendicular direction
+  const perpX = -dy / length;
+  const perpY = dx / length;
+  
+  // Calculate arrowhead points for a thinner, longer shape
+  const leftX = arrowHeadBaseX + perpX * arrowHeadWidth;
+  const leftY = arrowHeadBaseY + perpY * arrowHeadWidth;
+  const rightX = arrowHeadBaseX - perpX * arrowHeadWidth;
+  const rightY = arrowHeadBaseY - perpY * arrowHeadWidth;
+  
+  // Draw arrowhead as lines (no fill)
+  ctx.moveTo(x, y);
+  ctx.lineTo(leftX, leftY);
+  ctx.moveTo(x, y);
+  ctx.lineTo(rightX, rightY);
+  ctx.stroke();
   
   // Restore context (remove shadow)
   ctx.restore();
   
-  // Draw text bubble if there's text
+  // Draw text over the tail of the arrow
   if (pin.text.length > 0) {
-    renderPinBubble(ctx, pin, x, y, pinSize, scale);
+    renderArrowText(ctx, pin, pinSize, arrowTailLength, bendX, bendY, scale);
   }
 };
 
 /**
- * Renders a text bubble for a pin
+ * Renders text over the arrow tail
  * @param ctx Canvas rendering context
  * @param pin Pin data
- * @param x X coordinate (scaled)
- * @param y Y coordinate (scaled)
  * @param pinSize Size of the pin
+ * @param arrowTailLength Length of the arrow tail
+ * @param bendX X coordinate of the bend point
+ * @param bendY Y coordinate of the bend point
  * @param scale Current zoom scale
  */
-export const renderPinBubble = (
+export const renderArrowText = (
   ctx: CanvasRenderingContext2D,
   pin: Pin,
-  x: number,
-  y: number,
   pinSize: number,
+  arrowTailLength: number,
+  bendX: number,
+  bendY: number,
   scale: number
 ): void => {
-  // Save context for bubble shadow
-  ctx.save();
+  // Calculate text position (centered over the tail)
+  const textX = bendX - arrowTailLength/2;
+  const textY = bendY - pinSize * 0.8; // Position above the tail
   
-  // Add shadow for bubble
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-  ctx.shadowBlur = 6 * scale;
-  ctx.shadowOffsetX = 1 * scale;
-  ctx.shadowOffsetY = 1 * scale;
+  // Draw text background for better readability
+  const textWidth = ctx.measureText(pin.text).width;
+  const padding = 6 * scale;
+  const textBgWidth = Math.min(textWidth + padding * 2, arrowTailLength * 0.9);
+  const textBgHeight = 16 * scale;
   
-  const bubbleWidth = Math.max(120 * scale, pin.text.length * 8 * scale);
-  const bubbleHeight = 36 * scale;
-  const bubbleRadius = 8 * scale;
-  
-  // Draw bubble with rounded corners
   ctx.fillStyle = 'white';
   ctx.beginPath();
-  
-  // Use roundRect if available, otherwise draw manually
-  if (typeof ctx.roundRect === 'function') {
-    ctx.roundRect(
-      x - bubbleWidth / 2,
-      y - pinSize * 3.5 - bubbleHeight,
-      bubbleWidth,
-      bubbleHeight,
-      bubbleRadius
-    );
-  } else {
-    // Manual rounded rectangle
-    const bubbleX = x - bubbleWidth / 2;
-    const bubbleY = y - pinSize * 3.5 - bubbleHeight;
-    
-    ctx.moveTo(bubbleX + bubbleRadius, bubbleY);
-    ctx.lineTo(bubbleX + bubbleWidth - bubbleRadius, bubbleY);
-    ctx.arcTo(bubbleX + bubbleWidth, bubbleY, bubbleX + bubbleWidth, bubbleY + bubbleRadius, bubbleRadius);
-    ctx.lineTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight - bubbleRadius);
-    ctx.arcTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight, bubbleX + bubbleWidth - bubbleRadius, bubbleY + bubbleHeight, bubbleRadius);
-    ctx.lineTo(bubbleX + bubbleRadius, bubbleY + bubbleHeight);
-    ctx.arcTo(bubbleX, bubbleY + bubbleHeight, bubbleX, bubbleY + bubbleHeight - bubbleRadius, bubbleRadius);
-    ctx.lineTo(bubbleX, bubbleY + bubbleRadius);
-    ctx.arcTo(bubbleX, bubbleY, bubbleX + bubbleRadius, bubbleY, bubbleRadius);
-  }
+  ctx.roundRect(
+    textX - textBgWidth/2,
+    textY - textBgHeight/2,
+    textBgWidth,
+    textBgHeight,
+    4 * scale
+  );
   ctx.fill();
   
-  // Draw bubble border with pin color
-  ctx.strokeStyle = pin.color;
-  ctx.lineWidth = 2 * scale;
-  ctx.stroke();
-  
-  // Restore context (remove shadow)
-  ctx.restore();
-  
-  // Draw text in bubble
+  // Draw text
   ctx.fillStyle = '#333';
-  ctx.font = `bold ${12 * scale}px Arial, sans-serif`;
+  ctx.font = `bold ${11 * scale}px Arial, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(
-    pin.text,
-    x,
-    y - pinSize * 3.5 - bubbleHeight / 2
-  );
   
-  // Draw pointer from bubble to pin
-  ctx.beginPath();
-  ctx.fillStyle = 'white';
+  // If text is too long, truncate it
+  let displayText = pin.text;
+  if (textWidth > arrowTailLength * 0.8) {
+    // Calculate how many characters we can fit
+    const charsPerWidth = pin.text.length / textWidth;
+    const maxChars = Math.floor(arrowTailLength * 0.8 * charsPerWidth);
+    displayText = pin.text.substring(0, maxChars - 3) + '...';
+  }
   
-  // Create triangle pointer that aligns with the pin
-  const pointerTipY = y - pinSize * 2;
-  ctx.moveTo(x, pointerTipY);
-  ctx.lineTo(x - 8 * scale, y - pinSize * 3.5);
-  ctx.lineTo(x + 8 * scale, y - pinSize * 3.5);
-  ctx.closePath();
-  ctx.fill();
-  
-  // Draw pointer border
-  ctx.strokeStyle = pin.color;
-  ctx.lineWidth = 2 * scale;
-  ctx.stroke();
+  ctx.fillText(displayText, textX, textY);
 }; 
