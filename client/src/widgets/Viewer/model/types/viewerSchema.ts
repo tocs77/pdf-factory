@@ -35,7 +35,26 @@ export interface Rectangle {
   canvasDimensions?: { width: number; height: number };
 }
 
-export type DrawingMode = 'freehand' | 'rectangle';
+export interface Pin {
+  /**
+   * Position of the pin on the page
+   * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
+   */
+  position: { x: number; y: number };
+  /**
+   * Text content of the pin
+   */
+  text: string;
+  color: string;
+  pageNumber: number;
+  /**
+   * Canvas dimensions at scale=1 when the pin was created.
+   * Used to properly position pins when rendering at different scales.
+   */
+  canvasDimensions?: { width: number; height: number };
+}
+
+export type DrawingMode = 'freehand' | 'rectangle' | 'pin';
 
 export interface ViewerSchema {
   scale: number;
@@ -45,6 +64,7 @@ export interface ViewerSchema {
   drawingMode: DrawingMode;
   drawings: DrawingPath[];
   rectangles: Rectangle[];
+  pins: Pin[];
   showThumbnails: boolean;
 }
 
@@ -56,6 +76,8 @@ export type Action =
   | { type: 'toggleTextLayer' }
   | { type: 'addDrawing'; payload: DrawingPath }
   | { type: 'addRectangle'; payload: Rectangle }
+  | { type: 'addPin'; payload: Pin }
   | { type: 'clearDrawings'; payload?: number } // Optional page number, if not provided clear all
   | { type: 'clearRectangles'; payload?: number } // Optional page number, if not provided clear all
+  | { type: 'clearPins'; payload?: number } // Optional page number, if not provided clear all
   | { type: 'toggleThumbnails' };

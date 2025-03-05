@@ -5,6 +5,7 @@ import classes from './Page.module.scss';
 import { classNames } from '@/shared/utils';
 import DrawingComponent from '../DrawingComponent/DrawingComponent';
 import DrawRect from '../DrawRect/DrawRect';
+import PinDrawingComponent from '../PinDrawingComponent/PinDrawingComponent';
 import CompleteDrawings from '../CompleteDrawings/CompleteDrawings';
 import { ViewerContext } from '../../model/context/viewerContext';
 
@@ -597,9 +598,10 @@ export const Page = ({
               style={textLayerStyle}
             />
             
-            {/* Always render completed drawings, even when text layer is enabled */}
+            {/* Render completed drawings */}
             <CompleteDrawings
               pageNumber={pageNumber}
+              scale={scale}
             />
             
             {/* Only render drawing component when text layer is disabled and drawing mode is freehand */}
@@ -614,6 +616,11 @@ export const Page = ({
               <DrawRect
                 pageNumber={pageNumber}
               />
+            )}
+
+            {/* Render pin drawing component when text layer is disabled */}
+            {!textLayerEnabled && drawingMode === 'pin' && (
+              <PinDrawingComponent pageNumber={pageNumber} />
             )}
           </>
         )}

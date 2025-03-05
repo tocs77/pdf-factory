@@ -34,10 +34,10 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({
       canvas.width = parent.clientWidth;
       canvas.height = parent.clientHeight;
       
-      // Store current canvas dimensions
+      // Store current canvas dimensions at scale=1
       setCanvasDimensions({
-        width: canvas.width / scale, // Store normalized dimensions (at scale=1)
-        height: canvas.height / scale
+        width: parent.clientWidth / scale, // Store normalized dimensions (at scale=1)
+        height: parent.clientHeight / scale
       });
     } else {
       console.warn('No parent element found for canvas');
@@ -86,13 +86,12 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    // Update canvas dimensions if they've changed
-    if (!canvasDimensions || 
-        canvasDimensions.width !== canvas.width / scale || 
-        canvasDimensions.height !== canvas.height / scale) {
+    // Update canvas dimensions
+    const parent = canvas.parentElement;
+    if (parent) {
       setCanvasDimensions({
-        width: canvas.width / scale,
-        height: canvas.height / scale
+        width: parent.clientWidth / scale,
+        height: parent.clientHeight / scale
       });
     }
     

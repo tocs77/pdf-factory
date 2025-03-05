@@ -8,11 +8,15 @@ const initialState = {
   textLayerEnabled: true,
   drawingMode: 'freehand' as const,
   drawings: [],
-  rectangles: []
+  rectangles: [],
+  pins: [],
+  showThumbnails: false,
 };
 
 export const ViewerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(viewerReducer, initialState);
+  const [state, dispatch] = useReducer(viewerReducer, {
+    ...initialState,
+  });
 
   return <ViewerContext.Provider value={{ state, dispatch }}>{children}</ViewerContext.Provider>;
 };

@@ -45,6 +45,12 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
         rectangles: [...state.rectangles, action.payload]
       };
     
+    case 'addPin':
+      return {
+        ...state,
+        pins: [...state.pins, action.payload]
+      };
+    
     case 'clearDrawings':
       // If payload is provided, clear drawings for that page only
       if (action.payload !== undefined) {
@@ -67,6 +73,17 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
       // Otherwise clear all rectangles
       return { ...state, rectangles: [] };
     
+    case 'clearPins':
+      // If payload is provided, clear pins for that page only
+      if (action.payload !== undefined) {
+        return {
+          ...state,
+          pins: state.pins.filter(pin => pin.pageNumber !== action.payload)
+        };
+      }
+      // Otherwise clear all pins
+      return { ...state, pins: [] };
+    
     case 'toggleThumbnails':
       return { ...state, showThumbnails: !state.showThumbnails };
     
@@ -85,6 +102,7 @@ export const ViewerContext = createContext<ViewerContextType>({
     drawingMode: 'freehand',
     drawings: [],
     rectangles: [],
+    pins: [],
     showThumbnails: true
   },
   dispatch: () => null,

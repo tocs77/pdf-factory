@@ -34,10 +34,10 @@ const DrawRect: React.FC<DrawRectProps> = ({
       canvas.width = parent.clientWidth;
       canvas.height = parent.clientHeight;
       
-      // Store current canvas dimensions
+      // Store current canvas dimensions at scale=1
       setCanvasDimensions({
-        width: canvas.width / scale, // Store normalized dimensions (at scale=1)
-        height: canvas.height / scale
+        width: parent.clientWidth / scale, // Store normalized dimensions (at scale=1)
+        height: parent.clientHeight / scale
       });
     } else {
       console.warn('No parent element found for canvas');
@@ -67,34 +67,31 @@ const DrawRect: React.FC<DrawRectProps> = ({
 
   // Drawing handlers
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (textLayerEnabled) return;
+    if (textLayerEnabled) {
+      return;
+    }
     
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      return;
+    }
     
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    // Update canvas dimensions if they've changed
-    if (!canvasDimensions || 
-        canvasDimensions.width !== canvas.width / scale || 
-        canvasDimensions.height !== canvas.height / scale) {
+    // Update canvas dimensions
+    const parent = canvas.parentElement;
+    if (parent) {
       setCanvasDimensions({
-        width: canvas.width / scale,
-        height: canvas.height / scale
+        width: parent.clientWidth / scale,
+        height: parent.clientHeight / scale
       });
     }
     
     setIsDrawing(true);
     setStartPoint({ x, y });
-    setEndPoint({ x, y }); // Initialize end point to start point
-    
-    // Clear canvas
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setEndPoint({ x, y });
   };
   
   const drawRectangle = (e: React.MouseEvent<HTMLCanvasElement>) => {
