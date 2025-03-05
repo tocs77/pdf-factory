@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { DrawingMode } from '../../model/types/viewerSchema';
+import { classNames } from '@/shared/utils';
 import classes from './ViewerMenu.module.scss';
 
 interface ViewerMenuProps {
@@ -10,7 +11,7 @@ interface ViewerMenuProps {
 
 export const ViewerMenu: React.FC<ViewerMenuProps> = ({ renderQuality, currentPage }) => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, textLayerEnabled, drawingMode, drawings, rectangles } = state;
+  const { scale, drawingColor, drawingLineWidth, textLayerEnabled, drawingMode, drawings, rectangles, showThumbnails } = state;
 
   const zoomIn = () => {
     dispatch({ type: 'setScale', payload: scale + 0.25 });
@@ -60,6 +61,21 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ renderQuality, currentPa
 
   return (
     <div className={classes.zoomControls}>
+      {/* Thumbnail toggle button */}
+      <button 
+        className={classNames(classes.thumbnailToggle, { [classes.active]: showThumbnails }, [])}
+        onClick={() => dispatch({ type: 'toggleThumbnails' })}
+        title={showThumbnails ? "Hide thumbnails" : "Show thumbnails"}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <rect x="7" y="7" width="3" height="9"></rect>
+          <rect x="14" y="7" width="3" height="5"></rect>
+        </svg>
+        {showThumbnails ? "Hide Thumbnails" : "Show Thumbnails"}
+      </button>
+      
+      {/* Zoom controls */}
       <button onClick={zoomOut} className={classes.zoomButton}>
         Zoom Out
       </button>

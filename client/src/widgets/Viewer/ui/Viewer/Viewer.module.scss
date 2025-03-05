@@ -1,21 +1,29 @@
 .container {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto 1fr;
+  grid-template-areas: 
+    "thumbnails menu"
+    "thumbnails content";
   height: 100%;
   width: 100%;
   background-color: #f5f5f5;
+  overflow: hidden;
+  position: relative;
   
   &.noThumbnails {
-    .thumbnailSidebar {
+    grid-template-columns: 1fr;
+    grid-template-areas: 
+      "menu"
+      "content";
+    
+    .thumbnailsContainer {
       display: none;
     }
   }
 }
 
-.viewerContainer{
-  width: 100%;
-}
-
-.thumbnailSidebar {
+.thumbnailsContainer {
   width: 200px;
   height: 100%;
   overflow-y: auto;
@@ -23,6 +31,39 @@
   border-right: 1px solid #ddd;
   padding: 10px;
   box-sizing: border-box;
+  grid-area: thumbnails;
+  max-height: 100vh;
+}
+
+.viewerContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  width: 100%;
+  position: relative;
+  grid-area: content;
+  max-height: 100vh;
+}
+
+.pdfContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-height: 100%;
+  overflow-y: auto;
+  overflow-x: auto;
+  
+  padding-left: 20px;
+  padding-right: 20px;
+  
+  width: 100%;
+  box-sizing: border-box;
+  
+  z-index: 1;
 }
 
 .thumbnailHeader {
@@ -267,17 +308,11 @@
   text-align: center;
 }
 
-.pdfContainer {
+.pdfContentWrapper {
   display: flex;
   flex-direction: column;
   align-items: center;
-  position: relative;
-  padding: 20px;
-  background-color: #f5f5f5;
-  min-height: 100%;
-  flex: 1;
-  overflow-y: auto;
-  
-  /* Ensure the container has a higher z-index than other elements */
-  z-index: 1;
+  min-width: min-content; /* Allow content to determine the width */
+  margin: 0 auto; /* Center the content */
+  width: fit-content; /* Ensure the wrapper expands to fit zoomed content */
 } 

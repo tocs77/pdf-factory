@@ -67,6 +67,9 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
       // Otherwise clear all rectangles
       return { ...state, rectangles: [] };
     
+    case 'toggleThumbnails':
+      return { ...state, showThumbnails: !state.showThumbnails };
+    
     default:
       return state;
   }
@@ -81,7 +84,8 @@ export const ViewerContext = createContext<ViewerContextType>({
     textLayerEnabled: true,
     drawingMode: 'freehand',
     drawings: [],
-    rectangles: []
+    rectangles: [],
+    showThumbnails: true
   },
   dispatch: () => null,
 });

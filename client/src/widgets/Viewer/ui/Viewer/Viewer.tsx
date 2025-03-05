@@ -6,14 +6,11 @@ import { Page } from '../Page/Page';
 import { ViewerMenu } from '../ViewerMenu/ViewerMenu';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { ViewerProvider } from '../../model/context/ViewerProvider';
+import { classNames } from '@/shared/utils';
 import classes from './Viewer.module.scss';
 
 interface PdfViewerProps {
   url: string;
-  /**
-   * Whether to show the thumbnail sidebar (default: true)
-   */
-  showThumbnails?: boolean;
   /**
    * Drawing color for annotation when text layer is disabled (default: blue)
    */
@@ -27,10 +24,9 @@ interface PdfViewerProps {
 // Internal viewer component that will be wrapped with the provider
 const PdfViewerInternal = ({
   url,      
-  showThumbnails = true,
 }: PdfViewerProps) => {
   const { state } = useContext(ViewerContext);
-  const { scale } = state;
+  const { scale, showThumbnails } = state;
   
   const [pdfRef, setPdfRef] = useState<PDFDocumentProxy | null>(null);
   const [pages, setPages] = useState<PDFPageProxy[]>([]);
@@ -233,7 +229,7 @@ const PdfViewerInternal = ({
   }
 
   return (
-    <div className={`${classes.container} ${!showThumbnails ? classes.noThumbnails : ''}`}>
+    <div className={classNames(classes.container, { [classes.noThumbnails]: !showThumbnails }, [])}>
       {showThumbnails && (
         <div className={classes.thumbnailsContainer}>
           {pages.map((page, index) => (
@@ -253,15 +249,17 @@ const PdfViewerInternal = ({
         <ViewerMenu renderQuality={renderQuality} currentPage={selectedPage} />
 
         <div className={classes.pdfContainer} ref={pdfContainerRef}>
-          {pages.map((page, index) => (
-            <Page
-              key={index + 1}
-              page={page}
-              scale={scale}
-              pageNumber={index + 1}
-              id={`page-${index + 1}`}
-            />
-          ))}
+          <div className={classes.pdfContentWrapper}>
+            {pages.map((page, index) => (
+              <Page
+                key={index + 1}
+                page={page}
+                scale={scale}
+                pageNumber={index + 1}
+                id={`page-${index + 1}`}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>

@@ -45,6 +45,7 @@ export interface ViewerSchema {
   drawingMode: DrawingMode;
   drawings: DrawingPath[];
   rectangles: Rectangle[];
+  showThumbnails: boolean;
 }
 
 export type Action = 
@@ -56,4 +57,5 @@ export type Action =
   | { type: 'addDrawing'; payload: DrawingPath }
   | { type: 'addRectangle'; payload: Rectangle }
   | { type: 'clearDrawings'; payload?: number } // Optional page number, if not provided clear all
-  | { type: 'clearRectangles'; payload?: number }; // Optional page number, if not provided clear all
+  | { type: 'clearRectangles'; payload?: number } // Optional page number, if not provided clear all
+  | { type: 'toggleThumbnails' };

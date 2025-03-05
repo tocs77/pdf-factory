@@ -48,6 +48,8 @@
   line-height: 0;
   width: 100%;
   height: 100%;
+  overflow: visible; /* Allow content to overflow when zoomed */
+  background-color: white;
 }
 
 /* Canvas element styles */
@@ -59,10 +61,12 @@
   padding: 0;
 }
 
-.pageCanvas {
+.canvas {
   display: block;
   margin: 0;
   padding: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .pageNumber {
@@ -252,6 +256,16 @@
 
 .page {
   margin-bottom: 20px;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+  /* Remove any max-width constraints that might limit zooming */
+  min-width: fit-content; /* Ensure the page expands to fit its content when zoomed */
 }
 
 .drawingCanvasContainer {
