@@ -15,17 +15,18 @@ export const renderPin = (
   y: number,
   scale: number
 ): void => {
-  const pinSize = 12 * scale;
-  const arrowThickness = 3 * scale; // Fixed 3px thickness
+  // Fixed sizes that don't scale with zoom
+  const pinSize = 12;
+  const arrowThickness = 3;
   
   // Save context for shadow
   ctx.save();
   
   // Add shadow for depth
   ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-  ctx.shadowBlur = 4 * scale;
-  ctx.shadowOffsetX = 2 * scale;
-  ctx.shadowOffsetY = 2 * scale;
+  ctx.shadowBlur = 4;
+  ctx.shadowOffsetX = 2;
+  ctx.shadowOffsetY = 2;
   
   // Draw a thinner arrow with true 45-degree angle pointing part and thinner, longer arrowhead
   ctx.fillStyle = pin.color;
@@ -96,7 +97,7 @@ export const renderPin = (
   
   // Draw text over the tail of the arrow
   if (pin.text.length > 0) {
-    renderArrowText(ctx, pin, pinSize, arrowTailLength, bendX, bendY, scale);
+    renderArrowText(ctx, pin, pinSize, arrowTailLength, bendX, bendY);
   }
 };
 
@@ -108,7 +109,6 @@ export const renderPin = (
  * @param arrowTailLength Length of the arrow tail
  * @param bendX X coordinate of the bend point
  * @param bendY Y coordinate of the bend point
- * @param scale Current zoom scale
  */
 export const renderArrowText = (
   ctx: CanvasRenderingContext2D,
@@ -116,18 +116,23 @@ export const renderArrowText = (
   pinSize: number,
   arrowTailLength: number,
   bendX: number,
-  bendY: number,
-  scale: number
+  bendY: number
 ): void => {
   // Calculate text position (centered over the tail)
   const textX = bendX - arrowTailLength/2;
   const textY = bendY - pinSize * 0.8; // Position above the tail
   
+  // Fixed font size that doesn't scale with zoom
+  const fontSize = 11;
+  const padding = 6;
+  
+  // Set font before measuring text
+  ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+  
   // Draw text background for better readability
   const textWidth = ctx.measureText(pin.text).width;
-  const padding = 6 * scale;
   const textBgWidth = Math.min(textWidth + padding * 2, arrowTailLength * 0.9);
-  const textBgHeight = 16 * scale;
+  const textBgHeight = 16;
   
   ctx.fillStyle = 'white';
   ctx.beginPath();
@@ -136,13 +141,12 @@ export const renderArrowText = (
     textY - textBgHeight/2,
     textBgWidth,
     textBgHeight,
-    4 * scale
+    4
   );
   ctx.fill();
   
   // Draw text
   ctx.fillStyle = '#333';
-  ctx.font = `bold ${11 * scale}px Arial, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   
