@@ -6,14 +6,12 @@ import { Pin } from '../model/types/viewerSchema';
  * @param pin Pin data to render
  * @param x X coordinate (scaled)
  * @param y Y coordinate (scaled)
- * @param scale Current zoom scale
  */
 export const renderPin = (
   ctx: CanvasRenderingContext2D,
   pin: Pin,
   x: number,
-  y: number,
-  scale: number
+  y: number
 ): void => {
   // Fixed sizes that don't scale with zoom
   const pinSize = 12;

@@ -117,7 +117,7 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, scale }
       const y = pin.position.y * scale * scaleY;
       
       // Use the pin renderer utility
-      renderPin(ctx, pin, x, y, scale);
+      renderPin(ctx, pin, x, y);
     });
   }, [pageDrawings, pageRectangles, pagePins, scale, pageNumber]);
 
