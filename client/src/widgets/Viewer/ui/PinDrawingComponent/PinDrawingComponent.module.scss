@@ -22,33 +22,53 @@
   transform: translate(-50%, -100%);
   background-color: white;
   border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 3;
-  min-width: 200px;
+  min-width: 220px;
+  animation: fadeIn 0.2s ease-out;
 
   &::after {
     content: '';
     position: absolute;
-    bottom: -8px;
+    bottom: -10px;
     left: 50%;
     transform: translateX(-50%);
     width: 0;
     height: 0;
-    border-left: 8px solid transparent;
-    border-right: 8px solid transparent;
-    border-top: 8px solid white;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 10px solid white;
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.1));
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -90%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%);
   }
 }
 
 .pinTextInput {
   width: 100%;
-  padding: 8px;
+  padding: 10px;
   border: 1px solid #ddd;
-  border-radius: 4px;
-  margin-bottom: 8px;
+  border-radius: 6px;
+  margin-bottom: 10px;
   font-size: 14px;
+  transition: border-color 0.2s;
+  
+  &:focus {
+    outline: none;
+    border-color: #2196f3;
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+  }
 }
 
 .buttonContainer {
@@ -57,11 +77,13 @@
 }
 
 .submitButton, .cancelButton {
-  padding: 6px 12px;
+  padding: 8px 16px;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
 }
 
 .submitButton {
@@ -70,6 +92,13 @@
   
   &:hover {
     background-color: #0d8aee;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  &:active {
+    transform: translateY(0);
+    box-shadow: none;
   }
 }
 
@@ -79,5 +108,12 @@
   
   &:hover {
     background-color: #e0e0e0;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  &:active {
+    transform: translateY(0);
+    box-shadow: none;
   }
 } 

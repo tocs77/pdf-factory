@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
+import { renderPin } from '../../utils/pinRenderer';
 import styles from './CompleteDrawings.module.scss';
 
 interface CompleteDrawingsProps {
@@ -101,7 +102,7 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, scale }
       ctx.strokeRect(startX, startY, width, height);
     });
     
-    // Draw all pins
+    // Draw all pins using the pin renderer utility
     pagePins.forEach(pin => {
       // Calculate scaling factor based on the original canvas dimensions
       let scaleX = 1;
@@ -115,93 +116,8 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, scale }
       const x = pin.position.x * scale * scaleX;
       const y = pin.position.y * scale * scaleY;
       
-      // Draw pin marker
-      const pinSize = 12 * scale;
-      
-      // Draw pin icon (map marker shape)
-      ctx.fillStyle = pin.color;
-      
-      // Draw the pin point (triangle)
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x - pinSize, y - pinSize * 1.5);
-      ctx.lineTo(x + pinSize, y - pinSize * 1.5);
-      ctx.closePath();
-      ctx.fill();
-      
-      // Draw a circle for the pin head
-      ctx.beginPath();
-      ctx.arc(x, y - pinSize * 1.5, pinSize, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Draw pin text
-      ctx.font = `${12 * scale}px Arial`;
-      ctx.fillStyle = 'white';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      
-      // Limit text length for display
-      const displayText = pin.text.length > 3 ? pin.text.substring(0, 3) : pin.text;
-      ctx.fillText(displayText, x, y - pinSize * 1.5);
-      
-      // Draw full text in a bubble if there's more text
-      if (pin.text.length > 0) {
-        const bubbleWidth = Math.max(100 * scale, pin.text.length * 7 * scale);
-        const bubbleHeight = 30 * scale;
-        
-        // Draw bubble
-        ctx.fillStyle = 'white';
-        ctx.beginPath();
-        
-        // Use roundRect if available, otherwise use a regular rect
-        if (typeof ctx.roundRect === 'function') {
-          ctx.roundRect(
-            x - bubbleWidth / 2,
-            y - pinSize * 4 - bubbleHeight,
-            bubbleWidth,
-            bubbleHeight,
-            5 * scale
-          );
-        } else {
-          // Fallback for browsers that don't support roundRect
-          ctx.rect(
-            x - bubbleWidth / 2,
-            y - pinSize * 4 - bubbleHeight,
-            bubbleWidth,
-            bubbleHeight
-          );
-        }
-        ctx.fill();
-        
-        // Draw bubble border
-        ctx.strokeStyle = pin.color;
-        ctx.lineWidth = 2 * scale;
-        ctx.stroke();
-        
-        // Draw text in bubble
-        ctx.fillStyle = '#333';
-        ctx.font = `${11 * scale}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(
-          pin.text,
-          x,
-          y - pinSize * 4 - bubbleHeight / 2
-        );
-        
-        // Draw pointer from bubble to pin
-        ctx.beginPath();
-        ctx.fillStyle = 'white';
-        ctx.moveTo(x - 8 * scale, y - pinSize * 4);
-        ctx.lineTo(x, y - pinSize * 2);
-        ctx.lineTo(x + 8 * scale, y - pinSize * 4);
-        ctx.closePath();
-        ctx.fill();
-        
-        ctx.strokeStyle = pin.color;
-        ctx.lineWidth = 2 * scale;
-        ctx.stroke();
-      }
+      // Use the pin renderer utility
+      renderPin(ctx, pin, x, y, scale);
     });
   }, [pageDrawings, pageRectangles, pagePins, scale, pageNumber]);
 
