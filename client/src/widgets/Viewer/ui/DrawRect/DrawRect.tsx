@@ -109,22 +109,16 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
     canvasWidth: number,
     canvasHeight: number
   ): { x: number, y: number } => {
-    // First normalize to [0,1] range
-    const normalizedX = point.x / canvasWidth;
-    const normalizedY = point.y / canvasHeight;
+    // Convert to coordinates at scale 1
+    const scaleAdjustedX = point.x / scale;
+    const scaleAdjustedY = point.y / scale;
     
-    // Center of the normalized canvas
-    const centerX = 0.5;
-    const centerY = 0.5;
+    // Center of the canvas at scale 1
+    const centerX = canvasWidth / (2 * scale);
+    const centerY = canvasHeight / (2 * scale);
     
     // Apply inverse rotation (negative angle)
-    const rotated = rotatePoint(normalizedX, normalizedY, centerX, centerY, -rotation);
-    
-    // Ensure coordinates are within [0,1] range
-    return {
-      x: Math.max(0, Math.min(1, rotated.x)),
-      y: Math.max(0, Math.min(1, rotated.y))
-    };
+    return rotatePoint(scaleAdjustedX, scaleAdjustedY, centerX, centerY, -rotation);
   };
 
   // Drawing handlers
