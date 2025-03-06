@@ -89,6 +89,20 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
     return { x, y };
   };
 
+  // Function to rotate a point around the center
+  const rotatePoint = (
+    x0: number,
+    y0: number,
+    xc: number,
+    yc: number,
+    theta: number
+  ): { x: number; y: number } => {
+    const radians = (theta * Math.PI) / 180;
+    const x1 = (x0 - xc) * Math.cos(radians) - (y0 - yc) * Math.sin(radians) + xc;
+    const y1 = (x0 - xc) * Math.sin(radians) + (y0 - yc) * Math.cos(radians) + yc;
+    return { x: x1, y: y1 };
+  };
+
   // Transform coordinates from current rotation to 0 degrees
   const normalizeCoordinatesToZeroRotation = (
     point: { x: number, y: number },
@@ -99,43 +113,17 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
     const normalizedX = point.x / canvasWidth;
     const normalizedY = point.y / canvasHeight;
     
-    // Calculate center point
+    // Center of the normalized canvas
     const centerX = 0.5;
     const centerY = 0.5;
     
-    // Translate to origin (center of canvas)
-    const translatedX = normalizedX - centerX;
-    const translatedY = normalizedY - centerY;
-    
-    // Apply inverse rotation
-    let rotatedX, rotatedY;
-    
-    if (rotation === 90) {
-      // Inverse of 90 degrees is -90 degrees (or 270 degrees)
-      rotatedX = translatedY;
-      rotatedY = -translatedX;
-    } else if (rotation === 180) {
-      // Inverse of 180 degrees is -180 degrees (or 180 degrees)
-      rotatedX = -translatedX;
-      rotatedY = -translatedY;
-    } else if (rotation === 270) {
-      // Inverse of 270 degrees is -270 degrees (or 90 degrees)
-      rotatedX = -translatedY;
-      rotatedY = translatedX;
-    } else {
-      // No rotation (0 degrees)
-      rotatedX = translatedX;
-      rotatedY = translatedY;
-    }
-    
-    // Translate back from origin
-    const finalX = rotatedX + centerX;
-    const finalY = rotatedY + centerY;
+    // Apply inverse rotation (negative angle)
+    const rotated = rotatePoint(normalizedX, normalizedY, centerX, centerY, -rotation);
     
     // Ensure coordinates are within [0,1] range
     return {
-      x: Math.max(0, Math.min(1, finalX)),
-      y: Math.max(0, Math.min(1, finalY))
+      x: Math.max(0, Math.min(1, rotated.x)),
+      y: Math.max(0, Math.min(1, rotated.y))
     };
   };
 

@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { renderPin } from '../../utils/pinRenderer';
-import { RotationAngle } from '../../model/types/viewerSchema';
 import styles from './CompleteDrawings.module.scss';
 
 interface CompleteDrawingsProps {
@@ -19,57 +18,45 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
   
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;
+  console.log(state.drawings);
+  
   
   // Filter drawings for this page
   const pageDrawings = drawings.filter(drawing => drawing.pageNumber === pageNumber);
   const pageRectangles = rectangles.filter(rect => rect.pageNumber === pageNumber);
   const pagePins = pins.filter(pin => pin.pageNumber === pageNumber);
   
-  // Transform coordinates from 0 degrees to current rotation
+  // Function to rotate a point around the center
+  const rotatePoint = (
+    x0: number,
+    y0: number,
+    xc: number,
+    yc: number,
+    theta: number
+  ): { x: number; y: number } => {
+    const radians = (theta * Math.PI) / 180;
+    const x1 = (x0 - xc) * Math.cos(radians) - (y0 - yc) * Math.sin(radians) + xc;
+    const y1 = (x0 - xc) * Math.sin(radians) + (y0 - yc) * Math.cos(radians) + yc;
+    return { x: x1, y: y1 };
+  };
+
+  // Transform coordinates from scale 1 and rotation 0 to current scale and rotation
   const transformCoordinates = (
-    normalizedX: number, 
-    normalizedY: number, 
-    canvasWidth: number, 
-    canvasHeight: number,
-    drawingRotation: RotationAngle = 0
+    normalizedX: number,
+    normalizedY: number,
+    canvasWidth: number,
+    canvasHeight: number
   ): { x: number, y: number } => {
-    // Calculate center point
-    const centerX = 0.5;
-    const centerY = 0.5;
-    
-    // Translate to origin (center of canvas)
-    const translatedX = normalizedX - centerX;
-    const translatedY = normalizedY - centerY;
-    
-    // Apply rotation (from 0 degrees to current rotation)
-    let rotatedX, rotatedY;
-    
-    // Calculate the rotation to apply (current rotation - drawing rotation + 360) % 360
-    const rotationToApply = (rotation - drawingRotation + 360) % 360 as RotationAngle;
-    
-    if (rotationToApply === 90) {
-      rotatedX = -translatedY;
-      rotatedY = translatedX;
-    } else if (rotationToApply === 180) {
-      rotatedX = -translatedX;
-      rotatedY = -translatedY;
-    } else if (rotationToApply === 270) {
-      rotatedX = translatedY;
-      rotatedY = -translatedX;
-    } else {
-      // No rotation (0 degrees)
-      rotatedX = translatedX;
-      rotatedY = translatedY;
-    }
-    
-    // Translate back from origin and apply scale
-    const finalX = (rotatedX + centerX) * canvasWidth;
-    const finalY = (rotatedY + centerY) * canvasHeight;
-    
-    return { 
-      x: finalX, 
-      y: finalY 
-    };
+    // First, apply the current scale
+    const scaledX = normalizedX * canvasWidth;
+    const scaledY = normalizedY * canvasHeight;
+
+    // Center of the canvas
+    const centerX = canvasWidth / 2;
+    const centerY = canvasHeight / 2;
+
+    // Rotate the point around the center of the page
+    return rotatePoint(scaledX, scaledY, centerX, centerY, rotation);
   };
   
   // Render drawings on canvas
@@ -106,17 +93,13 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       
-      // Get the drawing's rotation (default to 0 if not specified)
-      const drawingRotation = drawing.rotation || 0;
-      
       // Start from the first point with rotation transformation
       const startPoint = drawing.points[0];
       const { x: startX, y: startY } = transformCoordinates(
         startPoint.x, 
         startPoint.y, 
         canvas.width, 
-        canvas.height,
-        drawingRotation
+        canvas.height
       );
       
       ctx.moveTo(startX, startY);
@@ -128,8 +111,7 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
           point.x, 
           point.y, 
           canvas.width, 
-          canvas.height,
-          drawingRotation
+          canvas.height
         );
         ctx.lineTo(x, y);
       }
@@ -143,24 +125,19 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
       ctx.strokeStyle = rect.color;
       ctx.lineWidth = rect.lineWidth * scale;
       
-      // Get the rectangle's rotation (default to 0 if not specified)
-      const rectRotation = (rect as any).rotation || 0;
-      
       // Transform rectangle points with rotation
       const { x: startX, y: startY } = transformCoordinates(
         rect.startPoint.x, 
         rect.startPoint.y, 
         canvas.width, 
-        canvas.height,
-        rectRotation
+        canvas.height
       );
       
       const { x: endX, y: endY } = transformCoordinates(
         rect.endPoint.x, 
         rect.endPoint.y, 
         canvas.width, 
-        canvas.height,
-        rectRotation
+        canvas.height
       );
       
       const width = endX - startX;
@@ -171,16 +148,12 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
     
     // Draw all pins
     pagePins.forEach(pin => {
-      // Get the pin's rotation (default to 0 if not specified)
-      const pinRotation = (pin as any).rotation || 0;
-      
       // Transform pin position with rotation
       const { x, y } = transformCoordinates(
         pin.position.x, 
         pin.position.y, 
         canvas.width, 
-        canvas.height,
-        pinRotation
+        canvas.height
       );
       
       // Use the pin renderer utility
