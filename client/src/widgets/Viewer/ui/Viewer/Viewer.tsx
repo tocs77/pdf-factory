@@ -42,40 +42,43 @@ const PdfViewerInternal = ({
   // Use a lower quality for thumbnails to improve performance
   const thumbnailQuality = Math.max(0.5, renderQuality * 0.5);
 
+  // Find the page element that's most visible in the viewport
+  const findVisiblePageElement = () => {
+    if (!pdfContainerRef.current) return null;
+    
+    const container = pdfContainerRef.current;
+    const containerRect = container.getBoundingClientRect();
+    
+    // Get all page elements
+    const pageElements = Array.from(container.querySelectorAll('[data-page-number]'));
+    let bestVisiblePage = null;
+    let bestVisibleArea = 0;
+    
+    for (const pageEl of pageElements) {
+      const pageRect = pageEl.getBoundingClientRect();
+      
+      // Calculate how much of the page is visible in the viewport
+      const visibleTop = Math.max(pageRect.top, containerRect.top);
+      const visibleBottom = Math.min(pageRect.bottom, containerRect.bottom);
+      
+      if (visibleBottom > visibleTop) {
+        const visibleArea = visibleBottom - visibleTop;
+        
+        if (visibleArea > bestVisibleArea) {
+          bestVisibleArea = visibleArea;
+          bestVisiblePage = pageEl;
+        }
+      }
+    }
+    
+    return bestVisiblePage;
+  };
+
   // Preserve scroll position when scale changes
   useEffect(() => {
     if (!pdfContainerRef.current || prevScaleRef.current === scale) return;
     
     const container = pdfContainerRef.current;
-    
-    // Find the page element that's most visible in the viewport
-    const findVisiblePageElement = () => {
-      const containerRect = container.getBoundingClientRect();
-      
-      // Get all page elements
-      const pageElements = container.querySelectorAll('[data-page-number]');
-      let bestVisiblePage: Element | null = null;
-      let bestVisibleArea = 0;
-      
-      pageElements.forEach((pageEl) => {
-        const pageRect = pageEl.getBoundingClientRect();
-        
-        // Calculate how much of the page is visible in the viewport
-        const visibleTop = Math.max(pageRect.top, containerRect.top);
-        const visibleBottom = Math.min(pageRect.bottom, containerRect.bottom);
-        
-        if (visibleBottom > visibleTop) {
-          const visibleArea = visibleBottom - visibleTop;
-          
-          if (visibleArea > bestVisibleArea) {
-            bestVisibleArea = visibleArea;
-            bestVisiblePage = pageEl;
-          }
-        }
-      });
-      
-      return bestVisiblePage;
-    };
     
     // Find the most visible page and its relative position
     const visiblePage = findVisiblePageElement();
@@ -212,6 +215,31 @@ const PdfViewerInternal = ({
     }
   };
 
+  // Update current page on scroll
+  useEffect(() => {
+    const container = pdfContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const visiblePage = findVisiblePageElement();
+      
+      if (visiblePage) {
+        const pageNumberAttr = visiblePage.getAttribute('data-page-number');
+        if (pageNumberAttr) {
+          const pageNumber = parseInt(pageNumberAttr, 10);
+          if (pageNumber !== selectedPage) {
+            setSelectedPage(pageNumber);
+          }
+        }
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+    };
+  }, [selectedPage]);
+
   // Show loading message or error
   if (isLoading || error) {
     return (
@@ -246,7 +274,7 @@ const PdfViewerInternal = ({
       )}
 
       <div className={classes.viewerContainer}>
-        <ViewerMenu renderQuality={renderQuality} currentPage={selectedPage} />
+        <ViewerMenu renderQuality={renderQuality} currentPage={selectedPage} totalPages={pages.length} />
 
         <div className={classes.pdfContainer} ref={pdfContainerRef}>
           <div className={classes.pdfContentWrapper}>

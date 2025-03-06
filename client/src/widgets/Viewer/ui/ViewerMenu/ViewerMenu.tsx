@@ -7,9 +7,10 @@ import classes from './ViewerMenu.module.scss';
 interface ViewerMenuProps {
   renderQuality: number;
   currentPage: number;
+  totalPages?: number;
 }
 
-export const ViewerMenu: React.FC<ViewerMenuProps> = ({ renderQuality, currentPage }) => {
+export const ViewerMenu: React.FC<ViewerMenuProps> = ({ renderQuality, currentPage, totalPages = 0 }) => {
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, drawingColor, drawingLineWidth, textLayerEnabled, drawingMode, drawings, rectangles, pins, showThumbnails, pageRotations } = state;
 
@@ -75,6 +76,11 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ renderQuality, currentPa
 
   return (
     <div className={classes.zoomControls}>
+      {/* Page counter */}
+      <div className={classes.pageCounter}>
+        <span>Page {currentPage} of {totalPages}</span>
+      </div>
+      
       {/* Thumbnail toggle button */}
       <button 
         className={classNames(classes.thumbnailToggle, { [classes.active]: showThumbnails }, [])}

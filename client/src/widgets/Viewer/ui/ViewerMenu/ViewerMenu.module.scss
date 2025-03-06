@@ -231,4 +231,17 @@
   color: #666;
   min-width: 30px;
   text-align: center;
+}
+
+.pageCounter {
+  display: flex;
+  align-items: center;
+  padding: 4px 10px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-size: 12px;
+  color: #333;
+  margin-right: 10px;
+  font-weight: 500;
 } 

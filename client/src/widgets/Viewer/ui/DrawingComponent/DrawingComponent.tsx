@@ -162,9 +162,6 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
       normalizeCoordinatesToZeroRotation(point, canvas.width, canvas.height, scale, rotation),
     );
 
-    console.log('currentPath', currentPath);
-    console.log('normalizedPath', normalizedPath);
-
     // Create a new drawing object with normalized coordinates
     const newDrawing = {
       points: normalizedPath,
