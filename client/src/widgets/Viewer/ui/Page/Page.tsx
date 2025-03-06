@@ -3,7 +3,7 @@ import type { PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import * as pdfjs from 'pdfjs-dist';
 import classes from './Page.module.scss';
 import { classNames } from '@/shared/utils';
-import DrawingComponent from '../DrawingComponent/DrawingComponent';
+import { DrawingComponent } from '../DrawingComponent/DrawingComponent';
 import DrawRect from '../DrawRect/DrawRect';
 import PinDrawingComponent from '../PinDrawingComponent/PinDrawingComponent';
 import CompleteDrawings from '../CompleteDrawings/CompleteDrawings';
@@ -227,14 +227,14 @@ export const Page = ({ page, scale, pageNumber, id, className }: PageProps) => {
 
       // Create viewport with rotation
       // For 90/270 degree rotations, we need to ensure the viewport maintains the correct aspect ratio
-      const viewport = page.getViewport({ 
-        scale, 
+      const viewport = page.getViewport({
+        scale,
         rotation,
         // Enable dontFlip to ensure consistent rendering across different rotations
-        dontFlip: false
+        dontFlip: false,
       });
       const canvas = canvasRef.current;
-      
+
       // Get the parent container for proper sizing
       const parent = canvas.parentElement;
       if (!parent) {
@@ -245,10 +245,10 @@ export const Page = ({ page, scale, pageNumber, id, className }: PageProps) => {
       // Apply quality multiplier to canvas dimensions for higher resolution rendering
       const outputScale = window.devicePixelRatio || 1;
       const totalScale = outputScale;
-      
+
       // Determine if we need to adjust for rotation (90 or 270 degrees)
       const isRotated90or270 = rotation === 90 || rotation === 270;
-      
+
       // Set display size based on viewport dimensions
       // For 90/270 degree rotations, we need to adjust the container to maintain aspect ratio
       if (isRotated90or270) {
@@ -256,7 +256,7 @@ export const Page = ({ page, scale, pageNumber, id, className }: PageProps) => {
         // Set the container dimensions to maintain the correct aspect ratio
         parent.style.width = `${Math.floor(viewport.width)}px`;
         parent.style.height = `${Math.floor(viewport.height)}px`;
-        
+
         // Set canvas dimensions to match viewport
         canvas.style.width = `${Math.floor(viewport.width)}px`;
         canvas.style.height = `${Math.floor(viewport.height)}px`;
@@ -553,7 +553,7 @@ export const Page = ({ page, scale, pageNumber, id, className }: PageProps) => {
   // Copy selected text
   const copySelectedText = () => {
     const selection = window.getSelection();
-    if (selection && selection.toString().trim()) {
+    if (selection?.toString().trim()) {
       navigator.clipboard.writeText(selection.toString());
 
       // Show feedback
@@ -620,7 +620,7 @@ export const Page = ({ page, scale, pageNumber, id, className }: PageProps) => {
           )}
 
           {/* Drawing components - only render when text layer is disabled */}
-          {!textLayerEnabled && (
+          {!textLayerEnabled && inView && (
             <>
               {drawingMode === 'freehand' && <DrawingComponent pageNumber={pageNumber} />}
               {drawingMode === 'rectangle' && <DrawRect pageNumber={pageNumber} />}
@@ -629,7 +629,7 @@ export const Page = ({ page, scale, pageNumber, id, className }: PageProps) => {
           )}
 
           {/* Always render completed drawings */}
-          <CompleteDrawings pageNumber={pageNumber} />
+          {inView && <CompleteDrawings pageNumber={pageNumber} />}
         </div>
       </div>
     </div>

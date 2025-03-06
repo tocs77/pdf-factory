@@ -11,13 +11,13 @@ interface DrawingComponentProps {
  * Component for handling freehand drawing
  * This component is only visible when text layer is disabled
  */
-const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }) => {
+export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }) => {
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, drawingColor, drawingLineWidth, textLayerEnabled, pageRotations } = state;
-  
+
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;
-  
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([]);
@@ -27,68 +27,68 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }) => {
   // Set up drawing canvas
   useEffect(() => {
     if (!canvasRef.current || textLayerEnabled) return;
-    
+
     const canvas = canvasRef.current;
-    
+
     // Set canvas dimensions based on parent container
     const parent = canvas.parentElement;
     if (parent) {
       // Use parent dimensions directly without any transforms
       canvas.width = parent.clientWidth;
       canvas.height = parent.clientHeight;
-      
+
       // Store current canvas dimensions at scale=1
       setCanvasDimensions({
         width: canvas.width / scale,
-        height: canvas.height / scale
+        height: canvas.height / scale,
       });
     } else {
       console.warn('No parent element found for canvas');
     }
-    
+
     // Clear canvas
     const ctx = canvas.getContext('2d');
     if (!ctx) {
       console.error('Could not get canvas context');
       return;
     }
-    
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }, [scale, textLayerEnabled, pageNumber, rotation]);
 
   // Set cursor to crosshair
   useEffect(() => {
     if (!canvasRef.current || textLayerEnabled) return;
-    
+
     const canvas = canvasRef.current;
-    
+
     const handleMouseEnter = () => {
       // Force the cursor to be a crosshair
       canvas.style.cursor = 'crosshair';
     };
-    
+
     canvas.addEventListener('mouseenter', handleMouseEnter);
-    
+
     return () => {
       canvas.removeEventListener('mouseenter', handleMouseEnter);
     };
   }, [textLayerEnabled]);
 
   // Get raw coordinates relative to canvas
-  const getRawCoordinates = (clientX: number, clientY: number): { x: number, y: number } => {
+  const getRawCoordinates = (clientX: number, clientY: number): { x: number; y: number } => {
     if (!canvasRef.current) return { x: 0, y: 0 };
-    
+
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    
+
     // Get mouse position relative to canvas
     let x = clientX - rect.left;
     let y = clientY - rect.top;
-    
+
     // Normalize coordinates to [0,1] range
     const normalizedX = x / rect.width;
     const normalizedY = y / rect.height;
-    
+
     // Apply rotation to coordinates
     if (rotation === 90) {
       x = normalizedY * canvas.width;
@@ -104,31 +104,31 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }) => {
       x = normalizedX * canvas.width;
       y = normalizedY * canvas.height;
     }
-    
+
     return { x, y };
   };
 
   // Transform coordinates from current rotation to 0 degrees
   const normalizeCoordinatesToZeroRotation = (
-    point: { x: number, y: number },
+    point: { x: number; y: number },
     canvasWidth: number,
-    canvasHeight: number
-  ): { x: number, y: number } => {
+    canvasHeight: number,
+  ): { x: number; y: number } => {
     // First normalize to [0,1] range
     const normalizedX = point.x / canvasWidth;
     const normalizedY = point.y / canvasHeight;
-    
+
     // Calculate center point
     const centerX = 0.5;
     const centerY = 0.5;
-    
+
     // Translate to origin (center of canvas)
     const translatedX = normalizedX - centerX;
     const translatedY = normalizedY - centerY;
-    
+
     // Apply inverse rotation
     let rotatedX, rotatedY;
-    
+
     if (rotation === 90) {
       // Inverse of 90 degrees is -90 degrees (or 270 degrees)
       rotatedX = translatedY;
@@ -146,15 +146,15 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }) => {
       rotatedX = translatedX;
       rotatedY = translatedY;
     }
-    
+
     // Translate back from origin
     const finalX = rotatedX + centerX;
     const finalY = rotatedY + centerY;
-    
+
     // Ensure coordinates are within [0,1] range
     return {
       x: Math.max(0, Math.min(1, finalX)),
-      y: Math.max(0, Math.min(1, finalY))
+      y: Math.max(0, Math.min(1, finalY)),
     };
   };
 
@@ -163,90 +163,87 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }) => {
     if (textLayerEnabled) {
       return;
     }
-    
+
     const canvas = canvasRef.current;
     if (!canvas) {
       return;
     }
-    
+
     // Get raw coordinates
     const { x, y } = getRawCoordinates(e.clientX, e.clientY);
-    
+
     // Update canvas dimensions
     setCanvasDimensions({
       width: canvas.width / scale,
-      height: canvas.height / scale
+      height: canvas.height / scale,
     });
-    
+
     setIsDrawing(true);
     setCurrentPath([{ x, y }]);
-    
+
     // Start drawing
     const ctx = canvas.getContext('2d');
     if (!ctx) {
       return;
     }
-    
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
+
     // Set up drawing style
     ctx.beginPath();
     ctx.strokeStyle = drawingColor;
     ctx.lineWidth = drawingLineWidth;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    
+
     // Start from the first point
     ctx.moveTo(x, y);
   };
-  
+
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing || textLayerEnabled) return;
-    
+
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
+
     // Get raw coordinates
     const { x, y } = getRawCoordinates(e.clientX, e.clientY);
-    
+
     // Add point to current path
-    setCurrentPath(prevPath => [...prevPath, { x, y }]);
-    
+    setCurrentPath((prevPath) => [...prevPath, { x, y }]);
+
     // Draw line
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    
+
     // Set up drawing style
     ctx.strokeStyle = drawingColor;
     ctx.lineWidth = drawingLineWidth;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    
+
     // Draw line to the new point
     ctx.lineTo(x, y);
     ctx.stroke();
   };
-  
+
   const endDrawing = () => {
     if (!isDrawing || textLayerEnabled || currentPath.length < 2) {
       setIsDrawing(false);
       setCurrentPath([]);
       return;
     }
-    
+
     const canvas = canvasRef.current;
     if (!canvas) {
       setIsDrawing(false);
       setCurrentPath([]);
       return;
     }
-    
+
     // Normalize the path to 0 degrees rotation
-    const normalizedPath = currentPath.map(point => 
-      normalizeCoordinatesToZeroRotation(point, canvas.width, canvas.height)
-    );
-    
+    const normalizedPath = currentPath.map((point) => normalizeCoordinatesToZeroRotation(point, canvas.width, canvas.height));
+
     // Create a new drawing object with normalized coordinates
     const newDrawing = {
       points: normalizedPath,
@@ -255,16 +252,16 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }) => {
       pageNumber,
       canvasDimensions: canvasDimensions || { width: 0, height: 0 },
       // Store the current rotation value
-      rotation: rotation as RotationAngle
+      rotation: rotation as RotationAngle,
     };
-    
+
     // Add the drawing to the context
     dispatch({ type: 'addDrawing', payload: newDrawing });
-    
+
     // Reset state
     setIsDrawing(false);
     setCurrentPath([]);
-    
+
     // Clear the canvas since the drawing will be rendered by the CompleteDrawings component
     if (canvas) {
       const ctx = canvas.getContext('2d');
@@ -282,9 +279,7 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }) => {
       onMouseMove={draw}
       onMouseUp={endDrawing}
       onMouseLeave={endDrawing}
-      data-testid="freehand-drawing-canvas"
+      data-testid='freehand-drawing-canvas'
     />
   );
 };
-
-export default DrawingComponent;
