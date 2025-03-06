@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { renderPin } from '../../utils/pinRenderer';
+import { transformCoordinates } from '../../utils/rotationUtils';
 import styles from './CompleteDrawings.module.scss';
 
 interface CompleteDrawingsProps {
@@ -23,28 +24,6 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
   const pageDrawings = drawings.filter((drawing) => drawing.pageNumber === pageNumber);
   const pageRectangles = rectangles.filter((rect) => rect.pageNumber === pageNumber);
   const pagePins = pins.filter((pin) => pin.pageNumber === pageNumber);
-
-  // Function to rotate a point around the center
-  const rotatePoint = (x0: number, y0: number, xc: number, yc: number, theta: number): { x: number; y: number } => {
-    const radians = (theta * Math.PI) / 180;
-    const x1 = (x0 - xc) * Math.cos(radians) - (y0 - yc) * Math.sin(radians) + xc;
-    const y1 = (x0 - xc) * Math.sin(radians) + (y0 - yc) * Math.cos(radians) + yc;
-    return { x: x1, y: y1 };
-  };
-
-  // Transform coordinates from scale 1 and rotation 0 to current scale and rotation
-  const transformCoordinates = (x: number, y: number, canvasWidth: number, canvasHeight: number): { x: number; y: number } => {
-    // Apply the current scale
-    const scaledX = x * scale;
-    const scaledY = y * scale;
-
-    // Center of the canvas
-    const centerX = canvasWidth / 2;
-    const centerY = canvasHeight / 2;
-
-    // Rotate the point around the center of the page
-    return rotatePoint(scaledX, scaledY, centerX, centerY, rotation);
-  };
 
   // Render drawings on canvas
   useEffect(() => {
@@ -82,14 +61,28 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
 
       // Start from the first point with rotation transformation
       const startPoint = drawing.points[0];
-      const { x: startX, y: startY } = transformCoordinates(startPoint.x, startPoint.y, canvas.width, canvas.height);
+      const { x: startX, y: startY } = transformCoordinates(
+        startPoint.x,
+        startPoint.y,
+        canvas.width,
+        canvas.height,
+        scale,
+        rotation
+      );
 
       ctx.moveTo(startX, startY);
 
       // Draw lines to each subsequent point with rotation transformation
       for (let i = 1; i < drawing.points.length; i++) {
         const point = drawing.points[i];
-        const { x, y } = transformCoordinates(point.x, point.y, canvas.width, canvas.height);
+        const { x, y } = transformCoordinates(
+          point.x, 
+          point.y, 
+          canvas.width, 
+          canvas.height,
+          scale,
+          rotation
+        );
         ctx.lineTo(x, y);
       }
 
@@ -103,9 +96,23 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
       ctx.lineWidth = rect.lineWidth * scale;
 
       // Transform rectangle points with rotation
-      const { x: startX, y: startY } = transformCoordinates(rect.startPoint.x, rect.startPoint.y, canvas.width, canvas.height);
+      const { x: startX, y: startY } = transformCoordinates(
+        rect.startPoint.x, 
+        rect.startPoint.y, 
+        canvas.width, 
+        canvas.height,
+        scale,
+        rotation
+      );
 
-      const { x: endX, y: endY } = transformCoordinates(rect.endPoint.x, rect.endPoint.y, canvas.width, canvas.height);
+      const { x: endX, y: endY } = transformCoordinates(
+        rect.endPoint.x, 
+        rect.endPoint.y, 
+        canvas.width, 
+        canvas.height,
+        scale,
+        rotation
+      );
 
       const width = endX - startX;
       const height = endY - startY;
@@ -116,7 +123,14 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
     // Draw all pins
     pagePins.forEach((pin) => {
       // Transform pin position with rotation
-      const { x, y } = transformCoordinates(pin.position.x, pin.position.y, canvas.width, canvas.height);
+      const { x, y } = transformCoordinates(
+        pin.position.x, 
+        pin.position.y, 
+        canvas.width, 
+        canvas.height,
+        scale,
+        rotation
+      );
 
       // Use the pin renderer utility
       renderPin(ctx, pin, x, y);

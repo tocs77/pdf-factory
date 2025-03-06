@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
-import { RotationAngle } from '../../model/types/viewerSchema';
+import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import styles from './DrawRect.module.scss';
 
 interface DrawRectProps {
@@ -22,8 +22,6 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
   const [endPoint, setEndPoint] = useState<{ x: number; y: number } | null>(null);
-  // Store canvas dimensions at the time of drawing
-  const [canvasDimensions, setCanvasDimensions] = useState<{ width: number; height: number } | null>(null);
 
   // Set up drawing canvas
   useEffect(() => {
@@ -37,12 +35,6 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
       // Use parent dimensions directly without any transforms
       canvas.width = parent.clientWidth;
       canvas.height = parent.clientHeight;
-      
-      // Store current canvas dimensions at scale=1
-      setCanvasDimensions({
-        width: canvas.width / scale,
-        height: canvas.height / scale
-      });
     } else {
       console.warn('No parent element found for canvas');
     }
@@ -89,38 +81,6 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
     return { x, y };
   };
 
-  // Function to rotate a point around the center
-  const rotatePoint = (
-    x0: number,
-    y0: number,
-    xc: number,
-    yc: number,
-    theta: number
-  ): { x: number; y: number } => {
-    const radians = (theta * Math.PI) / 180;
-    const x1 = (x0 - xc) * Math.cos(radians) - (y0 - yc) * Math.sin(radians) + xc;
-    const y1 = (x0 - xc) * Math.sin(radians) + (y0 - yc) * Math.cos(radians) + yc;
-    return { x: x1, y: y1 };
-  };
-
-  // Transform coordinates from current rotation to 0 degrees
-  const normalizeCoordinatesToZeroRotation = (
-    point: { x: number, y: number },
-    canvasWidth: number,
-    canvasHeight: number
-  ): { x: number, y: number } => {
-    // Convert to coordinates at scale 1
-    const scaleAdjustedX = point.x / scale;
-    const scaleAdjustedY = point.y / scale;
-    
-    // Center of the canvas at scale 1
-    const centerX = canvasWidth / (2 * scale);
-    const centerY = canvasHeight / (2 * scale);
-    
-    // Apply inverse rotation (negative angle)
-    return rotatePoint(scaleAdjustedX, scaleAdjustedY, centerX, centerY, -rotation);
-  };
-
   // Drawing handlers
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (textLayerEnabled) {
@@ -134,12 +94,6 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
     
     // Get raw coordinates
     const point = getRawCoordinates(e.clientX, e.clientY);
-    
-    // Update canvas dimensions
-    setCanvasDimensions({
-      width: canvas.width,
-      height: canvas.height
-    });
     
     setIsDrawing(true);
     setStartPoint(point);
@@ -196,13 +150,17 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
     const normalizedStartPoint = normalizeCoordinatesToZeroRotation(
       startPoint,
       canvas.width,
-      canvas.height
+      canvas.height,
+      scale,
+      rotation
     );
     
     const normalizedEndPoint = normalizeCoordinatesToZeroRotation(
       endPoint,
       canvas.width,
-      canvas.height
+      canvas.height,
+      scale,
+      rotation
     );
     
     // Create a new rectangle object with normalized coordinates
@@ -212,7 +170,6 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
       color: drawingColor,
       lineWidth: drawingLineWidth / scale, // Store line width at scale 1
       pageNumber,
-      rotation: rotation as RotationAngle, // Store the rotation at which the rectangle was created
     };
     
     // Add the rectangle to the context

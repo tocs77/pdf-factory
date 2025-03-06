@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
-import { RotationAngle } from '../../model/types/viewerSchema';
+import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import styles from './DrawingComponent.module.scss';
 
 interface DrawingComponentProps {
@@ -34,8 +34,6 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
       // Use parent dimensions directly without any transforms
       canvas.width = parent.clientWidth;
       canvas.height = parent.clientHeight;
-
-
     } else {
       console.warn('No parent element found for canvas');
     }
@@ -80,38 +78,6 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
     const y = clientY - rect.top;
 
     return { x, y };
-  };
-
-  // Function to rotate a point around the center
-  const rotatePoint = (
-    x0: number,
-    y0: number,
-    xc: number,
-    yc: number,
-    theta: number
-  ): { x: number; y: number } => {
-    const radians = (theta * Math.PI) / 180;
-    const x1 = (x0 - xc) * Math.cos(radians) - (y0 - yc) * Math.sin(radians) + xc;
-    const y1 = (x0 - xc) * Math.sin(radians) + (y0 - yc) * Math.cos(radians) + yc;
-    return { x: x1, y: y1 };
-  };
-
-  // Transform coordinates from current rotation and scale to normalized (scale 1, rotation 0)
-  const normalizeCoordinatesToZeroRotation = (
-    point: { x: number; y: number },
-    canvasWidth: number,
-    canvasHeight: number,
-  ): { x: number; y: number } => {
-    // Convert to coordinates at scale 1
-    const scaleAdjustedX = point.x / scale;
-    const scaleAdjustedY = point.y / scale;
-
-    // Center of the canvas at scale 1
-    const centerX = canvasWidth / (2 * scale);
-    const centerY = canvasHeight / (2 * scale);
-
-    // Apply inverse rotation (negative angle)
-    return rotatePoint(scaleAdjustedX, scaleAdjustedY, centerX, centerY, -rotation);
   };
 
   // Drawing handlers
@@ -192,7 +158,12 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
     }
 
     // Normalize the path to scale 1 and 0 degrees rotation
-    const normalizedPath = currentPath.map((point) => normalizeCoordinatesToZeroRotation(point, canvas.width, canvas.height));
+    const normalizedPath = currentPath.map((point) =>
+      normalizeCoordinatesToZeroRotation(point, canvas.width, canvas.height, scale, rotation),
+    );
+
+    console.log('currentPath', currentPath);
+    console.log('normalizedPath', normalizedPath);
 
     // Create a new drawing object with normalized coordinates
     const newDrawing = {
@@ -200,7 +171,6 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
       color: drawingColor,
       lineWidth: drawingLineWidth / scale, // Store line width at scale 1
       pageNumber,
-      rotation: rotation as RotationAngle, // Store the rotation at which the drawing was created
     };
 
     // Add the drawing to the context
