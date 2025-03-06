@@ -44,7 +44,7 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
     // Apply rotation (from 0 degrees to current rotation)
     let rotatedX, rotatedY;
     
-    // Calculate the rotation to apply (current rotation - drawing rotation)
+    // Calculate the rotation to apply (current rotation - drawing rotation + 360) % 360
     const rotationToApply = (rotation - drawingRotation + 360) % 360 as RotationAngle;
     
     if (rotationToApply === 90) {
@@ -62,7 +62,7 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
       rotatedY = translatedY;
     }
     
-    // Translate back from origin
+    // Translate back from origin and apply scale
     const finalX = (rotatedX + centerX) * canvasWidth;
     const finalY = (rotatedY + centerY) * canvasHeight;
     
@@ -102,12 +102,12 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
       
       ctx.beginPath();
       ctx.strokeStyle = drawing.color;
-      ctx.lineWidth = drawing.lineWidth * scale;
+      ctx.lineWidth = drawing.lineWidth * scale; // Apply current scale to line width
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       
       // Get the drawing's rotation (default to 0 if not specified)
-      const drawingRotation = (drawing as any).rotation || 0;
+      const drawingRotation = drawing.rotation || 0;
       
       // Start from the first point with rotation transformation
       const startPoint = drawing.points[0];

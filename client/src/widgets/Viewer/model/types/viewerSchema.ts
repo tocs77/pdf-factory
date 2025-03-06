@@ -12,6 +12,11 @@ export interface DrawingPath {
    * Used to properly position drawings when rendering at different scales.
    */
   canvasDimensions?: { width: number; height: number };
+  /**
+   * Rotation angle at which the drawing was created.
+   * Used to properly transform coordinates when rendering at different rotation angles.
+   */
+  rotation?: RotationAngle;
 }
 
 export interface Rectangle {
@@ -33,6 +38,11 @@ export interface Rectangle {
    * Used to properly position rectangles when rendering at different scales.
    */
   canvasDimensions?: { width: number; height: number };
+  /**
+   * Rotation angle at which the rectangle was created.
+   * Used to properly transform coordinates when rendering at different rotation angles.
+   */
+  rotation?: RotationAngle;
 }
 
 export interface Pin {
@@ -52,6 +62,11 @@ export interface Pin {
    * Used to properly position pins when rendering at different scales.
    */
   canvasDimensions?: { width: number; height: number };
+  /**
+   * Rotation angle at which the pin was created.
+   * Used to properly transform coordinates when rendering at different rotation angles.
+   */
+  rotation?: RotationAngle;
 }
 
 export type DrawingMode = 'freehand' | 'rectangle' | 'pin';

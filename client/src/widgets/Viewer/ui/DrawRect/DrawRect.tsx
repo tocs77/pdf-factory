@@ -83,28 +83,8 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
     const rect = canvas.getBoundingClientRect();
     
     // Get mouse position relative to canvas
-    let x = clientX - rect.left;
-    let y = clientY - rect.top;
-    
-    // Normalize coordinates to [0,1] range
-    const normalizedX = x / rect.width;
-    const normalizedY = y / rect.height;
-    
-    // Apply rotation to coordinates
-    if (rotation === 90) {
-      x = normalizedY * canvas.width;
-      y = (1 - normalizedX) * canvas.height;
-    } else if (rotation === 180) {
-      x = (1 - normalizedX) * canvas.width;
-      y = (1 - normalizedY) * canvas.height;
-    } else if (rotation === 270) {
-      x = (1 - normalizedY) * canvas.width;
-      y = normalizedX * canvas.height;
-    } else {
-      // No rotation (0 degrees)
-      x = normalizedX * canvas.width;
-      y = normalizedY * canvas.height;
-    }
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
     
     return { x, y };
   };
@@ -171,47 +151,47 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
     }
     
     // Get raw coordinates
-    const { x, y } = getRawCoordinates(e.clientX, e.clientY);
+    const point = getRawCoordinates(e.clientX, e.clientY);
     
     // Update canvas dimensions
     setCanvasDimensions({
-      width: canvas.width / scale,
-      height: canvas.height / scale
+      width: canvas.width,
+      height: canvas.height
     });
     
     setIsDrawing(true);
-    setStartPoint({ x, y });
-    setEndPoint({ x, y });
+    setStartPoint(point);
+    setEndPoint(point);
   };
   
   const drawRectangle = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing || textLayerEnabled || !startPoint) return;
     
+    // Get raw coordinates
+    const point = getRawCoordinates(e.clientX, e.clientY);
+    setEndPoint(point);
+    
+    // Draw rectangle
     const canvas = canvasRef.current;
     if (!canvas) return;
     
-    // Get raw coordinates
-    const { x, y } = getRawCoordinates(e.clientX, e.clientY);
-    
-    // Update end point
-    setEndPoint({ x, y });
-    
-    // Draw rectangle
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    // Clear the canvas
+    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Set up drawing style
+    // Draw rectangle
     ctx.beginPath();
     ctx.strokeStyle = drawingColor;
     ctx.lineWidth = drawingLineWidth;
-    
-    // Draw the rectangle
-    const width = x - startPoint.x;
-    const height = y - startPoint.y;
-    ctx.strokeRect(startPoint.x, startPoint.y, width, height);
+    ctx.rect(
+      startPoint.x,
+      startPoint.y,
+      point.x - startPoint.x,
+      point.y - startPoint.y
+    );
+    ctx.stroke();
   };
   
   const endDrawing = () => {
@@ -219,24 +199,6 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
       setIsDrawing(false);
       setStartPoint(null);
       setEndPoint(null);
-      return;
-    }
-    
-    // Only save if the rectangle has some size
-    if (Math.abs(endPoint.x - startPoint.x) < 5 || Math.abs(endPoint.y - startPoint.y) < 5) {
-      setIsDrawing(false);
-      setStartPoint(null);
-      setEndPoint(null);
-      
-      // Clear the canvas
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-      }
-      
       return;
     }
     
@@ -248,7 +210,7 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
       return;
     }
     
-    // Normalize the points to 0 degrees rotation
+    // Normalize coordinates to scale 1 and 0 degrees rotation
     const normalizedStartPoint = normalizeCoordinatesToZeroRotation(
       startPoint,
       canvas.width,
@@ -262,19 +224,17 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
     );
     
     // Create a new rectangle object with normalized coordinates
-    const newRect = {
+    const newRectangle = {
       startPoint: normalizedStartPoint,
       endPoint: normalizedEndPoint,
       color: drawingColor,
-      lineWidth: drawingLineWidth,
+      lineWidth: drawingLineWidth / scale, // Store line width at scale 1
       pageNumber,
-      canvasDimensions: canvasDimensions || { width: 0, height: 0 },
-      // Store the current rotation value
-      rotation: rotation as RotationAngle
+      rotation: rotation as RotationAngle, // Store the rotation at which the rectangle was created
     };
     
     // Add the rectangle to the context
-    dispatch({ type: 'addRectangle', payload: newRect });
+    dispatch({ type: 'addRectangle', payload: newRectangle });
     
     // Reset state
     setIsDrawing(false);

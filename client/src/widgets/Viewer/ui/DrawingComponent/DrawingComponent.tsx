@@ -22,7 +22,6 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([]);
   // Store canvas dimensions at the time of drawing
-  const [canvasDimensions, setCanvasDimensions] = useState<{ width: number; height: number } | null>(null);
 
   // Set up drawing canvas
   useEffect(() => {
@@ -37,11 +36,7 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
       canvas.width = parent.clientWidth;
       canvas.height = parent.clientHeight;
 
-      // Store current canvas dimensions at scale=1
-      setCanvasDimensions({
-        width: canvas.width / scale,
-        height: canvas.height / scale,
-      });
+
     } else {
       console.warn('No parent element found for canvas');
     }
@@ -82,33 +77,13 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
     const rect = canvas.getBoundingClientRect();
 
     // Get mouse position relative to canvas
-    let x = clientX - rect.left;
-    let y = clientY - rect.top;
-
-    // Normalize coordinates to [0,1] range
-    const normalizedX = x / rect.width;
-    const normalizedY = y / rect.height;
-
-    // Apply rotation to coordinates
-    if (rotation === 90) {
-      x = normalizedY * canvas.width;
-      y = (1 - normalizedX) * canvas.height;
-    } else if (rotation === 180) {
-      x = (1 - normalizedX) * canvas.width;
-      y = (1 - normalizedY) * canvas.height;
-    } else if (rotation === 270) {
-      x = (1 - normalizedY) * canvas.width;
-      y = normalizedX * canvas.height;
-    } else {
-      // No rotation (0 degrees)
-      x = normalizedX * canvas.width;
-      y = normalizedY * canvas.height;
-    }
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
 
     return { x, y };
   };
 
-  // Transform coordinates from current rotation to 0 degrees
+  // Transform coordinates from current rotation and scale to normalized (scale 1, rotation 0)
   const normalizeCoordinatesToZeroRotation = (
     point: { x: number; y: number },
     canvasWidth: number,
@@ -172,11 +147,6 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
     // Get raw coordinates
     const { x, y } = getRawCoordinates(e.clientX, e.clientY);
 
-    // Update canvas dimensions
-    setCanvasDimensions({
-      width: canvas.width / scale,
-      height: canvas.height / scale,
-    });
 
     setIsDrawing(true);
     setCurrentPath([{ x, y }]);
@@ -241,18 +211,16 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
       return;
     }
 
-    // Normalize the path to 0 degrees rotation
+    // Normalize the path to scale 1 and 0 degrees rotation
     const normalizedPath = currentPath.map((point) => normalizeCoordinatesToZeroRotation(point, canvas.width, canvas.height));
 
     // Create a new drawing object with normalized coordinates
     const newDrawing = {
       points: normalizedPath,
       color: drawingColor,
-      lineWidth: drawingLineWidth,
+      lineWidth: drawingLineWidth / scale, // Store line width at scale 1
       pageNumber,
-      canvasDimensions: canvasDimensions || { width: 0, height: 0 },
-      // Store the current rotation value
-      rotation: rotation as RotationAngle,
+      rotation: rotation as RotationAngle, // Store the rotation at which the drawing was created
     };
 
     // Add the drawing to the context

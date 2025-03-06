@@ -80,28 +80,8 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber })
     const rect = canvas.getBoundingClientRect();
     
     // Get mouse position relative to canvas
-    let x = clientX - rect.left;
-    let y = clientY - rect.top;
-    
-    // Normalize coordinates to [0,1] range
-    const normalizedX = x / rect.width;
-    const normalizedY = y / rect.height;
-    
-    // Apply rotation to coordinates
-    if (rotation === 90) {
-      x = normalizedY * canvas.width;
-      y = (1 - normalizedX) * canvas.height;
-    } else if (rotation === 180) {
-      x = (1 - normalizedX) * canvas.width;
-      y = (1 - normalizedY) * canvas.height;
-    } else if (rotation === 270) {
-      x = (1 - normalizedY) * canvas.width;
-      y = normalizedX * canvas.height;
-    } else {
-      // No rotation (0 degrees)
-      x = normalizedX * canvas.width;
-      y = normalizedY * canvas.height;
-    }
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
     
     return { x, y };
   };
@@ -168,30 +148,34 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber })
     }
     
     // Get raw coordinates
-    const { x, y } = getRawCoordinates(e.clientX, e.clientY);
+    const point = getRawCoordinates(e.clientX, e.clientY);
     
     // Update canvas dimensions
     setCanvasDimensions({
-      width: canvas.width / scale,
-      height: canvas.height / scale
+      width: canvas.width,
+      height: canvas.height
     });
     
-    // Normalize the point to 0 degrees rotation
+    // Normalize coordinates to scale 1 and 0 degrees rotation
     const normalizedPoint = normalizeCoordinatesToZeroRotation(
-      { x, y },
+      point,
       canvas.width,
       canvas.height
     );
     
+    // Prompt for pin text
+    const text = prompt('Enter pin text:');
+    if (!text) {
+      return;
+    }
+    
     // Create a new pin object with normalized coordinates
     const newPin = {
       position: normalizedPoint,
-      text: '',
+      text,
       color: drawingColor,
       pageNumber,
-      canvasDimensions: canvasDimensions || { width: 0, height: 0 },
-      // Store the current rotation value
-      rotation: rotation as RotationAngle
+      rotation: rotation as RotationAngle, // Store the rotation at which the pin was created
     };
     
     // Add the pin to the context
