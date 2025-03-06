@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState, useContext } from 'react';
+import React, { useEffect, useRef, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
-import { Pin } from '../../model/types/viewerSchema';
+import { RotationAngle } from '../../model/types/viewerSchema';
 import styles from './PinDrawingComponent.module.scss';
 
 interface PinDrawingComponentProps {
@@ -8,41 +8,37 @@ interface PinDrawingComponentProps {
 }
 
 /**
- * Component for handling the pin annotation process
- * This component is only visible when text layer is disabled and pin mode is active
+ * Component for handling pin drawing
+ * This component is only visible when text layer is disabled
  */
-const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({
-  pageNumber
-}) => {
+const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber }) => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, textLayerEnabled, drawingMode, pageRotations } = state;
+  const { scale, drawingColor, textLayerEnabled, pageRotations } = state;
   
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [showTextInput, setShowTextInput] = useState(false);
-  const [pinText, setPinText] = useState('');
-  const [pinPosition, setPinPosition] = useState<{ x: number; y: number } | null>(null);
-  const [canvasDimensions, setCanvasDimensions] = useState<{ width: number; height: number } | null>(null);
-  const textInputRef = useRef<HTMLInputElement>(null);
+  // Store canvas dimensions at the time of drawing
+  const [canvasDimensions, setCanvasDimensions] = React.useState<{ width: number; height: number } | null>(null);
 
-  // Set up canvas
+  // Set up drawing canvas
   useEffect(() => {
-    if (!canvasRef.current || textLayerEnabled || drawingMode !== 'pin') return;
+    if (!canvasRef.current || textLayerEnabled) return;
     
     const canvas = canvasRef.current;
     
     // Set canvas dimensions based on parent container
     const parent = canvas.parentElement;
     if (parent) {
+      // Use parent dimensions directly without any transforms
       canvas.width = parent.clientWidth;
       canvas.height = parent.clientHeight;
       
       // Store current canvas dimensions at scale=1
       setCanvasDimensions({
-        width: parent.clientWidth / scale,
-        height: parent.clientHeight / scale
+        width: canvas.width / scale,
+        height: canvas.height / scale
       });
     } else {
       console.warn('No parent element found for canvas');
@@ -56,36 +52,17 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({
     }
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Apply rotation transformation if needed
-    if (rotation !== 0) {
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height / 2;
-      
-      ctx.save();
-      ctx.translate(centerX, centerY);
-      ctx.rotate((rotation * Math.PI) / 180);
-      
-      // If rotated 90 or 270 degrees, we need to adjust for the aspect ratio change
-      if (rotation === 90 || rotation === 270) {
-        ctx.translate(-centerY, -centerX);
-      } else {
-        ctx.translate(-centerX, -centerY);
-      }
-      
-      ctx.restore();
-    }
-  }, [scale, textLayerEnabled, pageNumber, drawingMode, rotation]);
+  }, [scale, textLayerEnabled, pageNumber, rotation]);
 
-  // Set cursor to pointer
+  // Set cursor to crosshair
   useEffect(() => {
-    if (!canvasRef.current || textLayerEnabled || drawingMode !== 'pin') return;
+    if (!canvasRef.current || textLayerEnabled) return;
     
     const canvas = canvasRef.current;
     
     const handleMouseEnter = () => {
-      // Force the cursor to be a pointer
-      canvas.style.cursor = 'pointer';
+      // Force the cursor to be a crosshair
+      canvas.style.cursor = 'crosshair';
     };
     
     canvas.addEventListener('mouseenter', handleMouseEnter);
@@ -93,18 +70,95 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({
     return () => {
       canvas.removeEventListener('mouseenter', handleMouseEnter);
     };
-  }, [textLayerEnabled, drawingMode]);
+  }, [textLayerEnabled]);
 
-  // Focus text input when it appears
-  useEffect(() => {
-    if (showTextInput && textInputRef.current) {
-      textInputRef.current.focus();
+  // Get raw coordinates relative to canvas
+  const getRawCoordinates = (clientX: number, clientY: number): { x: number, y: number } => {
+    if (!canvasRef.current) return { x: 0, y: 0 };
+    
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    
+    // Get mouse position relative to canvas
+    let x = clientX - rect.left;
+    let y = clientY - rect.top;
+    
+    // Normalize coordinates to [0,1] range
+    const normalizedX = x / rect.width;
+    const normalizedY = y / rect.height;
+    
+    // Apply rotation to coordinates
+    if (rotation === 90) {
+      x = normalizedY * canvas.width;
+      y = (1 - normalizedX) * canvas.height;
+    } else if (rotation === 180) {
+      x = (1 - normalizedX) * canvas.width;
+      y = (1 - normalizedY) * canvas.height;
+    } else if (rotation === 270) {
+      x = (1 - normalizedY) * canvas.width;
+      y = normalizedX * canvas.height;
+    } else {
+      // No rotation (0 degrees)
+      x = normalizedX * canvas.width;
+      y = normalizedY * canvas.height;
     }
-  }, [showTextInput]);
+    
+    return { x, y };
+  };
 
-  // Handle canvas click to place a pin
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (textLayerEnabled || drawingMode !== 'pin') {
+  // Transform coordinates from current rotation to 0 degrees
+  const normalizeCoordinatesToZeroRotation = (
+    point: { x: number, y: number },
+    canvasWidth: number,
+    canvasHeight: number
+  ): { x: number, y: number } => {
+    // First normalize to [0,1] range
+    const normalizedX = point.x / canvasWidth;
+    const normalizedY = point.y / canvasHeight;
+    
+    // Calculate center point
+    const centerX = 0.5;
+    const centerY = 0.5;
+    
+    // Translate to origin (center of canvas)
+    const translatedX = normalizedX - centerX;
+    const translatedY = normalizedY - centerY;
+    
+    // Apply inverse rotation
+    let rotatedX, rotatedY;
+    
+    if (rotation === 90) {
+      // Inverse of 90 degrees is -90 degrees (or 270 degrees)
+      rotatedX = translatedY;
+      rotatedY = -translatedX;
+    } else if (rotation === 180) {
+      // Inverse of 180 degrees is -180 degrees (or 180 degrees)
+      rotatedX = -translatedX;
+      rotatedY = -translatedY;
+    } else if (rotation === 270) {
+      // Inverse of 270 degrees is -270 degrees (or 90 degrees)
+      rotatedX = -translatedY;
+      rotatedY = translatedX;
+    } else {
+      // No rotation (0 degrees)
+      rotatedX = translatedX;
+      rotatedY = translatedY;
+    }
+    
+    // Translate back from origin
+    const finalX = rotatedX + centerX;
+    const finalY = rotatedY + centerY;
+    
+    // Ensure coordinates are within [0,1] range
+    return {
+      x: Math.max(0, Math.min(1, finalX)),
+      y: Math.max(0, Math.min(1, finalY))
+    };
+  };
+
+  // Handle pin placement
+  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (textLayerEnabled) {
       return;
     }
     
@@ -113,124 +167,44 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({
       return;
     }
     
-    const rect = canvas.getBoundingClientRect();
-    let x = e.clientX - rect.left;
-    let y = e.clientY - rect.top;
+    // Get raw coordinates
+    const { x, y } = getRawCoordinates(e.clientX, e.clientY);
     
-    // Adjust coordinates for rotation
-    if (rotation !== 0) {
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height / 2;
-      
-      // Translate to origin
-      const translatedX = x - centerX;
-      const translatedY = y - centerY;
-      
-      // Rotate in the opposite direction
-      const angleRad = (-rotation * Math.PI) / 180;
-      const rotatedX = translatedX * Math.cos(angleRad) - translatedY * Math.sin(angleRad);
-      const rotatedY = translatedX * Math.sin(angleRad) + translatedY * Math.cos(angleRad);
-      
-      // Translate back
-      x = rotatedX + centerX;
-      y = rotatedY + centerY;
-      
-      // Adjust for aspect ratio change in 90/270 degree rotations
-      if (rotation === 90 || rotation === 270) {
-        // Swap x and y coordinates
-        [x, y] = [y, x];
-      }
-    }
+    // Update canvas dimensions
+    setCanvasDimensions({
+      width: canvas.width / scale,
+      height: canvas.height / scale
+    });
     
-    // Update canvas dimensions if they've changed
-    const parent = canvas.parentElement;
-    if (parent) {
-      setCanvasDimensions({
-        width: parent.clientWidth / scale,
-        height: parent.clientHeight / scale
-      });
-    }
+    // Normalize the point to 0 degrees rotation
+    const normalizedPoint = normalizeCoordinatesToZeroRotation(
+      { x, y },
+      canvas.width,
+      canvas.height
+    );
     
-    // Store the position where the pin will be placed
-    setPinPosition({ x, y });
-    setShowTextInput(true);
-  };
-
-  // Handle text input submission
-  const handleTextSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!pinPosition || !canvasDimensions) {
-      return;
-    }
-    
-    // Create a new pin
-    const newPin: Pin = {
-      position: {
-        // Normalize coordinates to scale=1
-        x: pinPosition.x / scale,
-        y: pinPosition.y / scale
-      },
-      text: pinText,
+    // Create a new pin object with normalized coordinates
+    const newPin = {
+      position: normalizedPoint,
+      text: '',
       color: drawingColor,
       pageNumber,
-      canvasDimensions
+      canvasDimensions: canvasDimensions || { width: 0, height: 0 },
+      // Store the current rotation value
+      rotation: rotation as RotationAngle
     };
     
     // Add the pin to the context
     dispatch({ type: 'addPin', payload: newPin });
-    
-    // Reset state
-    setPinText('');
-    setPinPosition(null);
-    setShowTextInput(false);
   };
-
-  // Handle cancel
-  const handleCancel = () => {
-    setPinText('');
-    setPinPosition(null);
-    setShowTextInput(false);
-  };
-
-  // Only render if in pin mode and text layer is disabled
-  if (textLayerEnabled || drawingMode !== 'pin') {
-    return null;
-  }
 
   return (
-    <div className={styles.pinDrawingContainer}>
-      <canvas
-        ref={canvasRef}
-        className={styles.pinCanvas}
-        onClick={handleCanvasClick}
-      />
-      
-      {showTextInput && pinPosition && (
-        <div 
-          className={styles.textInputContainer}
-          style={{
-            left: pinPosition.x,
-            top: pinPosition.y
-          }}
-        >
-          <form onSubmit={handleTextSubmit}>
-            <input
-              ref={textInputRef}
-              type="text"
-              value={pinText}
-              onChange={(e) => setPinText(e.target.value)}
-              placeholder="Enter pin text..."
-              className={styles.pinTextInput}
-            />
-            <div className={styles.buttonContainer}>
-              <button type="submit" className={styles.submitButton}>Add</button>
-              <button type="button" className={styles.cancelButton} onClick={handleCancel}>Cancel</button>
-            </div>
-          </form>
-        </div>
-      )}
-    </div>
+    <canvas
+      ref={canvasRef}
+      className={styles.pinCanvas}
+      onClick={handleClick}
+      data-testid="pin-drawing-canvas"
+    />
   );
 };
 

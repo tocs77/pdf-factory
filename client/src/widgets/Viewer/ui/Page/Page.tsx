@@ -18,16 +18,10 @@ interface PageProps {
   className?: string;
 }
 
-export const Page = ({
-  page,
-  scale,
-  pageNumber,
-  id,
-  className,
-}: PageProps) => {
+export const Page = ({ page, scale, pageNumber, id, className }: PageProps) => {
   const { state } = useContext(ViewerContext);
   const { textLayerEnabled, drawingMode, pageRotations } = state;
-  
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -38,7 +32,7 @@ export const Page = ({
   const [hasRendered, setHasRendered] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
-  
+
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;
 
@@ -219,6 +213,7 @@ export const Page = ({
     };
   }, [showCopyButton]);
 
+  // Set up drawing canvas
   useEffect(() => {
     let isMounted = true;
     let renderTask: ReturnType<typeof page.render> | null = null;
@@ -275,6 +270,12 @@ export const Page = ({
       canvas.width = Math.floor(viewport.width * totalScale);
       canvas.height = Math.floor(viewport.height * totalScale);
 
+      // Ensure canvasWrapper has the same dimensions as the canvas
+      if (canvasWrapperRef.current) {
+        canvasWrapperRef.current.style.width = canvas.style.width;
+        canvasWrapperRef.current.style.height = canvas.style.height;
+      }
+
       // Get context and scale it
       const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
       ctx.scale(totalScale, totalScale);
@@ -287,7 +288,7 @@ export const Page = ({
       try {
         renderTask = page.render(renderContext);
         await renderTask.promise;
-        
+
         // Render text layer if enabled
         if (textLayerEnabled && textLayerRef.current) {
           const textLayerDiv = textLayerRef.current;
@@ -344,18 +345,18 @@ export const Page = ({
                   if (item.type?.startsWith('beginMarkedContent')) {
                     return false;
                   }
-                  
+
                   // Skip endMarkedContent items as well
                   if (item.type === 'endMarkedContent') {
                     return false;
                   }
-  
+
                   // Ensure items have string content
                   // Allow whitespace strings if they have valid transform data
                   if (item.str === undefined) {
                     return false;
                   }
-                  
+
                   // Only filter out completely empty strings, not whitespace
                   if (item.str === '') {
                     return false;
@@ -365,11 +366,11 @@ export const Page = ({
                   if (!item.transform) {
                     return false;
                   }
-                  
+
                   if (item.transform.length < 6) {
                     return false;
                   }
-                  
+
                   return true;
                 })
                 .map((item: TextItem) => {
@@ -390,7 +391,7 @@ export const Page = ({
                     const textDiv = document.createElement('span');
                     if (item.str) {
                       textDiv.textContent = item.str;
-                      
+
                       // Add special handling for whitespace-only strings
                       if (item.str.trim() === '' && item.str.length > 0) {
                         // Ensure whitespace has a minimum width
@@ -454,38 +455,38 @@ export const Page = ({
                     try {
                       // Transform coordinates
                       const tx = pdfjs.Util.transform(viewport.transform, item.transform);
-                      
+
                       if (!tx || tx.length < 6) return null;
-                      
+
                       // Create a simple text element
                       const textDiv = document.createElement('span');
                       textDiv.textContent = item.str || '';
                       textDiv.style.position = 'absolute';
-                      
+
                       // Position it based on the transform
                       const fontHeight = Math.sqrt(tx[2] * tx[2] + tx[3] * tx[3]);
                       textDiv.style.left = `${tx[4]}px`;
                       textDiv.style.top = `${tx[5] - fontHeight}px`;
                       textDiv.style.fontSize = `${fontHeight}px`;
                       textDiv.style.fontFamily = 'sans-serif';
-                      
+
                       return textDiv;
                     } catch (_err) {
                       return null;
                     }
                   })
-                  .filter(item => item !== null);
-                
+                  .filter((item) => item !== null);
+
                 // Use the fallback items instead
                 if (fallbackItems.length > 0) {
                   // Create a document fragment for better performance
                   const fragment = document.createDocumentFragment();
-                  
+
                   // Append all fallback items
                   for (const item of fallbackItems) {
                     if (item) fragment.appendChild(item);
                   }
-                  
+
                   // Append to the text layer
                   if (textLayerDiv && isMounted) {
                     textLayerDiv.appendChild(fragment);
@@ -494,12 +495,12 @@ export const Page = ({
               } else {
                 // Create a document fragment for better performance
                 const fragment = document.createDocumentFragment();
-  
+
                 // Use for...of instead of forEach
                 for (const item of textItems) {
                   if (item) fragment.appendChild(item);
                 }
-  
+
                 // Append all text items to the text layer at once
                 if (textLayerDiv && isMounted) {
                   textLayerDiv.appendChild(fragment);
@@ -518,7 +519,7 @@ export const Page = ({
             }
           }
         }
-        
+
         if (isMounted) {
           setHasRendered(true);
         }
@@ -554,7 +555,7 @@ export const Page = ({
     const selection = window.getSelection();
     if (selection && selection.toString().trim()) {
       navigator.clipboard.writeText(selection.toString());
-      
+
       // Show feedback
       const button = document.querySelector(`.${classes.copyButton}`);
       if (button) {
@@ -569,47 +570,36 @@ export const Page = ({
   };
 
   return (
-    <div
-      ref={containerRef}
-      className={classNames(classes.pageContainer, {}, [className])}
-      id={id}
-      data-page-number={pageNumber}
-      style={{
-        // Apply special styles for rotated pages to maintain aspect ratio
-        ...(rotation === 90 || rotation === 270 ? {
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-        } : {})
-      }}
-    >
-      <div 
-        ref={pageRef} 
+    <div ref={containerRef} className={classNames(classes.pageContainer, {}, [className])} id={id} data-page-number={pageNumber}>
+      <div
+        ref={pageRef}
         className={classes.page}
         style={{
           // Ensure the page container adapts to rotation
-          ...(rotation === 90 || rotation === 270 ? {
-            width: 'auto',
-            height: 'auto',
-          } : {})
-        }}
-      >
-        <div 
-          ref={canvasWrapperRef} 
+          ...(rotation === 90 || rotation === 270
+            ? {
+                width: 'auto',
+                height: 'auto',
+              }
+            : {}),
+        }}>
+        <div
+          ref={canvasWrapperRef}
           className={classes.canvasWrapper}
           style={{
             // Ensure the canvas wrapper adapts to rotation
-            ...(rotation === 90 || rotation === 270 ? {
-              width: 'auto',
-              height: 'auto',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-            } : {})
-          }}
-        >
+            ...(rotation === 90 || rotation === 270
+              ? {
+                  width: 'auto',
+                  height: 'auto',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }
+              : {}),
+          }}>
           <canvas ref={canvasRef} className={classes.pageCanvas} />
-          
+
           {textLayerEnabled && (
             <div
               ref={textLayerRef}
@@ -622,13 +612,13 @@ export const Page = ({
               }}
             />
           )}
-          
+
           {showCopyButton && (
             <button className={classes.copyButton} onClick={copySelectedText}>
               Copy
             </button>
           )}
-          
+
           {/* Drawing components - only render when text layer is disabled */}
           {!textLayerEnabled && (
             <>
@@ -637,9 +627,9 @@ export const Page = ({
               {drawingMode === 'pin' && <PinDrawingComponent pageNumber={pageNumber} />}
             </>
           )}
-          
+
           {/* Always render completed drawings */}
-          <CompleteDrawings pageNumber={pageNumber} scale={scale} rotation={rotation} />
+          <CompleteDrawings pageNumber={pageNumber} />
         </div>
       </div>
     </div>

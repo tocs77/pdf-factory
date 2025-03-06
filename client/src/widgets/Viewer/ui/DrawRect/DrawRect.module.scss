@@ -1,4 +1,4 @@
-.rectCanvas {
+.drawingCanvas {
   position: absolute;
   top: 0;
   left: 0;
@@ -6,4 +6,6 @@
   height: 100%;
   z-index: 3; // Above the page content and text layer
   cursor: crosshair;
+  background-color: transparent;
+  pointer-events: auto;
 } 
