@@ -56,6 +56,9 @@ export interface Pin {
 
 export type DrawingMode = 'freehand' | 'rectangle' | 'pin';
 
+// Valid rotation angles: 0, 90, 180, 270 degrees
+export type RotationAngle = 0 | 90 | 180 | 270;
+
 export interface ViewerSchema {
   scale: number;
   drawingColor: string;
@@ -66,6 +69,8 @@ export interface ViewerSchema {
   rectangles: Rectangle[];
   pins: Pin[];
   showThumbnails: boolean;
+  // Map of page numbers to rotation angles
+  pageRotations: Record<number, RotationAngle>;
 }
 
 export type Action = 
@@ -80,4 +85,6 @@ export type Action =
   | { type: 'clearDrawings'; payload?: number } // Optional page number, if not provided clear all
   | { type: 'clearRectangles'; payload?: number } // Optional page number, if not provided clear all
   | { type: 'clearPins'; payload?: number } // Optional page number, if not provided clear all
-  | { type: 'toggleThumbnails' };
+  | { type: 'toggleThumbnails' }
+  | { type: 'rotatePageClockwise'; payload: number } // Page number to rotate
+  | { type: 'rotatePageCounterClockwise'; payload: number }; // Page number to rotate

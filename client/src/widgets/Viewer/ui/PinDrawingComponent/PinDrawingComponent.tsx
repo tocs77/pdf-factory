@@ -15,7 +15,10 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({
   pageNumber
 }) => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, textLayerEnabled, drawingMode } = state;
+  const { scale, drawingColor, textLayerEnabled, drawingMode, pageRotations } = state;
+  
+  // Get the rotation angle for this page
+  const rotation = pageRotations[pageNumber] || 0;
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [showTextInput, setShowTextInput] = useState(false);
@@ -53,7 +56,26 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({
     }
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }, [scale, textLayerEnabled, pageNumber, drawingMode]);
+    
+    // Apply rotation transformation if needed
+    if (rotation !== 0) {
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate((rotation * Math.PI) / 180);
+      
+      // If rotated 90 or 270 degrees, we need to adjust for the aspect ratio change
+      if (rotation === 90 || rotation === 270) {
+        ctx.translate(-centerY, -centerX);
+      } else {
+        ctx.translate(-centerX, -centerY);
+      }
+      
+      ctx.restore();
+    }
+  }, [scale, textLayerEnabled, pageNumber, drawingMode, rotation]);
 
   // Set cursor to pointer
   useEffect(() => {
@@ -92,8 +114,33 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({
     }
     
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    let x = e.clientX - rect.left;
+    let y = e.clientY - rect.top;
+    
+    // Adjust coordinates for rotation
+    if (rotation !== 0) {
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      
+      // Translate to origin
+      const translatedX = x - centerX;
+      const translatedY = y - centerY;
+      
+      // Rotate in the opposite direction
+      const angleRad = (-rotation * Math.PI) / 180;
+      const rotatedX = translatedX * Math.cos(angleRad) - translatedY * Math.sin(angleRad);
+      const rotatedY = translatedX * Math.sin(angleRad) + translatedY * Math.cos(angleRad);
+      
+      // Translate back
+      x = rotatedX + centerX;
+      y = rotatedY + centerY;
+      
+      // Adjust for aspect ratio change in 90/270 degree rotations
+      if (rotation === 90 || rotation === 270) {
+        // Swap x and y coordinates
+        [x, y] = [y, x];
+      }
+    }
     
     // Update canvas dimensions if they've changed
     const parent = canvas.parentElement;

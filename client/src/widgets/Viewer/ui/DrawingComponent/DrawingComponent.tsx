@@ -14,7 +14,10 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({
   pageNumber
 }) => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, textLayerEnabled } = state;
+  const { scale, drawingColor, drawingLineWidth, textLayerEnabled, pageRotations } = state;
+  
+  // Get the rotation angle for this page
+  const rotation = pageRotations[pageNumber] || 0;
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -51,7 +54,26 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({
     }
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }, [scale, textLayerEnabled, pageNumber]);
+    
+    // Apply rotation transformation if needed
+    if (rotation !== 0) {
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate((rotation * Math.PI) / 180);
+      
+      // If rotated 90 or 270 degrees, we need to adjust for the aspect ratio change
+      if (rotation === 90 || rotation === 270) {
+        ctx.translate(-centerY, -centerX);
+      } else {
+        ctx.translate(-centerX, -centerY);
+      }
+      
+      ctx.restore();
+    }
+  }, [scale, textLayerEnabled, pageNumber, rotation]);
 
   // Set cursor to crosshair
   useEffect(() => {
@@ -83,8 +105,33 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({
     }
     
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    let x = e.clientX - rect.left;
+    let y = e.clientY - rect.top;
+    
+    // Adjust coordinates for rotation
+    if (rotation !== 0) {
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      
+      // Translate to origin
+      const translatedX = x - centerX;
+      const translatedY = y - centerY;
+      
+      // Rotate in the opposite direction
+      const angleRad = (-rotation * Math.PI) / 180;
+      const rotatedX = translatedX * Math.cos(angleRad) - translatedY * Math.sin(angleRad);
+      const rotatedY = translatedX * Math.sin(angleRad) + translatedY * Math.cos(angleRad);
+      
+      // Translate back
+      x = rotatedX + centerX;
+      y = rotatedY + centerY;
+      
+      // Adjust for aspect ratio change in 90/270 degree rotations
+      if (rotation === 90 || rotation === 270) {
+        // Swap x and y coordinates
+        [x, y] = [y, x];
+      }
+    }
     
     // Update canvas dimensions
     const parent = canvas.parentElement;
@@ -104,6 +151,23 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({
       return;
     }
     
+    // Apply rotation transformation if needed
+    if (rotation !== 0) {
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate((rotation * Math.PI) / 180);
+      
+      // If rotated 90 or 270 degrees, we need to adjust for the aspect ratio change
+      if (rotation === 90 || rotation === 270) {
+        ctx.translate(-centerY, -centerX);
+      } else {
+        ctx.translate(-centerX, -centerY);
+      }
+    }
+    
     ctx.beginPath();
     ctx.moveTo(x, y);
     ctx.strokeStyle = drawingColor;
@@ -111,6 +175,10 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({
     ctx.lineWidth = drawingLineWidth * scale;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    
+    if (rotation !== 0) {
+      ctx.restore();
+    }
   };
   
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -120,8 +188,33 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({
     if (!canvas) return;
     
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    let x = e.clientX - rect.left;
+    let y = e.clientY - rect.top;
+    
+    // Adjust coordinates for rotation
+    if (rotation !== 0) {
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      
+      // Translate to origin
+      const translatedX = x - centerX;
+      const translatedY = y - centerY;
+      
+      // Rotate in the opposite direction
+      const angleRad = (-rotation * Math.PI) / 180;
+      const rotatedX = translatedX * Math.cos(angleRad) - translatedY * Math.sin(angleRad);
+      const rotatedY = translatedX * Math.sin(angleRad) + translatedY * Math.cos(angleRad);
+      
+      // Translate back
+      x = rotatedX + centerX;
+      y = rotatedY + centerY;
+      
+      // Adjust for aspect ratio change in 90/270 degree rotations
+      if (rotation === 90 || rotation === 270) {
+        // Swap x and y coordinates
+        [x, y] = [y, x];
+      }
+    }
     
     // Add point to current path
     setCurrentPath(prev => [...prev, { x, y }]);
@@ -130,8 +223,29 @@ const DrawingComponent: React.FC<DrawingComponentProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
+    // Apply rotation transformation if needed
+    if (rotation !== 0) {
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate((rotation * Math.PI) / 180);
+      
+      // If rotated 90 or 270 degrees, we need to adjust for the aspect ratio change
+      if (rotation === 90 || rotation === 270) {
+        ctx.translate(-centerY, -centerX);
+      } else {
+        ctx.translate(-centerX, -centerY);
+      }
+    }
+    
     ctx.lineTo(x, y);
     ctx.stroke();
+    
+    if (rotation !== 0) {
+      ctx.restore();
+    }
   };
   
   const endDrawing = () => {

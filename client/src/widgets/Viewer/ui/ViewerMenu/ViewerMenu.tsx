@@ -11,7 +11,7 @@ interface ViewerMenuProps {
 
 export const ViewerMenu: React.FC<ViewerMenuProps> = ({ renderQuality, currentPage }) => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, textLayerEnabled, drawingMode, drawings, rectangles, pins, showThumbnails } = state;
+  const { scale, drawingColor, drawingLineWidth, textLayerEnabled, drawingMode, drawings, rectangles, pins, showThumbnails, pageRotations } = state;
 
   const zoomIn = () => {
     dispatch({ type: 'setScale', payload: scale + 0.25 });
@@ -53,6 +53,14 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ renderQuality, currentPa
     dispatch({ type: 'clearPins', payload: currentPage });
   };
 
+  const rotatePageClockwise = () => {
+    dispatch({ type: 'rotatePageClockwise', payload: currentPage });
+  };
+
+  const rotatePageCounterClockwise = () => {
+    dispatch({ type: 'rotatePageCounterClockwise', payload: currentPage });
+  };
+
   // Count drawings on current page
   const currentPageDrawingsCount = drawings.filter(d => d.pageNumber === currentPage).length;
   const currentPageRectanglesCount = rectangles.filter(r => r.pageNumber === currentPage).length;
@@ -61,6 +69,9 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ renderQuality, currentPa
   
   // Count all drawings
   const totalDrawingsCount = drawings.length + rectangles.length + pins.length;
+
+  // Get current page rotation
+  const currentRotation = pageRotations[currentPage] || 0;
 
   return (
     <div className={classes.zoomControls}>
@@ -77,6 +88,35 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ renderQuality, currentPa
         </svg>
         {showThumbnails ? "Hide Thumbnails" : "Show Thumbnails"}
       </button>
+      
+      {/* Rotation controls */}
+      <div className={classes.rotationControls}>
+        <button 
+          onClick={rotatePageCounterClockwise} 
+          className={classes.rotationButton}
+          title="Rotate counter-clockwise"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+            <path d="M3 3v5h5"></path>
+          </svg>
+          <span>Rotate CCW</span>
+        </button>
+        <span className={classes.rotationInfo}>
+          {currentRotation}°
+        </span>
+        <button 
+          onClick={rotatePageClockwise} 
+          className={classes.rotationButton}
+          title="Rotate clockwise"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+            <path d="M21 3v5h-5"></path>
+          </svg>
+          <span>Rotate CW</span>
+        </button>
+      </div>
       
       {/* Zoom controls */}
       <button onClick={zoomOut} className={classes.zoomButton}>

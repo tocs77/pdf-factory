@@ -26,7 +26,7 @@ export const Page = ({
   className,
 }: PageProps) => {
   const { state } = useContext(ViewerContext);
-  const { textLayerEnabled, drawingMode } = state;
+  const { textLayerEnabled, drawingMode, pageRotations } = state;
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
@@ -36,9 +36,11 @@ export const Page = ({
   const [hasSelection, setHasSelection] = useState(false);
   const [inView, setInView] = useState(false);
   const [hasRendered, setHasRendered] = useState(false);
-  const prevScaleRef = useRef(scale);
   const pageRef = useRef<HTMLDivElement>(null);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
+  
+  // Get the rotation angle for this page
+  const rotation = pageRotations[pageNumber] || 0;
 
   // Use Intersection Observer to detect when the page is visible
   useEffect(() => {
@@ -228,16 +230,46 @@ export const Page = ({
       // If already rendered once, don't re-render
       if (hasRendered) return;
 
-      const viewport = page.getViewport({ scale });
+      // Create viewport with rotation
+      // For 90/270 degree rotations, we need to ensure the viewport maintains the correct aspect ratio
+      const viewport = page.getViewport({ 
+        scale, 
+        rotation,
+        // Enable dontFlip to ensure consistent rendering across different rotations
+        dontFlip: false
+      });
       const canvas = canvasRef.current;
+      
+      // Get the parent container for proper sizing
+      const parent = canvas.parentElement;
+      if (!parent) {
+        console.warn('Canvas parent element not found');
+        return;
+      }
 
       // Apply quality multiplier to canvas dimensions for higher resolution rendering
       const outputScale = window.devicePixelRatio || 1;
       const totalScale = outputScale;
-
-      // Set display size
-      canvas.style.width = `${Math.floor(viewport.width)}px`;
-      canvas.style.height = `${Math.floor(viewport.height)}px`;
+      
+      // Determine if we need to adjust for rotation (90 or 270 degrees)
+      const isRotated90or270 = rotation === 90 || rotation === 270;
+      
+      // Set display size based on viewport dimensions
+      // For 90/270 degree rotations, we need to adjust the container to maintain aspect ratio
+      if (isRotated90or270) {
+        // For rotated pages, we need to adjust the container size to maintain aspect ratio
+        // Set the container dimensions to maintain the correct aspect ratio
+        parent.style.width = `${Math.floor(viewport.width)}px`;
+        parent.style.height = `${Math.floor(viewport.height)}px`;
+        
+        // Set canvas dimensions to match viewport
+        canvas.style.width = `${Math.floor(viewport.width)}px`;
+        canvas.style.height = `${Math.floor(viewport.height)}px`;
+      } else {
+        // For normal orientation, just set dimensions directly
+        canvas.style.width = `${Math.floor(viewport.width)}px`;
+        canvas.style.height = `${Math.floor(viewport.height)}px`;
+      }
 
       // Set actual size in memory (scaled to account for device pixel ratio and quality)
       canvas.width = Math.floor(viewport.width * totalScale);
@@ -249,35 +281,14 @@ export const Page = ({
 
       const renderContext = {
         canvasContext: ctx,
-        viewport: viewport,
+        viewport,
       };
 
       try {
-        // Create a custom render progress tracker
-        const progressTracker = {
-          onProgress: (progress: { loaded: number; total: number }) => {
-            if (!isMounted) return;
-            if (progress.total > 0) {
-              // const percentage = Math.round((progress.loaded / progress.total) * 100);
-            }
-          },
-        };
-
-        // Render the page content on canvas
-        renderTask = page.render({
-          ...renderContext,
-          ...progressTracker,
-        });
-
-        // Set up progress monitoring
-        renderTask.onContinue = (cont: () => void) => {
-          // This ensures the progress is updated during rendering
-          if (!isMounted) return false;
-          cont();
-          return true;
-        };
-
-        // Get the text content of the page if text layer is enabled
+        renderTask = page.render(renderContext);
+        await renderTask.promise;
+        
+        // Render text layer if enabled
         if (textLayerEnabled && textLayerRef.current) {
           const textLayerDiv = textLayerRef.current;
 
@@ -506,127 +517,130 @@ export const Page = ({
               textLayerRef.current.appendChild(errorMessage);
             }
           }
-        } else {
-          await renderTask.promise;
         }
-
-        // Set progress to 100% when rendering is complete
-        await renderTask.promise;
-
+        
         if (isMounted) {
           setHasRendered(true);
         }
-      } catch (_error) {
-        // Even on error, set progress to 100% to remove the loading indicator
-        if (isMounted) {
-          setHasRendered(true);
-        }
+      } catch (error) {
+        console.error('Error rendering PDF page:', error);
       }
     };
 
-    // Only render if the page should be rendered
-    if (shouldRender) {
-      renderPage();
-    } else {
-      // Reset rendering state when page becomes invisible
-      setHasRendered(false);
-    }
+    renderPage();
 
-    // Cleanup function to cancel rendering when component unmounts or dependencies change
     return () => {
       isMounted = false;
-      if (renderTask?.cancel) {
+      if (renderTask) {
         renderTask.cancel();
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, scale, textLayerEnabled, shouldRender, hasRendered]);
+  }, [page, scale, shouldRender, hasRendered, textLayerEnabled, rotation]);
 
-  // Reset hasRendered when scale or quality changes to force re-rendering
+  // Re-render when rotation changes
   useEffect(() => {
-    if (scale !== prevScaleRef.current) {
-      setHasRendered(false);
-      prevScaleRef.current = scale;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Reset hasRendered to force re-rendering when rotation changes
+    setHasRendered(false);
+  }, [rotation]);
+
+  // Re-render when scale changes
+  useEffect(() => {
+    // Reset hasRendered to force re-rendering when scale changes
+    setHasRendered(false);
   }, [scale]);
 
-  // Determine the text layer visibility based on the mode
-  const textLayerStyle = {
-    display: textLayerEnabled ? 'block' : 'none',
-    width: `${Math.floor(page.getViewport({ scale }).width)}px`,
-    height: `${Math.floor(page.getViewport({ scale }).height)}px`,
+  // Copy selected text
+  const copySelectedText = () => {
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim()) {
+      navigator.clipboard.writeText(selection.toString());
+      
+      // Show feedback
+      const button = document.querySelector(`.${classes.copyButton}`);
+      if (button) {
+        button.textContent = 'Copied!';
+        setTimeout(() => {
+          if (button) {
+            button.textContent = 'Copy';
+          }
+        }, 2000);
+      }
+    }
   };
-
-  // Return a placeholder if the page shouldn't be rendered
-  if (!shouldRender && !hasRendered) {
-    // Calculate dimensions to preserve layout
-    const viewport = page.getViewport({ scale });
-    const width = Math.floor(viewport.width);
-    const height = Math.floor(viewport.height);
-
-    return (
-      <div id={id} className={classNames(classes.page, {}, [className])} ref={containerRef}>
-        <div className={classes.pageInfo}>
-          Page {pageNumber} ({Math.round(page.view[2])} × {Math.round(page.view[3])} px)
-        </div>
-        <div className={classes.pageContent} style={{ width: `${width}px`, height: `${height}px` }}>
-          <div className={classes.placeholderPage}>Loading page {pageNumber}...</div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div
-      ref={pageRef}
-      className={classNames(classes.page, {}, [className])}
+      ref={containerRef}
+      className={classNames(classes.pageContainer, {}, [className])}
       id={id}
       data-page-number={pageNumber}
       style={{
-        width: `${Math.floor(page.getViewport({ scale }).width)}px`,
-        height: `${Math.floor(page.getViewport({ scale }).height)}px`,
+        // Apply special styles for rotated pages to maintain aspect ratio
+        ...(rotation === 90 || rotation === 270 ? {
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+        } : {})
       }}
     >
-      <div ref={canvasWrapperRef} className={classes.canvasWrapper}>
-        <canvas ref={canvasRef} className={classes.canvas} />
-        {shouldRender && (
-          <>
-            <div 
-              ref={textLayerRef} 
-              className={classes.textLayer} 
-              style={textLayerStyle}
+      <div 
+        ref={pageRef} 
+        className={classes.page}
+        style={{
+          // Ensure the page container adapts to rotation
+          ...(rotation === 90 || rotation === 270 ? {
+            width: 'auto',
+            height: 'auto',
+          } : {})
+        }}
+      >
+        <div 
+          ref={canvasWrapperRef} 
+          className={classes.canvasWrapper}
+          style={{
+            // Ensure the canvas wrapper adapts to rotation
+            ...(rotation === 90 || rotation === 270 ? {
+              width: 'auto',
+              height: 'auto',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+            } : {})
+          }}
+        >
+          <canvas ref={canvasRef} className={classes.pageCanvas} />
+          
+          {textLayerEnabled && (
+            <div
+              ref={textLayerRef}
+              className={classes.textLayer}
+              onMouseUp={() => {
+                const selection = window.getSelection();
+                if (selection && selection.toString().trim()) {
+                  setShowCopyButton(true);
+                }
+              }}
             />
-            
-            {/* Render completed drawings */}
-            <CompleteDrawings
-              pageNumber={pageNumber}
-              scale={scale}
-            />
-            
-            {/* Only render drawing component when text layer is disabled and drawing mode is freehand */}
-            {!textLayerEnabled && drawingMode === 'freehand' && (
-              <DrawingComponent
-                pageNumber={pageNumber}
-              />
-            )}
-            
-            {/* Only render rectangle component when text layer is disabled and drawing mode is rectangle */}
-            {!textLayerEnabled && drawingMode === 'rectangle' && (
-              <DrawRect
-                pageNumber={pageNumber}
-              />
-            )}
-
-            {/* Render pin drawing component when text layer is disabled */}
-            {!textLayerEnabled && drawingMode === 'pin' && (
-              <PinDrawingComponent pageNumber={pageNumber} />
-            )}
-          </>
-        )}
-      </div>
-      <div className={classes.pageInfo}>
-        Page {pageNumber} ({Math.round(page.view[2])} × {Math.round(page.view[3])} px)
+          )}
+          
+          {showCopyButton && (
+            <button className={classes.copyButton} onClick={copySelectedText}>
+              Copy
+            </button>
+          )}
+          
+          {/* Drawing components - only render when text layer is disabled */}
+          {!textLayerEnabled && (
+            <>
+              {drawingMode === 'freehand' && <DrawingComponent pageNumber={pageNumber} />}
+              {drawingMode === 'rectangle' && <DrawRect pageNumber={pageNumber} />}
+              {drawingMode === 'pin' && <PinDrawingComponent pageNumber={pageNumber} />}
+            </>
+          )}
+          
+          {/* Always render completed drawings */}
+          <CompleteDrawings pageNumber={pageNumber} scale={scale} rotation={rotation} />
+        </div>
       </div>
     </div>
   );

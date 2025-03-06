@@ -1,5 +1,5 @@
 import { createContext, Dispatch } from 'react';
-import { Action, ViewerSchema } from '../types/viewerSchema';
+import { Action, RotationAngle, ViewerSchema } from '../types/viewerSchema';
 
 // Define the context type including state and dispatch
 interface ViewerContextType {
@@ -87,6 +87,36 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
     case 'toggleThumbnails':
       return { ...state, showThumbnails: !state.showThumbnails };
     
+    case 'rotatePageClockwise': {
+      const pageNumber = action.payload;
+      const currentRotation = state.pageRotations[pageNumber] || 0;
+      // Calculate new rotation (clockwise: 0 -> 90 -> 180 -> 270 -> 0)
+      const newRotation: RotationAngle = ((currentRotation + 90) % 360) as RotationAngle;
+      
+      return {
+        ...state,
+        pageRotations: {
+          ...state.pageRotations,
+          [pageNumber]: newRotation
+        }
+      };
+    }
+    
+    case 'rotatePageCounterClockwise': {
+      const pageNumber = action.payload;
+      const currentRotation = state.pageRotations[pageNumber] || 0;
+      // Calculate new rotation (counter-clockwise: 0 -> 270 -> 180 -> 90 -> 0)
+      const newRotation: RotationAngle = ((currentRotation - 90 + 360) % 360) as RotationAngle;
+      
+      return {
+        ...state,
+        pageRotations: {
+          ...state.pageRotations,
+          [pageNumber]: newRotation
+        }
+      };
+    }
+    
     default:
       return state;
   }
@@ -103,7 +133,8 @@ export const ViewerContext = createContext<ViewerContextType>({
     drawings: [],
     rectangles: [],
     pins: [],
-    showThumbnails: true
+    showThumbnails: true,
+    pageRotations: {}
   },
   dispatch: () => null,
 });

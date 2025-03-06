@@ -6,13 +6,14 @@ import styles from './CompleteDrawings.module.scss';
 interface CompleteDrawingsProps {
   pageNumber: number;
   scale: number;
+  rotation: number;
 }
 
 /**
  * Component to display completed drawings and rectangles
  * This component is always visible, even when text layer is enabled
  */
-const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, scale }) => {
+const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, scale, rotation }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { state } = useContext(ViewerContext);
   const { drawings, rectangles, pins } = state;
@@ -34,8 +35,17 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, scale }
       return;
     }
     
+    // For rotated pages (90 or 270 degrees), we need to adjust dimensions
+    const isRotated90or270 = rotation === 90 || rotation === 270;
+    
+    // Set canvas dimensions
     canvas.width = parent.clientWidth;
     canvas.height = parent.clientHeight;
+    
+    // Log rotation status for debugging
+    if (isRotated90or270) {
+      console.log(`Page ${pageNumber} is rotated to ${rotation} degrees, adjusting rendering`);
+    }
     
     const ctx = canvas.getContext('2d');
     if (!ctx) {
@@ -45,6 +55,24 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, scale }
     
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Apply rotation transformation
+    ctx.save();
+    
+    // Translate to center, rotate, and translate back
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    
+    ctx.translate(centerX, centerY);
+    ctx.rotate((rotation * Math.PI) / 180);
+    
+    // If rotated 90 or 270 degrees, we need to adjust for the aspect ratio change
+    if (rotation === 90 || rotation === 270) {
+      // Swap width and height for the coordinate system
+      ctx.translate(-centerY, -centerX);
+    } else {
+      ctx.translate(-centerX, -centerY);
+    }
     
     // Draw all paths
     pageDrawings.forEach(drawing => {
@@ -62,8 +90,15 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, scale }
       let scaleY = 1;
       
       if (drawing.canvasDimensions) {
-        scaleX = canvas.width / (drawing.canvasDimensions.width * scale);
-        scaleY = canvas.height / (drawing.canvasDimensions.height * scale);
+        // Adjust scaling based on rotation
+        if (rotation === 90 || rotation === 270) {
+          // For 90/270 degree rotations, swap width and height
+          scaleX = canvas.height / (drawing.canvasDimensions.width * scale);
+          scaleY = canvas.width / (drawing.canvasDimensions.height * scale);
+        } else {
+          scaleX = canvas.width / (drawing.canvasDimensions.width * scale);
+          scaleY = canvas.height / (drawing.canvasDimensions.height * scale);
+        }
       }
       
       // Start from the first point
@@ -90,8 +125,15 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, scale }
       let scaleY = 1;
       
       if (rect.canvasDimensions) {
-        scaleX = canvas.width / (rect.canvasDimensions.width * scale);
-        scaleY = canvas.height / (rect.canvasDimensions.height * scale);
+        // Adjust scaling based on rotation
+        if (rotation === 90 || rotation === 270) {
+          // For 90/270 degree rotations, swap width and height
+          scaleX = canvas.height / (rect.canvasDimensions.width * scale);
+          scaleY = canvas.width / (rect.canvasDimensions.height * scale);
+        } else {
+          scaleX = canvas.width / (rect.canvasDimensions.width * scale);
+          scaleY = canvas.height / (rect.canvasDimensions.height * scale);
+        }
       }
       
       const startX = rect.startPoint.x * scale * scaleX;
@@ -109,8 +151,15 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, scale }
       let scaleY = 1;
       
       if (pin.canvasDimensions) {
-        scaleX = canvas.width / (pin.canvasDimensions.width * scale);
-        scaleY = canvas.height / (pin.canvasDimensions.height * scale);
+        // Adjust scaling based on rotation
+        if (rotation === 90 || rotation === 270) {
+          // For 90/270 degree rotations, swap width and height
+          scaleX = canvas.height / (pin.canvasDimensions.width * scale);
+          scaleY = canvas.width / (pin.canvasDimensions.height * scale);
+        } else {
+          scaleX = canvas.width / (pin.canvasDimensions.width * scale);
+          scaleY = canvas.height / (pin.canvasDimensions.height * scale);
+        }
       }
       
       const x = pin.position.x * scale * scaleX;
@@ -119,7 +168,10 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, scale }
       // Use the pin renderer utility
       renderPin(ctx, pin, x, y);
     });
-  }, [pageDrawings, pageRectangles, pagePins, scale, pageNumber]);
+    
+    // Restore the context to remove rotation
+    ctx.restore();
+  }, [pageDrawings, pageRectangles, pagePins, scale, pageNumber, rotation]);
 
   return (
     <canvas

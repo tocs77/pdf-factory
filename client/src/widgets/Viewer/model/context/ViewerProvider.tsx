@@ -11,6 +11,7 @@ const initialState = {
   rectangles: [],
   pins: [],
   showThumbnails: false,
+  pageRotations: {},
 };
 
 export const ViewerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

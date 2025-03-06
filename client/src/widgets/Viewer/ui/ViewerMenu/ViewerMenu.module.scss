@@ -198,4 +198,37 @@
     width: 16px;
     height: 16px;
   }
+}
+
+.rotationControls {
+  display: flex;
+  align-items: center;
+  margin-right: 10px;
+  gap: 5px;
+}
+
+.rotationButton {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  
+  svg {
+    margin-right: 4px;
+  }
+  
+  &:hover {
+    background-color: #f0f0f0;
+  }
+}
+
+.rotationInfo {
+  font-size: 12px;
+  color: #666;
+  min-width: 30px;
+  text-align: center;
 } 
