@@ -262,7 +262,6 @@
 }
 
 .page {
-  margin-bottom: 20px;
   margin-left: auto;
   margin-right: auto;
   display: flex;
@@ -271,8 +270,7 @@
   background-color: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   border-radius: 2px;
-  /* Remove any max-width constraints that might limit zooming */
-  min-width: fit-content; /* Ensure the page expands to fit its content when zoomed */
+
 }
 
 .drawingCanvasContainer {

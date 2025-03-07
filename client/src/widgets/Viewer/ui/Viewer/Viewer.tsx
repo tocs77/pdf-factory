@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState, useRef } from 'react';
+import { useContext, useEffect, useState, useRef, useCallback } from 'react';
 import * as pdfjs from 'pdfjs-dist';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import { Thumbnail } from '../Thumbnail/Thumbnail';
@@ -22,12 +22,10 @@ interface PdfViewerProps {
 }
 
 // Internal viewer component that will be wrapped with the provider
-const PdfViewerInternal = ({
-  url,      
-}: PdfViewerProps) => {
+const PdfViewerInternal = ({ url }: PdfViewerProps) => {
   const { state } = useContext(ViewerContext);
   const { scale, showThumbnails } = state;
-  
+
   const [pdfRef, setPdfRef] = useState<PDFDocumentProxy | null>(null);
   const [pages, setPages] = useState<PDFPageProxy[]>([]);
   const [selectedPage, setSelectedPage] = useState(1);
@@ -43,58 +41,58 @@ const PdfViewerInternal = ({
   const thumbnailQuality = Math.max(0.5, renderQuality * 0.5);
 
   // Find the page element that's most visible in the viewport
-  const findVisiblePageElement = () => {
+  const findVisiblePageElement = useCallback(() => {
     if (!pdfContainerRef.current) return null;
-    
+
     const container = pdfContainerRef.current;
     const containerRect = container.getBoundingClientRect();
-    
+
     // Get all page elements
     const pageElements = Array.from(container.querySelectorAll('[data-page-number]'));
     let bestVisiblePage = null;
     let bestVisibleArea = 0;
-    
+
     for (const pageEl of pageElements) {
       const pageRect = pageEl.getBoundingClientRect();
-      
+
       // Calculate how much of the page is visible in the viewport
       const visibleTop = Math.max(pageRect.top, containerRect.top);
       const visibleBottom = Math.min(pageRect.bottom, containerRect.bottom);
-      
+
       if (visibleBottom > visibleTop) {
         const visibleArea = visibleBottom - visibleTop;
-        
+
         if (visibleArea > bestVisibleArea) {
           bestVisibleArea = visibleArea;
           bestVisiblePage = pageEl;
         }
       }
     }
-    
+
     return bestVisiblePage;
-  };
+  }, []);
 
   // Preserve scroll position when scale changes
   useEffect(() => {
     if (!pdfContainerRef.current || prevScaleRef.current === scale) return;
-    
+
     const container = pdfContainerRef.current;
-    
+
     // Find the most visible page and its relative position
     const visiblePage = findVisiblePageElement();
-    
+
     if (!visiblePage) {
       // Fallback to simple ratio-based scrolling if no visible page found
       const scrollTop = container.scrollTop;
       const scrollHeight = container.scrollHeight;
       const containerHeight = container.clientHeight;
       const scrollRatio = scrollTop / (scrollHeight - containerHeight);
-      
+
       console.log(`No visible page found. Using ratio: ${scrollRatio}`);
-      
+
       // Update scale reference
       prevScaleRef.current = scale;
-      
+
       // Apply new scroll position after DOM update
       setTimeout(() => {
         if (!container) return;
@@ -103,61 +101,58 @@ const PdfViewerInternal = ({
         const newScrollTop = scrollRatio * (newScrollHeight - newContainerHeight);
         container.scrollTop = newScrollTop;
       }, 100);
-      
+
       return;
     }
-    
+
     // Get page number and position data
     const pageNumber = parseInt((visiblePage as Element).getAttribute('data-page-number') || '1', 10);
     const pageRect = (visiblePage as Element).getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
-    
+
     // Calculate the relative position of the page within the viewport
     const relativePositionInViewport = (pageRect.top + pageRect.height / 2 - containerRect.top) / containerRect.height;
-    
-    console.log(`Scale changed from ${prevScaleRef.current} to ${scale}`);
-    console.log(`Preserving position for page ${pageNumber}, relative position: ${relativePositionInViewport.toFixed(2)}`);
-    
+
     // Update scale reference
     prevScaleRef.current = scale;
-    
+
     // Wait for the DOM to update with the new scale
     setTimeout(() => {
       if (!container) return;
-      
+
       // Find the same page after scaling
       const newPageElements = container.querySelectorAll('[data-page-number]');
       let targetPage: Element | null = null;
-      
+
       for (let i = 0; i < newPageElements.length; i++) {
         const el = newPageElements[i];
         const elPageNumber = parseInt(el.getAttribute('data-page-number') || '0', 10);
-        
+
         if (elPageNumber === pageNumber) {
           targetPage = el;
           break;
         }
       }
-      
+
       if (!targetPage) {
         console.warn(`Could not find page ${pageNumber} after scaling`);
         return;
       }
-      
+
       // Calculate new scroll position to maintain the same relative position
       const newPageRect = targetPage.getBoundingClientRect();
       const newContainerRect = container.getBoundingClientRect();
-      
+
       // Calculate the target scroll position
-      const targetScrollTop = 
-        container.scrollTop + 
-        (newPageRect.top - newContainerRect.top) + 
-        (newPageRect.height * relativePositionInViewport) - 
-        (containerRect.height * relativePositionInViewport);
-      
+      const targetScrollTop =
+        container.scrollTop +
+        (newPageRect.top - newContainerRect.top) +
+        newPageRect.height * relativePositionInViewport -
+        containerRect.height * relativePositionInViewport;
+
       // Apply the new scroll position
       container.scrollTop = targetScrollTop;
-      
+
       console.log(`New scroll position set to ${targetScrollTop.toFixed(2)}px`);
     }, 100); // Small delay to ensure the DOM has updated
   }, [scale]);
@@ -215,7 +210,7 @@ const PdfViewerInternal = ({
     }
   };
 
-  // Update current page on scroll
+  // Update current page on scroll - this effect sets up the scroll handler
   useEffect(() => {
     const container = pdfContainerRef.current;
     if (!container) return;
@@ -234,11 +229,36 @@ const PdfViewerInternal = ({
       }
     };
 
+    // Add the scroll event listener
     container.addEventListener('scroll', handleScroll);
+    
+    // Run the handler once to set the initial page
+    handleScroll();
+    
     return () => {
       container.removeEventListener('scroll', handleScroll);
     };
-  }, [selectedPage]);
+  }, [selectedPage, pages.length, findVisiblePageElement]);
+
+  // Additional effect to update the current page when the container becomes available
+  // or when pages are loaded
+  useEffect(() => {
+    const container = pdfContainerRef.current;
+    if (!container || pages.length === 0) return;
+    
+    // Find the most visible page and update selectedPage
+    const visiblePage = findVisiblePageElement();
+    if (visiblePage) {
+      const pageNumberAttr = visiblePage.getAttribute('data-page-number');
+      if (pageNumberAttr) {
+        const pageNumber = parseInt(pageNumberAttr, 10);
+        setSelectedPage(pageNumber);
+      }
+    } else {
+      // If no page is visible yet, default to page 1
+      setSelectedPage(1);
+    }
+  }, [pages.length, findVisiblePageElement]);
 
   // Show loading message or error
   if (isLoading || error) {
@@ -279,13 +299,7 @@ const PdfViewerInternal = ({
         <div className={classes.pdfContainer} ref={pdfContainerRef}>
           <div className={classes.pdfContentWrapper}>
             {pages.map((page, index) => (
-              <Page
-                key={index + 1}
-                page={page}
-                scale={scale}
-                pageNumber={index + 1}
-                id={`page-${index + 1}`}
-              />
+              <Page key={index + 1} page={page} scale={scale} pageNumber={index + 1} id={`page-${index + 1}`} />
             ))}
           </div>
         </div>
