@@ -85,6 +85,8 @@ export interface ViewerSchema {
   showThumbnails: boolean;
   // Map of page numbers to rotation angles
   pageRotations: Record<number, RotationAngle>;
+  // Whether the text layer is enabled
+  textLayerEnabled?: boolean;
 }
 
 export type Action = 
@@ -99,5 +101,6 @@ export type Action =
   | { type: 'clearRectangles'; payload?: number } // Optional page number, if not provided clear all
   | { type: 'clearPins'; payload?: number } // Optional page number, if not provided clear all
   | { type: 'toggleThumbnails' }
+  | { type: 'toggleTextLayer' } // Toggle text layer visibility
   | { type: 'rotatePageClockwise'; payload: number } // Page number to rotate
   | { type: 'rotatePageCounterClockwise'; payload: number }; // Page number to rotate

@@ -173,13 +173,25 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
     }
   }, [pages.length, findVisiblePageElement]);
 
+  // Track when the PDF is fully loaded and rendered
+  const [pdfRendered, setPdfRendered] = useState(false);
+  
+  // Set pdfRendered to true when pages are loaded
+  useEffect(() => {
+    if (pages.length > 0 && !isLoading) {
+      setPdfRendered(true);
+    }
+  }, [pages.length, isLoading]);
+
   // Implement drag-to-scroll functionality
   useEffect(() => {
     const container = pdfContainerRef.current;
-    if (!container) return;
+    if (!container || !pdfRendered) return;
 
     // Only enable drag-to-scroll when no drawing tools are active
     if (state.drawingMode !== 'none') return;
+
+    console.log('Setting up drag-to-scroll functionality');
 
     const handleMouseDown = (e: MouseEvent) => {
       // Only activate on left mouse button
@@ -236,7 +248,7 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, dragStartX, dragStartY, scrollStartX, scrollStartY, state.drawingMode]);
+  }, [isDragging, dragStartX, dragStartY, scrollStartX, scrollStartY, state.drawingMode, pdfRendered]);
 
   // Show loading message or error
   if (isLoading || error) {

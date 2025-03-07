@@ -1,23 +1,8 @@
 import React, { useReducer } from 'react';
-import { ViewerContext, viewerReducer } from './viewerContext';
-
-const initialState = {
-  scale: 1.5,
-  drawingColor: '#2196f3',
-  drawingLineWidth: 2,
-  textLayerEnabled: true,
-  drawingMode: 'freehand' as const,
-  drawings: [],
-  rectangles: [],
-  pins: [],
-  showThumbnails: false,
-  pageRotations: {},
-};
+import { ViewerContext, viewerReducer, initialViewerState } from './viewerContext';
 
 export const ViewerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(viewerReducer, {
-    ...initialState,
-  });
+  const [state, dispatch] = useReducer(viewerReducer, initialViewerState);
 
   return <ViewerContext.Provider value={{ state, dispatch }}>{children}</ViewerContext.Provider>;
 };

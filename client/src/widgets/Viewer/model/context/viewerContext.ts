@@ -10,6 +10,20 @@ interface ViewerContextType {
 const MAX_ZOOM = 5;
 const DEFAULT_DRAWING_COLOR = '#2196f3';
 
+// Define a single source of truth for the initial state
+export const initialViewerState: ViewerSchema = {
+  scale: 1.5,
+  drawingColor: DEFAULT_DRAWING_COLOR,
+  drawingLineWidth: 2,
+  drawingMode: 'none',
+  drawings: [],
+  rectangles: [],
+  pins: [],
+  showThumbnails: false,
+  pageRotations: {},
+  textLayerEnabled: true
+};
+
 export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema => {
   switch (action.type) {
     case 'setScale':
@@ -28,6 +42,7 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
       return { ...state, drawingLineWidth: action.payload };
     
     case 'setDrawingMode':
+      console.log('setDrawingMode', action.payload);
       return { ...state, drawingMode: action.payload };
     
     case 'addDrawing':
@@ -84,6 +99,9 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
     case 'toggleThumbnails':
       return { ...state, showThumbnails: !state.showThumbnails };
     
+    case 'toggleTextLayer':
+      return { ...state, textLayerEnabled: !state.textLayerEnabled };
+    
     case 'rotatePageClockwise': {
       const pageNumber = action.payload;
       const currentRotation = state.pageRotations[pageNumber] || 0;
@@ -121,16 +139,6 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
 
 // Create context with proper typing
 export const ViewerContext = createContext<ViewerContextType>({
-  state: { 
-    scale: 1.5,
-    drawingColor: DEFAULT_DRAWING_COLOR,
-    drawingLineWidth: 2,
-    drawingMode: 'none',
-    drawings: [],
-    rectangles: [],
-    pins: [],
-    showThumbnails: true,
-    pageRotations: {}
-  },
+  state: initialViewerState,
   dispatch: () => null,
 });
