@@ -201,6 +201,34 @@ export const TextLayer = ({
     };
   }, [showCopyButton]);
 
+  // Ensure text layer is properly positioned when rotation changes
+  useEffect(() => {
+    if (!textLayerRef.current || !viewport) return;
+    
+    const textLayerDiv = textLayerRef.current;
+    
+    // Always ensure the text layer has position: absolute
+    textLayerDiv.style.position = 'absolute';
+    
+    // Get dimensions from viewport - these already account for rotation
+    const width = Math.floor(viewport.width);
+    const height = Math.floor(viewport.height);
+    
+    // Reset all transform properties
+    textLayerDiv.style.transform = '';
+    textLayerDiv.style.transformOrigin = '';
+    
+    // Position at the top-left corner
+    textLayerDiv.style.left = '0';
+    textLayerDiv.style.top = '0';
+    
+    // Set dimensions to match the viewport exactly
+    textLayerDiv.style.width = `${width}px`;
+    textLayerDiv.style.height = `${height}px`;
+    
+    // No rotation transforms needed as PDF.js viewport already handles rotation
+  }, [rotation, viewport]);
+
   // Render text layer content
   useEffect(() => {
     let isMounted = true;
@@ -216,24 +244,10 @@ export const TextLayer = ({
       textLayerDiv.innerHTML = '';
 
       // Ensure text layer has the exact same dimensions as the canvas
-      textLayerDiv.style.width = `${Math.floor(viewport.width)}px`;
-      textLayerDiv.style.height = `${Math.floor(viewport.height)}px`;
-
-      // Ensure text layer is positioned exactly over the canvas
-      textLayerDiv.style.left = '0';
-      textLayerDiv.style.top = '0';
-      textLayerDiv.style.position = 'absolute';
+      // Note: We don't need to set dimensions here as they're handled by the rotation-specific useEffect
       
-      // Apply any necessary transforms based on rotation
-      if (rotation !== 0) {
-        // For rotated pages, ensure the text layer rotates with the canvas
-        textLayerDiv.style.transform = `rotate(${rotation}deg)`;
-        textLayerDiv.style.transformOrigin = 'top left';
-      } else {
-        // Remove any transform or transformOrigin from the container
-        textLayerDiv.style.transform = '';
-        textLayerDiv.style.transformOrigin = '';
-      }
+      // Ensure text layer is positioned exactly over the canvas
+      // Note: We don't need to set position here as it's handled by the rotation-specific useEffect
 
       try {
         // Wait for canvas rendering to complete first
@@ -322,10 +336,10 @@ export const TextLayer = ({
 
                 // Apply exact positioning based on the viewport transform
                 // This ensures text is positioned exactly where it should be on the canvas
-                const left = tx[4];
+                let left = tx[4];
                 // Adjust the top position to align text properly with the canvas
                 // The fontHeight adjustment is critical for proper vertical alignment
-                const top = tx[5] - fontHeight;
+                let top = tx[5] - fontHeight;
 
                 // Apply precise positioning with subpixel accuracy
                 textDiv.style.left = `${left.toFixed(3)}px`;
