@@ -64,6 +64,14 @@
   box-sizing: border-box;
   
   z-index: 1;
+  
+  &.draggable {
+    cursor: grab;
+    
+    &.dragging {
+      cursor: grabbing;
+    }
+  }
 }
 
 .thumbnailHeader {
@@ -315,4 +323,23 @@
   min-width: min-content; /* Allow content to determine the width */
   margin: 0 auto; /* Center the content */
   width: fit-content; /* Ensure the wrapper expands to fit zoomed content */
+}
+
+.dragIndicator {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+  
+  &:hover {
+    opacity: 0;
+  }
 } 

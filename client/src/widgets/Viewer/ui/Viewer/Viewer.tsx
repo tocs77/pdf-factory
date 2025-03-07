@@ -40,6 +40,13 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
   // Use a lower quality for thumbnails to improve performance
   const thumbnailQuality = Math.max(0.5, renderQuality * 0.5);
 
+  // State for drag-to-scroll functionality
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragStartY, setDragStartY] = useState(0);
+  const [scrollStartX, setScrollStartX] = useState(0);
+  const [scrollStartY, setScrollStartY] = useState(0);
+
   // Function to adjust scroll position after zoom
   const adjustScrollPositionAfterZoom = (
     container: HTMLDivElement, 
@@ -447,6 +454,71 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
     }
   }, [pages.length, findVisiblePageElement]);
 
+  // Implement drag-to-scroll functionality
+  useEffect(() => {
+    const container = pdfContainerRef.current;
+    if (!container) return;
+
+    // Only enable drag-to-scroll when no drawing tools are active
+    if (state.drawingMode !== 'none') return;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      // Only activate on left mouse button
+      if (e.button !== 0) return;
+      
+      // Don't activate if Ctrl key is pressed (for zoom)
+      if (e.ctrlKey) return;
+      
+      // Set dragging state
+      setIsDragging(true);
+      
+      // Store initial mouse position
+      setDragStartX(e.clientX);
+      setDragStartY(e.clientY);
+      
+      // Store initial scroll position
+      setScrollStartX(container.scrollLeft);
+      setScrollStartY(container.scrollTop);
+      
+      // Prevent default behavior
+      e.preventDefault();
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      
+      // Calculate how far the mouse has moved
+      const deltaX = e.clientX - dragStartX;
+      const deltaY = e.clientY - dragStartY;
+      
+      // Scroll the container in the opposite direction of the mouse movement
+      container.scrollLeft = scrollStartX - deltaX;
+      container.scrollTop = scrollStartY - deltaY;
+      
+      // Prevent default behavior
+      e.preventDefault();
+    };
+
+    const handleMouseUp = () => {
+      if (!isDragging) return;
+      
+      // Reset dragging state
+      setIsDragging(false);
+    };
+
+    // Add event listeners
+    container.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    
+    // Clean up
+    return () => {
+      container.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragStartX, dragStartY, scrollStartX, scrollStartY, state.drawingMode]);
+
   // Show loading message or error
   if (isLoading || error) {
     return (
@@ -486,7 +558,21 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
           totalPages={pages.length} 
         />
 
-        <div className={classes.pdfContainer} ref={pdfContainerRef}>
+        <div 
+          className={classNames(
+            classes.pdfContainer, 
+            { 
+              [classes.draggable]: state.drawingMode === 'none',
+              [classes.dragging]: isDragging 
+            }
+          )} 
+          ref={pdfContainerRef}
+        >
+          {state.drawingMode === 'none' && !isDragging && (
+            <div className={classes.dragIndicator}>
+              <span>Click and drag to scroll</span>
+            </div>
+          )}
           <div className={classes.pdfContentWrapper}>
             {pages.map((page, index) => (
               <Page key={index + 1} page={page} scale={scale} pageNumber={index + 1} id={`page-${index + 1}`} />
