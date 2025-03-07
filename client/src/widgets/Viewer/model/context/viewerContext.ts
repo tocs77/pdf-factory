@@ -30,9 +30,6 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
     case 'setDrawingMode':
       return { ...state, drawingMode: action.payload };
     
-    case 'toggleTextLayer':
-      return { ...state, textLayerEnabled: !state.textLayerEnabled };
-    
     case 'addDrawing':
       return { 
         ...state, 
@@ -128,8 +125,7 @@ export const ViewerContext = createContext<ViewerContextType>({
     scale: 1.5,
     drawingColor: DEFAULT_DRAWING_COLOR,
     drawingLineWidth: 2,
-    textLayerEnabled: true,
-    drawingMode: 'freehand',
+    drawingMode: 'none',
     drawings: [],
     rectangles: [],
     pins: [],

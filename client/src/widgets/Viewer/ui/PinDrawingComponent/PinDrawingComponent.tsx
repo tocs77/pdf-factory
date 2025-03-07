@@ -9,11 +9,10 @@ interface PinDrawingComponentProps {
 
 /**
  * Component for handling pin drawing
- * This component is only visible when text layer is disabled
  */
 const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber }) => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, textLayerEnabled, pageRotations } = state;
+  const { scale, drawingColor, pageRotations } = state;
 
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;
@@ -22,7 +21,7 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber })
 
   // Set up drawing canvas
   useEffect(() => {
-    if (!canvasRef.current || textLayerEnabled) return;
+    if (!canvasRef.current) return;
 
     const canvas = canvasRef.current;
 
@@ -44,11 +43,11 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber })
     }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }, [scale, textLayerEnabled, pageNumber, rotation]);
+  }, [scale, pageNumber, rotation]);
 
   // Set cursor to crosshair
   useEffect(() => {
-    if (!canvasRef.current || textLayerEnabled) return;
+    if (!canvasRef.current) return;
 
     const canvas = canvasRef.current;
 
@@ -62,7 +61,7 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber })
     return () => {
       canvas.removeEventListener('mouseenter', handleMouseEnter);
     };
-  }, [textLayerEnabled]);
+  }, []);
 
   // Get raw coordinates relative to canvas
   const getRawCoordinates = (clientX: number, clientY: number): { x: number; y: number } => {
@@ -80,10 +79,6 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber })
 
   // Handle pin placement
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (textLayerEnabled) {
-      return;
-    }
-
     const canvas = canvasRef.current;
     if (!canvas) {
       return;

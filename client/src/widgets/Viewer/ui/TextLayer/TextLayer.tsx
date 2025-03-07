@@ -8,7 +8,6 @@ interface TextLayerProps {
   viewport: any;
   scale: number;
   rotation: number;
-  textLayerEnabled: boolean;
   renderTask: any;
   onSelectionChange?: (hasSelection: boolean) => void;
 }
@@ -27,7 +26,6 @@ export const TextLayer = ({
   viewport,
   scale,
   rotation,
-  textLayerEnabled,
   renderTask,
   onSelectionChange,
 }: TextLayerProps) => {
@@ -38,7 +36,7 @@ export const TextLayer = ({
 
   // Handle text selection
   useEffect(() => {
-    if (!textLayerEnabled || !textLayerRef.current) {
+    if (!textLayerRef.current) {
       return;
     }
 
@@ -182,7 +180,7 @@ export const TextLayer = ({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keyup', handleSelectionEnd);
     };
-  }, [textLayerEnabled, isSelecting, hasSelection, onSelectionChange]);
+  }, [isSelecting, hasSelection, onSelectionChange]);
 
   // Hide copy button when clicking elsewhere
   useEffect(() => {
@@ -208,7 +206,7 @@ export const TextLayer = ({
     let isMounted = true;
 
     const renderTextLayer = async () => {
-      if (!textLayerEnabled || !textLayerRef.current || !viewport || !renderTask) {
+      if (!textLayerRef.current || !viewport || !renderTask) {
         return;
       }
 
@@ -573,7 +571,7 @@ export const TextLayer = ({
     return () => {
       isMounted = false;
     };
-  }, [page, viewport, scale, rotation, textLayerEnabled, renderTask]);
+  }, [page, viewport, scale, rotation, renderTask]);
 
   // Copy selected text
   const copySelectedText = () => {

@@ -20,7 +20,7 @@ interface PageProps {
 
 export const Page = ({ page, scale, pageNumber, id, className }: PageProps) => {
   const { state } = useContext(ViewerContext);
-  const { textLayerEnabled, drawingMode, pageRotations } = state;
+  const { drawingMode, pageRotations } = state;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -201,19 +201,19 @@ export const Page = ({ page, scale, pageNumber, id, className }: PageProps) => {
           }}>
           <canvas ref={canvasRef} className={classes.pageCanvas} />
 
-          {textLayerEnabled && viewport && renderTask && (
+          {/* Text Layer - only render when text tool is selected */}
+          {drawingMode === 'text' && viewport && renderTask && (
             <TextLayer
               page={page}
               viewport={viewport}
               scale={scale}
               rotation={rotation}
-              textLayerEnabled={textLayerEnabled}
               renderTask={renderTask}
             />
           )}
 
-          {/* Drawing components - only render when text layer is disabled */}
-          {!textLayerEnabled && inView && (
+          {/* Drawing components - only render when respective tool is selected */}
+          {inView && (
             <>
               {drawingMode === 'freehand' && <DrawingComponent pageNumber={pageNumber} />}
               {drawingMode === 'rectangle' && <DrawRect pageNumber={pageNumber} />}

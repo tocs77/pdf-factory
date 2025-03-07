@@ -9,11 +9,10 @@ interface DrawingComponentProps {
 
 /**
  * Component for handling freehand drawing
- * This component is only visible when text layer is disabled
  */
 export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }) => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, textLayerEnabled, pageRotations } = state;
+  const { scale, drawingColor, drawingLineWidth, pageRotations } = state;
 
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;
@@ -24,7 +23,7 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
 
   // Set up drawing canvas
   useEffect(() => {
-    if (!canvasRef.current || textLayerEnabled) return;
+    if (!canvasRef.current) return;
 
     const canvas = canvasRef.current;
 
@@ -46,11 +45,11 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
     }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }, [scale, textLayerEnabled, pageNumber, rotation]);
+  }, [scale, pageNumber, rotation]);
 
   // Set cursor to crosshair
   useEffect(() => {
-    if (!canvasRef.current || textLayerEnabled) return;
+    if (!canvasRef.current) return;
 
     const canvas = canvasRef.current;
 
@@ -64,7 +63,7 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
     return () => {
       canvas.removeEventListener('mouseenter', handleMouseEnter);
     };
-  }, [textLayerEnabled]);
+  }, []);
 
   // Get raw coordinates relative to canvas
   const getRawCoordinates = (clientX: number, clientY: number): { x: number; y: number } => {
@@ -82,10 +81,6 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
 
   // Drawing handlers
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (textLayerEnabled) {
-      return;
-    }
-
     const canvas = canvasRef.current;
     if (!canvas) {
       return;
@@ -117,7 +112,7 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || textLayerEnabled) return;
+    if (!isDrawing) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -144,7 +139,7 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
   };
 
   const endDrawing = () => {
-    if (!isDrawing || textLayerEnabled || currentPath.length < 2) {
+    if (!isDrawing || currentPath.length < 2) {
       setIsDrawing(false);
       setCurrentPath([]);
       return;

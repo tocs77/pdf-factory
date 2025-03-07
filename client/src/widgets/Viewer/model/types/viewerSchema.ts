@@ -69,7 +69,7 @@ export interface Pin {
   rotation?: RotationAngle;
 }
 
-export type DrawingMode = 'freehand' | 'rectangle' | 'pin';
+export type DrawingMode = 'freehand' | 'rectangle' | 'pin' | 'text' | 'none';
 
 // Valid rotation angles: 0, 90, 180, 270 degrees
 export type RotationAngle = 0 | 90 | 180 | 270;
@@ -78,7 +78,6 @@ export interface ViewerSchema {
   scale: number;
   drawingColor: string;
   drawingLineWidth: number;
-  textLayerEnabled: boolean;
   drawingMode: DrawingMode;
   drawings: DrawingPath[];
   rectangles: Rectangle[];
@@ -93,7 +92,6 @@ export type Action =
   | { type: 'setDrawingColor'; payload: string }
   | { type: 'setDrawingLineWidth'; payload: number }
   | { type: 'setDrawingMode'; payload: DrawingMode }
-  | { type: 'toggleTextLayer' }
   | { type: 'addDrawing'; payload: DrawingPath }
   | { type: 'addRectangle'; payload: Rectangle }
   | { type: 'addPin'; payload: Pin }

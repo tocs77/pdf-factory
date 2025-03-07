@@ -9,11 +9,10 @@ interface DrawRectProps {
 
 /**
  * Component for handling rectangle drawing
- * This component is only visible when text layer is disabled
  */
 const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, textLayerEnabled, pageRotations } = state;
+  const { scale, drawingColor, drawingLineWidth, pageRotations } = state;
   
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;
@@ -25,7 +24,7 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
 
   // Set up drawing canvas
   useEffect(() => {
-    if (!canvasRef.current || textLayerEnabled) return;
+    if (!canvasRef.current) return;
     
     const canvas = canvasRef.current;
     
@@ -47,11 +46,11 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
     }
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }, [scale, textLayerEnabled, pageNumber, rotation]);
+  }, [scale, pageNumber, rotation]);
 
   // Set cursor to crosshair
   useEffect(() => {
-    if (!canvasRef.current || textLayerEnabled) return;
+    if (!canvasRef.current) return;
     
     const canvas = canvasRef.current;
     
@@ -65,7 +64,7 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
     return () => {
       canvas.removeEventListener('mouseenter', handleMouseEnter);
     };
-  }, [textLayerEnabled]);
+  }, []);
 
   // Get raw coordinates relative to canvas
   const getRawCoordinates = (clientX: number, clientY: number): { x: number, y: number } => {
@@ -83,10 +82,6 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
 
   // Drawing handlers
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (textLayerEnabled) {
-      return;
-    }
-    
     const canvas = canvasRef.current;
     if (!canvas) {
       return;
@@ -101,7 +96,7 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
   };
   
   const drawRectangle = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || textLayerEnabled || !startPoint) return;
+    if (!isDrawing || !startPoint) return;
     
     // Get raw coordinates
     const point = getRawCoordinates(e.clientX, e.clientY);
@@ -131,7 +126,7 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
   };
   
   const endDrawing = () => {
-    if (!isDrawing || textLayerEnabled || !startPoint || !endPoint) {
+    if (!isDrawing || !startPoint || !endPoint) {
       setIsDrawing(false);
       setStartPoint(null);
       setEndPoint(null);
