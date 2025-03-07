@@ -143,8 +143,13 @@ export const Page = ({ page, scale, pageNumber, id, className }: PageProps) => {
         if (isMounted) {
           setHasRendered(true);
         }
-      } catch (error) {
-        console.error('Error rendering PDF page:', error);
+      } catch (error: any) {
+        // Don't log cancellation exceptions as errors since they're expected during rotation
+        if (error.name === 'RenderingCancelledException') {
+          console.debug('Rendering cancelled:', error.message);
+        } else {
+          console.error('Error rendering PDF page:', error);
+        }
       }
     };
 
