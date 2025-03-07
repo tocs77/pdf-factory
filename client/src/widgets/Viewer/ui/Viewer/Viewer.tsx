@@ -23,7 +23,7 @@ interface PdfViewerProps {
 
 // Internal viewer component that will be wrapped with the provider
 const PdfViewerInternal = ({ url }: PdfViewerProps) => {
-  const { state } = useContext(ViewerContext);
+  const { state, dispatch } = useContext(ViewerContext);
   const { scale, showThumbnails } = state;
 
   const [pdfRef, setPdfRef] = useState<PDFDocumentProxy | null>(null);
@@ -39,6 +39,82 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
 
   // Use a lower quality for thumbnails to improve performance
   const thumbnailQuality = Math.max(0.5, renderQuality * 0.5);
+
+  // Prevent browser zoom on Ctrl+wheel globally
+  useEffect(() => {
+    // This function will prevent the default browser zoom behavior
+    // AND handle our custom zoom functionality
+    const preventBrowserZoom = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Handle our custom zoom functionality
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        const newScale = Math.max(0.5, Math.min(5, scale + delta));
+
+        // Update scale in context
+        if (newScale !== scale) {
+          dispatch({ type: 'setScale', payload: newScale });
+        }
+
+        return false;
+      }
+      return true;
+    };
+
+    // Add the event listener to the document with capture phase to ensure it runs first
+    document.addEventListener('wheel', preventBrowserZoom, { passive: false, capture: true });
+
+    // Add the event listener to the window object as well for better coverage
+    window.addEventListener('wheel', preventBrowserZoom, { passive: false, capture: true });
+
+    // Clean up
+    return () => {
+      document.removeEventListener('wheel', preventBrowserZoom, { capture: true });
+      window.removeEventListener('wheel', preventBrowserZoom, { capture: true });
+    };
+  }, [scale, dispatch]);
+
+  // Prevent browser zoom shortcuts
+  useEffect(() => {
+    const preventBrowserZoomShortcuts = (e: KeyboardEvent) => {
+      // Prevent browser zoom shortcuts (Ctrl+Plus, Ctrl+Minus, Ctrl+0)
+      if (e.ctrlKey && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '_' || e.key === '0')) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Handle our custom zoom functionality for keyboard shortcuts
+        if (e.key === '+' || e.key === '=') {
+          // Zoom in
+          const newScale = Math.min(5, scale + 0.1);
+          if (newScale !== scale) {
+            dispatch({ type: 'setScale', payload: newScale });
+          }
+        } else if (e.key === '-' || e.key === '_') {
+          // Zoom out
+          const newScale = Math.max(0.5, scale - 0.1);
+          if (newScale !== scale) {
+            dispatch({ type: 'setScale', payload: newScale });
+          }
+        } else if (e.key === '0') {
+          // Reset zoom
+          dispatch({ type: 'setScale', payload: 1.5 });
+        }
+
+        return false;
+      }
+      return true;
+    };
+
+    // Add the event listener to the document
+    document.addEventListener('keydown', preventBrowserZoomShortcuts, { capture: true });
+
+    // Clean up
+    return () => {
+      document.removeEventListener('keydown', preventBrowserZoomShortcuts, { capture: true });
+    };
+  }, [scale, dispatch]);
 
   // Find the page element that's most visible in the viewport
   const findVisiblePageElement = useCallback(() => {
@@ -217,7 +293,7 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
 
     const handleScroll = () => {
       const visiblePage = findVisiblePageElement();
-      
+
       if (visiblePage) {
         const pageNumberAttr = visiblePage.getAttribute('data-page-number');
         if (pageNumberAttr) {
@@ -231,10 +307,10 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
 
     // Add the scroll event listener
     container.addEventListener('scroll', handleScroll);
-    
+
     // Run the handler once to set the initial page
     handleScroll();
-    
+
     return () => {
       container.removeEventListener('scroll', handleScroll);
     };
@@ -245,7 +321,7 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
   useEffect(() => {
     const container = pdfContainerRef.current;
     if (!container || pages.length === 0) return;
-    
+
     // Find the most visible page and update selectedPage
     const visiblePage = findVisiblePageElement();
     if (visiblePage) {
@@ -294,7 +370,7 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
       )}
 
       <div className={classes.viewerContainer}>
-        <ViewerMenu renderQuality={renderQuality} currentPage={selectedPage} totalPages={pages.length} />
+        <ViewerMenu currentPage={selectedPage} totalPages={pages.length} />
 
         <div className={classes.pdfContainer} ref={pdfContainerRef}>
           <div className={classes.pdfContentWrapper}>
