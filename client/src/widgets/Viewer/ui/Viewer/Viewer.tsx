@@ -40,6 +40,49 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
   // Use a lower quality for thumbnails to improve performance
   const thumbnailQuality = Math.max(0.5, renderQuality * 0.5);
 
+  // Function to adjust scroll position after zoom
+  const adjustScrollPositionAfterZoom = (
+    container: HTMLDivElement, 
+    zoomData: {
+      oldScale: number;
+      newScale: number;
+      mouseXDoc: number;
+      mouseYDoc: number;
+      scrollTopBefore: number;
+      scrollLeftBefore: number;
+    }
+  ) => {
+    const { 
+      oldScale, 
+      newScale, 
+      mouseXDoc, 
+      mouseYDoc, 
+      scrollTopBefore,
+      scrollLeftBefore
+    } = zoomData;
+    
+    // Calculate the scale ratio
+    const scaleRatio = newScale / oldScale;
+    
+    // Calculate new scroll position to keep the mouse position fixed
+    const newScrollLeft = (mouseXDoc * scaleRatio) - mouseXDoc + scrollLeftBefore;
+    const newScrollTop = (mouseYDoc * scaleRatio) - mouseYDoc + scrollTopBefore;
+    
+    // Apply the new scroll position
+    container.scrollLeft = newScrollLeft;
+    container.scrollTop = newScrollTop;
+    
+    console.log('Zoom adjusted scroll:', {
+      oldScale,
+      newScale,
+      scaleRatio,
+      mouseXDoc,
+      mouseYDoc,
+      scrollBefore: { x: scrollLeftBefore, y: scrollTopBefore },
+      scrollAfter: { x: newScrollLeft, y: newScrollTop }
+    });
+  };
+
   // Prevent browser zoom on Ctrl+wheel globally
   useEffect(() => {
     // This function will prevent the default browser zoom behavior
@@ -49,13 +92,47 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
         e.preventDefault();
         e.stopPropagation();
 
+        // Get the container element
+        const container = pdfContainerRef.current;
+        if (!container) return false;
+
+        // Get container dimensions and scroll position before zoom
+        const containerRect = container.getBoundingClientRect();
+        const scrollTopBefore = container.scrollTop;
+        const scrollLeftBefore = container.scrollLeft;
+
+        // Calculate mouse position relative to the container
+        const mouseX = e.clientX - containerRect.left;
+        const mouseY = e.clientY - containerRect.top;
+
+        // Calculate mouse position relative to the document (including scroll)
+        const mouseXDoc = mouseX + scrollLeftBefore;
+        const mouseYDoc = mouseY + scrollTopBefore;
+
         // Handle our custom zoom functionality
         const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        const oldScale = scale;
         const newScale = Math.max(0.5, Math.min(5, scale + delta));
+
+        // Store the current scroll position and mouse position for use after the scale change
+        const zoomData = {
+          oldScale,
+          newScale,
+          mouseXDoc,
+          mouseYDoc,
+          scrollTopBefore,
+          scrollLeftBefore
+        };
 
         // Update scale in context
         if (newScale !== scale) {
+          // First update the scale
           dispatch({ type: 'setScale', payload: newScale });
+          
+          // Then adjust the scroll position in the next render cycle
+          requestAnimationFrame(() => {
+            adjustScrollPositionAfterZoom(container, zoomData);
+          });
         }
 
         return false;
@@ -83,33 +160,67 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
       if (e.ctrlKey && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '_' || e.key === '0')) {
         e.preventDefault();
         e.stopPropagation();
+        
+        // Get the container element
+        const container = pdfContainerRef.current;
+        if (!container) return false;
+        
+        // Get container dimensions and scroll position before zoom
+        const containerRect = container.getBoundingClientRect();
+        const scrollTopBefore = container.scrollTop;
+        const scrollLeftBefore = container.scrollLeft;
+        
+        // Calculate center position for keyboard shortcuts
+        const centerX = containerRect.width / 2;
+        const centerY = containerRect.height / 2;
+        
+        // Calculate center position relative to the document (including scroll)
+        const centerXDoc = centerX + scrollLeftBefore;
+        const centerYDoc = centerY + scrollTopBefore;
+        
+        const oldScale = scale;
+        let newScale = scale;
 
         // Handle our custom zoom functionality for keyboard shortcuts
         if (e.key === '+' || e.key === '=') {
           // Zoom in
-          const newScale = Math.min(5, scale + 0.1);
-          if (newScale !== scale) {
-            dispatch({ type: 'setScale', payload: newScale });
-          }
+          newScale = Math.min(5, scale + 0.1);
         } else if (e.key === '-' || e.key === '_') {
           // Zoom out
-          const newScale = Math.max(0.5, scale - 0.1);
-          if (newScale !== scale) {
-            dispatch({ type: 'setScale', payload: newScale });
-          }
+          newScale = Math.max(0.5, scale - 0.1);
         } else if (e.key === '0') {
           // Reset zoom
-          dispatch({ type: 'setScale', payload: 1.5 });
+          newScale = 1.5;
         }
-
+        
+        // Store the current scroll position and center position for use after the scale change
+        const zoomData = {
+          oldScale,
+          newScale,
+          mouseXDoc: centerXDoc,
+          mouseYDoc: centerYDoc,
+          scrollTopBefore,
+          scrollLeftBefore
+        };
+        
+        if (newScale !== scale) {
+          // First update the scale
+          dispatch({ type: 'setScale', payload: newScale });
+          
+          // Then adjust the scroll position in the next render cycle
+          requestAnimationFrame(() => {
+            adjustScrollPositionAfterZoom(container, zoomData);
+          });
+        }
+        
         return false;
       }
       return true;
     };
-
+    
     // Add the event listener to the document
     document.addEventListener('keydown', preventBrowserZoomShortcuts, { capture: true });
-
+    
     // Clean up
     return () => {
       document.removeEventListener('keydown', preventBrowserZoomShortcuts, { capture: true });
@@ -370,7 +481,10 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
       )}
 
       <div className={classes.viewerContainer}>
-        <ViewerMenu currentPage={selectedPage} totalPages={pages.length} />
+        <ViewerMenu 
+          currentPage={selectedPage} 
+          totalPages={pages.length} 
+        />
 
         <div className={classes.pdfContainer} ref={pdfContainerRef}>
           <div className={classes.pdfContentWrapper}>
