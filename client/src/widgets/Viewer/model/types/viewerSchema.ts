@@ -121,7 +121,7 @@ export interface ViewerSchema {
   textLayerEnabled?: boolean;
 }
 
-export type Action = 
+export type Action =
   | { type: 'setScale'; payload: number }
   | { type: 'setDrawingColor'; payload: string }
   | { type: 'setDrawingLineWidth'; payload: number }
@@ -137,4 +137,5 @@ export type Action =
   | { type: 'toggleThumbnails' }
   | { type: 'toggleTextLayer' } // Toggle text layer visibility
   | { type: 'rotatePageClockwise'; payload: number } // Page number to rotate
-  | { type: 'rotatePageCounterClockwise'; payload: number }; // Page number to rotate
+  | { type: 'rotatePageCounterClockwise'; payload: number } // Page number to rotate
+  | { type: 'setPageRotation'; payload: { pageNumber: number; angle: number } };

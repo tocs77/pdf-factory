@@ -79,6 +79,20 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
         }
 
         const loadedPagesArray = await Promise.all(pagesPromises);
+        // Get default rotation for each page and set it in the context
+        loadedPagesArray.forEach((page, index) => {
+          const pageNumber = index + 1;
+
+          const defaultViewport = page.getViewport({ scale: 1 });
+          const defaultRotation = defaultViewport.rotation;
+          // Only update context if there's a rotation value
+          if (defaultRotation !== undefined) {
+            dispatch({
+              type: 'setPageRotation',
+              payload: { pageNumber, angle: defaultRotation },
+            });
+          }
+        });
         setPages(loadedPagesArray);
         setIsLoading(false);
       } catch (err) {

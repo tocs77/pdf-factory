@@ -22,7 +22,7 @@ export const initialViewerState: ViewerSchema = {
   lines: [],
   showThumbnails: false,
   pageRotations: {},
-  textLayerEnabled: true
+  textLayerEnabled: true,
 };
 
 export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema => {
@@ -35,121 +35,131 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
         return { ...state, scale: MAX_ZOOM };
       }
       return { ...state, scale: action.payload };
-    
+
     case 'setDrawingColor':
       return { ...state, drawingColor: action.payload };
-    
+
     case 'setDrawingLineWidth':
       return { ...state, drawingLineWidth: action.payload };
-    
+
     case 'setDrawingMode':
       console.log('setDrawingMode', action.payload);
       return { ...state, drawingMode: action.payload };
-    
+
     case 'addDrawing':
-      return { 
-        ...state, 
-        drawings: [...state.drawings, action.payload] 
+      return {
+        ...state,
+        drawings: [...state.drawings, action.payload],
       };
-    
+
     case 'addRectangle':
       return {
         ...state,
-        rectangles: [...state.rectangles, action.payload]
+        rectangles: [...state.rectangles, action.payload],
       };
-    
+
     case 'addPin':
       return {
         ...state,
-        pins: [...state.pins, action.payload]
+        pins: [...state.pins, action.payload],
       };
-    
+
     case 'addLine':
       return {
         ...state,
-        lines: [...state.lines, action.payload]
+        lines: [...state.lines, action.payload],
       };
-    
+
     case 'clearDrawings':
       // If payload is provided, clear drawings for that page only
       if (action.payload !== undefined) {
         return {
           ...state,
-          drawings: state.drawings.filter(drawing => drawing.pageNumber !== action.payload)
+          drawings: state.drawings.filter((drawing) => drawing.pageNumber !== action.payload),
         };
       }
       // Otherwise clear all drawings
       return { ...state, drawings: [] };
-    
+
     case 'clearRectangles':
       // If payload is provided, clear rectangles for that page only
       if (action.payload !== undefined) {
         return {
           ...state,
-          rectangles: state.rectangles.filter(rect => rect.pageNumber !== action.payload)
+          rectangles: state.rectangles.filter((rect) => rect.pageNumber !== action.payload),
         };
       }
       // Otherwise clear all rectangles
       return { ...state, rectangles: [] };
-    
+
     case 'clearPins':
       // If payload is provided, clear pins for that page only
       if (action.payload !== undefined) {
         return {
           ...state,
-          pins: state.pins.filter(pin => pin.pageNumber !== action.payload)
+          pins: state.pins.filter((pin) => pin.pageNumber !== action.payload),
         };
       }
       // Otherwise clear all pins
       return { ...state, pins: [] };
-    
+
     case 'clearLines':
       // If payload is provided, clear lines for that page only
       if (action.payload !== undefined) {
         return {
           ...state,
-          lines: state.lines.filter(line => line.pageNumber !== action.payload)
+          lines: state.lines.filter((line) => line.pageNumber !== action.payload),
         };
       }
       // Otherwise clear all lines
       return { ...state, lines: [] };
-    
+
     case 'toggleThumbnails':
       return { ...state, showThumbnails: !state.showThumbnails };
-    
+
     case 'toggleTextLayer':
       return { ...state, textLayerEnabled: !state.textLayerEnabled };
-    
+
     case 'rotatePageClockwise': {
       const pageNumber = action.payload;
       const currentRotation = state.pageRotations[pageNumber] || 0;
       // Calculate new rotation (clockwise: 0 -> 90 -> 180 -> 270 -> 0)
       const newRotation: RotationAngle = ((currentRotation + 90) % 360) as RotationAngle;
-      
+
       return {
         ...state,
         pageRotations: {
           ...state.pageRotations,
-          [pageNumber]: newRotation
-        }
+          [pageNumber]: newRotation,
+        },
       };
     }
-    
+
     case 'rotatePageCounterClockwise': {
       const pageNumber = action.payload;
       const currentRotation = state.pageRotations[pageNumber] || 0;
       // Calculate new rotation (counter-clockwise: 0 -> 270 -> 180 -> 90 -> 0)
       const newRotation: RotationAngle = ((currentRotation - 90 + 360) % 360) as RotationAngle;
-      
+
       return {
         ...state,
         pageRotations: {
           ...state.pageRotations,
-          [pageNumber]: newRotation
-        }
+          [pageNumber]: newRotation,
+        },
       };
     }
-    
+    case 'setPageRotation': {
+      const { pageNumber, angle } = action.payload;
+      return {
+        ...state,
+        pageRotations: {
+          ...state.pageRotations,
+          [pageNumber]: angle as RotationAngle,
+        },
+      };
+    }
+
     default:
       return state;
   }
