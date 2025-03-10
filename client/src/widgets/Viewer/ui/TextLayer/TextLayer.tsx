@@ -354,6 +354,15 @@ export const TextLayer = ({
                 // Allow normal text selection (removing user-select: all)
                 // This enables selecting text by dragging the mouse
                 textDiv.style.userSelect = 'text';
+                textDiv.style.cursor = 'text';
+                
+                // Add padding to improve selection area without affecting layout
+                const paddingRight = fontHeight > 60 ? '6px' : fontHeight > 40 ? '4px' : fontHeight > 24 ? '3px' : '2px';
+                const paddingLeft = fontHeight > 60 ? '2px' : fontHeight > 40 ? '1px' : fontHeight > 24 ? '1px' : '0px';
+                
+                textDiv.style.paddingRight = paddingRight;
+                textDiv.style.paddingLeft = paddingLeft;
+                textDiv.style.boxSizing = 'content-box';
                 
                 // Calculate text width based on transform matrix
                 // This helps ensure the text block width matches the actual text on the page
@@ -369,46 +378,102 @@ export const TextLayer = ({
                   let scaleFactor: number;
                   
                   // Progressive scaling based on font size
-                  if (fontHeight > 24) {
-                    scaleFactor = 1.15; // Very large fonts
+                  if (fontHeight > 60) {
+                    scaleFactor = 1.35; // Very large fonts
+                  } else if (fontHeight > 40) {
+                    scaleFactor = 1.25; // Reduced from 1.4 for 40-60px range
+                  } else if (fontHeight > 24) {
+                    scaleFactor = 1.2; // Reduced from 1.35
                   } else if (fontHeight > 20) {
-                    scaleFactor = 1.12; // Large fonts
+                    scaleFactor = 1.15; // Reduced from 1.3
                   } else if (fontHeight > 16) {
-                    scaleFactor = 1.08; // Medium-large fonts
+                    scaleFactor = 1.12; // Reduced from 1.25
                   } else if (fontHeight > 12) {
-                    scaleFactor = 1.05; // Medium fonts
+                    scaleFactor = 1.1; // Reduced from 1.2
                   } else if (fontHeight > 9) {
-                    scaleFactor = 0.95; // Small-medium fonts
+                    scaleFactor = 1.05; // Reduced from 1.15
                   } else {
-                    scaleFactor = 0.9; // Small fonts
+                    scaleFactor = 1.02; // Reduced from 1.1
                   }
                   
                   // Calculate width based on character width and apply scaling
                   const charWidth = Math.abs(tx[0]) / (item.str?.length || 1);
-                  textWidth = charWidth * (item.str?.length || 1) * fontHeight * scaleFactor;
+                  
+                  // Add extra width to compensate for letter-spacing and ensure proper selection
+                  let letterSpacingCompensation: number;
+                  
+                  // Adjust compensation based on font size
+                  if (fontHeight > 60) {
+                    letterSpacingCompensation = 1.25; // Reduced from 1.35
+                  } else if (fontHeight > 40) {
+                    letterSpacingCompensation = 1.15; // Reduced from 1.35
+                  } else if (fontHeight > 24) {
+                    letterSpacingCompensation = 1.1; // Reduced from 1.25
+                  } else {
+                    letterSpacingCompensation = 1.05; // Reduced from 1.15
+                  }
+                  
+                  textWidth = charWidth * (item.str?.length || 1) * fontHeight * scaleFactor * letterSpacingCompensation;
                   
                   // Additional adjustment for specific characters
-                  // Some characters like 'W', 'M' need more width
                   if (item.str && /[WMwm]/.test(item.str)) {
-                    textWidth *= 1.05; // Add 5% for wide characters
+                    // Scale wide character adjustment based on font size
+                    if (fontHeight > 60) {
+                      textWidth *= 1.2; // 20% wider for very large fonts
+                    } else if (fontHeight > 40) {
+                      textWidth *= 1.15; // 15% wider for large fonts
+                    } else {
+                      textWidth *= 1.1; // 10% wider for normal fonts
+                    }
+                  }
+                  
+                  // Additional adjustment for text containing spaces
+                  if (item.str && item.str.includes(' ')) {
+                    // Scale space adjustment based on font size
+                    if (fontHeight > 60) {
+                      textWidth *= 1.15; // 15% wider for very large fonts with spaces
+                    } else if (fontHeight > 40) {
+                      textWidth *= 1.1; // 10% wider for large fonts with spaces
+                    } else {
+                      textWidth *= 1.05; // 5% wider for normal fonts with spaces
+                    }
+                  }
+                  
+                  // Extra adjustment for uppercase text which tends to be wider
+                  if (item.str && /[A-Z]/.test(item.str)) {
+                    if (fontHeight > 60) {
+                      textWidth *= 1.1; // 10% wider for very large uppercase
+                    } else if (fontHeight > 40) {
+                      textWidth *= 1.08; // 8% wider for large uppercase
+                    } else {
+                      textWidth *= 1.05; // 5% wider for normal uppercase
+                    }
                   }
                 }
                 
                 // Ensure minimum width for very short text
                 textWidth = Math.max(textWidth, fontHeight * 0.5);
                 
-                // Apply the calculated width with a slight buffer
-                textDiv.style.width = `${(textWidth + 1).toFixed(3)}px`;
+                // Apply the calculated width with a slightly larger buffer
+                // Add extra buffer for larger fonts - reduced for 40px range
+                const buffer = fontHeight > 60 ? 4 : fontHeight > 40 ? 2 : fontHeight > 24 ? 2 : 1;
+                textDiv.style.width = `${(textWidth + buffer).toFixed(3)}px`;
                 
                 // Adjust letter spacing based on font size
-                // Larger fonts need less letter spacing adjustment
+                // Larger fonts need more letter spacing adjustment for selection
                 let letterSpacing: string;
-                if (fontHeight > 20) {
-                  letterSpacing = '0.01em'; // Slight positive spacing for very large fonts
+                if (fontHeight > 60) {
+                  letterSpacing = '0.15em'; // Special handling for very large fonts (like 72px)
+                } else if (fontHeight > 40) {
+                  letterSpacing = '0.08em'; // Reduced from 0.15em for 40-60px range
+                } else if (fontHeight > 24) {
+                  letterSpacing = '0.06em'; // Reduced from 0.1em
+                } else if (fontHeight > 20) {
+                  letterSpacing = '0.05em'; // Reduced from 0.08em
                 } else if (fontHeight > 14) {
-                  letterSpacing = '0em'; // No adjustment for large fonts
+                  letterSpacing = '0.04em'; // Reduced from 0.05em
                 } else {
-                  letterSpacing = '-0.01em'; // Slight negative spacing for smaller fonts
+                  letterSpacing = '0.02em'; // Keep as is for smaller fonts
                 }
                 textDiv.style.letterSpacing = letterSpacing;
                 
@@ -426,6 +491,10 @@ export const TextLayer = ({
                 
                 // Prevent text from being scaled incorrectly
                 textDiv.style.textRendering = 'geometricPrecision';
+
+                // Improve text selection behavior using non-standard CSS properties
+                (textDiv.style as any)['boxDecorationBreak'] = 'clone';
+                (textDiv.style as any)['-webkit-box-decoration-break'] = 'clone';
 
                 // Add text selection properties
                 if (item.fontName) {
@@ -482,6 +551,15 @@ export const TextLayer = ({
                   
                   // Allow normal text selection
                   textDiv.style.userSelect = 'text';
+                  textDiv.style.cursor = 'text';
+                  
+                  // Add padding to improve selection area without affecting layout
+                  const paddingRight = fontHeight > 60 ? '6px' : fontHeight > 40 ? '4px' : fontHeight > 24 ? '3px' : '2px';
+                  const paddingLeft = fontHeight > 60 ? '2px' : fontHeight > 40 ? '1px' : fontHeight > 24 ? '1px' : '0px';
+                  
+                  textDiv.style.paddingRight = paddingRight;
+                  textDiv.style.paddingLeft = paddingLeft;
+                  textDiv.style.boxSizing = 'content-box';
                   
                   // Calculate text width for fallback items
                   let textWidth: number;
@@ -492,40 +570,101 @@ export const TextLayer = ({
                     let scaleFactor: number;
                     
                     // Progressive scaling based on font size
-                    if (fontHeight > 24) {
-                      scaleFactor = 1.15; // Very large fonts
+                    if (fontHeight > 60) {
+                      scaleFactor = 1.35; // Very large fonts
+                    } else if (fontHeight > 40) {
+                      scaleFactor = 1.25; // Reduced from 1.4 for 40-60px range
+                    } else if (fontHeight > 24) {
+                      scaleFactor = 1.2; // Reduced from 1.35
                     } else if (fontHeight > 20) {
-                      scaleFactor = 1.12; // Large fonts
+                      scaleFactor = 1.15; // Reduced from 1.3
                     } else if (fontHeight > 16) {
-                      scaleFactor = 1.08; // Medium-large fonts
+                      scaleFactor = 1.12; // Reduced from 1.25
                     } else if (fontHeight > 12) {
-                      scaleFactor = 1.05; // Medium fonts
+                      scaleFactor = 1.1; // Reduced from 1.2
                     } else if (fontHeight > 9) {
-                      scaleFactor = 0.95; // Small-medium fonts
+                      scaleFactor = 1.05; // Reduced from 1.15
                     } else {
-                      scaleFactor = 0.9; // Small fonts
+                      scaleFactor = 1.02; // Reduced from 1.1
                     }
                     
                     const charWidth = Math.abs(tx[0]) / (item.str?.length || 1);
-                    textWidth = charWidth * (item.str?.length || 1) * fontHeight * scaleFactor;
+                    
+                    // Add extra width to compensate for letter-spacing in fallback items too
+                    let letterSpacingCompensation: number;
+                    
+                    // Adjust compensation based on font size
+                    if (fontHeight > 60) {
+                      letterSpacingCompensation = 1.25; // Reduced from 1.35
+                    } else if (fontHeight > 40) {
+                      letterSpacingCompensation = 1.15; // Reduced from 1.35
+                    } else if (fontHeight > 24) {
+                      letterSpacingCompensation = 1.1; // Reduced from 1.25
+                    } else {
+                      letterSpacingCompensation = 1.05; // Reduced from 1.15
+                    }
+                    
+                    textWidth = charWidth * (item.str?.length || 1) * fontHeight * scaleFactor * letterSpacingCompensation;
                     
                     // Additional adjustment for specific characters
                     if (item.str && /[WMwm]/.test(item.str)) {
-                      textWidth *= 1.05;
+                      // Scale wide character adjustment based on font size
+                      if (fontHeight > 60) {
+                        textWidth *= 1.2; // 20% wider for very large fonts
+                      } else if (fontHeight > 40) {
+                        textWidth *= 1.15; // 15% wider for large fonts
+                      } else {
+                        textWidth *= 1.1; // 10% wider for normal fonts
+                      }
+                    }
+                    
+                    // Additional adjustment for text containing spaces
+                    if (item.str && item.str.includes(' ')) {
+                      // Scale space adjustment based on font size
+                      if (fontHeight > 60) {
+                        textWidth *= 1.15; // 15% wider for very large fonts with spaces
+                      } else if (fontHeight > 40) {
+                        textWidth *= 1.1; // 10% wider for large fonts with spaces
+                      } else {
+                        textWidth *= 1.05; // 5% wider for normal fonts with spaces
+                      }
+                    }
+                    
+                    // Extra adjustment for uppercase text which tends to be wider
+                    if (item.str && /[A-Z]/.test(item.str)) {
+                      if (fontHeight > 60) {
+                        textWidth *= 1.1; // 10% wider for very large uppercase
+                      } else if (fontHeight > 40) {
+                        textWidth *= 1.08; // 8% wider for large uppercase
+                      } else {
+                        textWidth *= 1.05; // 5% wider for normal uppercase
+                      }
                     }
                   }
                   
                   textWidth = Math.max(textWidth, fontHeight * 0.5);
-                  textDiv.style.width = `${(textWidth + 1).toFixed(3)}px`;
+                  // Add extra buffer for larger fonts - reduced for 40px range
+                  const buffer = fontHeight > 60 ? 4 : fontHeight > 40 ? 2 : fontHeight > 24 ? 2 : 1;
+                  textDiv.style.width = `${(textWidth + buffer).toFixed(3)}px`;
+                  
+                  // Improve text selection behavior
+                  (textDiv.style as any)['boxDecorationBreak'] = 'clone';
+                  (textDiv.style as any)['-webkit-box-decoration-break'] = 'clone';
                   
                   // Adjust letter spacing based on font size
                   let letterSpacing: string;
-                  if (fontHeight > 20) {
-                    letterSpacing = '0.01em';
+                  if (fontHeight > 60) {
+                    letterSpacing = '0.15em'; // Special handling for very large fonts (like 72px)
+                  } else if (fontHeight > 40) {
+                    letterSpacing = '0.08em'; // Reduced from 0.15em for 40-60px range
+                  } else if (fontHeight > 24) {
+                    letterSpacing = '0.06em'; // Reduced from 0.1em
+                  } else if (fontHeight > 20) {
+                    letterSpacing = '0.05em'; // Reduced from 0.08em
                   } else if (fontHeight > 14) {
-                    letterSpacing = '0em';
+                    letterSpacing = '0.04em'; // Reduced from 0.05em
                   } else {
-                    letterSpacing = '-0.01em';
+                    letterSpacing = '0.02em'; // Keep as is for smaller fonts
                   }
                   textDiv.style.letterSpacing = letterSpacing;
                   textDiv.style.overflow = 'visible';

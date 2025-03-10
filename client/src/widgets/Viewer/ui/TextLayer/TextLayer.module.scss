@@ -22,6 +22,9 @@
     background-color: transparent;
     display: inline-block;
     cursor: text;
+    letter-spacing: 0.02em; /* Base letter spacing */
+    margin: 0; /* Ensure no margins cause selection issues */
+    padding: 0; /* Base padding - actual padding applied in JS */
     
     /* Improve selection behavior */
     box-decoration-break: clone;
@@ -30,20 +33,24 @@
     
     /* Make selection visible but allow partial selection */
     &::selection {
-      background-color: rgba(0, 100, 255, 0.4);
+      background-color: rgba(0, 100, 255, 0.5);
       color: transparent;
       text-shadow: none;
+      padding: 2px; /* Global selection padding */
+      box-shadow: 0 0 2px rgba(0, 100, 255, 0.3); /* Add subtle shadow to improve visibility */
     }
     
     /* Ensure selection is visible in Firefox */
     &::-moz-selection {
-      background-color: rgba(0, 100, 255, 0.4);
+      background-color: rgba(0, 100, 255, 0.5);
       color: transparent;
       text-shadow: none;
+      padding: 2px; /* Global selection padding */
+      box-shadow: 0 0 2px rgba(0, 100, 255, 0.3); /* Add subtle shadow to improve visibility */
     }
     
     &:hover {
-      outline: 1px solid rgba(0, 0, 0, 0.05);
+      outline: 1px solid rgba(0, 0, 0, 0.1);
     }
   }
 }
@@ -79,9 +86,9 @@
 
 /* Global selection styles */
 ::selection {
-  background-color: rgba(0, 100, 255, 0.4);
+  background-color: rgba(0, 100, 255, 0.5);
 }
 
 ::-moz-selection {
-  background-color: rgba(0, 100, 255, 0.4);
+  background-color: rgba(0, 100, 255, 0.5);
 } 
