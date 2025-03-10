@@ -8,15 +8,13 @@ interface ThumbnailProps {
   pageNumber: number;
   isSelected: boolean;
   onClick: (pageNumber: number) => void;
-  /** Quality multiplier for rendering resolution (default: 1) */
-  quality?: number;
+  rotation?: number;
 }
 
-export const Thumbnail = ({ page, pageNumber, isSelected, onClick, quality = 1 }: ThumbnailProps) => {
+export const Thumbnail = ({ page, pageNumber, isSelected, onClick, rotation = 0 }: ThumbnailProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isRendering, setIsRendering] = useState(false);
-  const [renderProgress, setRenderProgress] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const [hasRendered, setHasRendered] = useState(false);
   
@@ -46,84 +44,62 @@ export const Thumbnail = ({ page, pageNumber, isSelected, onClick, quality = 1 }
   
   // Render thumbnail when it becomes visible
   useEffect(() => {
-    // Only render if visible and not already rendered
-    if (isVisible && !hasRendered) {
-      renderThumbnail();
-    }
-  }, [isVisible, page, quality]);
-  
-  const renderThumbnail = async () => {
-    if (!canvasRef.current) return;
+    if (!page || !canvasRef.current || !isVisible) return;
+    if (hasRendered) return;
     
-    setIsRendering(true);
-    setRenderProgress(0);
-    
-    // Use a smaller scale for thumbnails
-    const viewport = page.getViewport({ scale: 0.2 });
-    const canvas = canvasRef.current;
-    
-    // Apply quality multiplier to canvas dimensions for higher resolution rendering
-    const outputScale = window.devicePixelRatio || 1;
-    const totalScale = outputScale * quality;
-    
-    // Set display size
-    canvas.style.width = `${Math.floor(viewport.width)}px`;
-    canvas.style.height = `${Math.floor(viewport.height)}px`;
-    
-    // Set actual size in memory (scaled to account for device pixel ratio and quality)
-    canvas.width = Math.floor(viewport.width * totalScale);
-    canvas.height = Math.floor(viewport.height * totalScale);
-    
-    // Get context and scale it
-    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-    ctx.scale(totalScale, totalScale);
-    
-    const renderContext = {
-      canvasContext: ctx,
-      viewport: viewport,
+    const renderThumbnail = async () => {
+      try {
+        setIsRendering(true);
+        
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        
+        // Get container dimensions
+        const containerWidth = 110; // Slightly less than the 120px container width
+        const containerHeight = 130; // From CSS
+        
+        // Get default viewport at scale 1
+        const defaultViewport = page.getViewport({ scale: 1, rotation });
+        
+        // Calculate scale to fit within container
+        const scaleX = containerWidth / defaultViewport.width;
+        const scaleY = containerHeight / defaultViewport.height;
+        const scale = Math.min(scaleX, scaleY) * 0.95; // 5% margin
+        
+        // Create viewport with calculated scale
+        const viewport = page.getViewport({ 
+          scale, 
+          rotation 
+        });
+        
+        // Set canvas dimensions
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        
+        // Get context and ensure it's not null
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          console.error('Could not get canvas context for thumbnail');
+          return;
+        }
+        
+        // Render page
+        const renderContext = {
+          canvasContext: ctx,
+          viewport
+        };
+        
+        await page.render(renderContext).promise;
+        setHasRendered(true);
+      } catch (error) {
+        console.error('Error rendering thumbnail:', error);
+      } finally {
+        setIsRendering(false);
+      }
     };
     
-    try {
-      // Create a custom render progress tracker
-      const progressTracker = {
-        onProgress: (progress: { loaded: number, total: number }) => {
-          if (progress.total > 0) {
-            const percentage = Math.round((progress.loaded / progress.total) * 100);
-            setRenderProgress(percentage);
-          }
-        }
-      };
-      
-      // Pass the progress tracker to the render method
-      const renderTask = page.render({
-        ...renderContext,
-        ...progressTracker
-      });
-      
-      // Set up progress monitoring
-      renderTask.onContinue = (cont: () => void) => {
-        // This ensures the progress is updated during rendering
-        if (renderProgress < 90) {
-          // Increment progress to show activity
-          setRenderProgress(prev => Math.min(prev + 5, 90));
-        }
-        cont();
-        return true;
-      };
-      
-      await renderTask;
-      
-      // Set progress to 100% when rendering is complete
-      setRenderProgress(100);
-      setHasRendered(true);
-    } catch (error) {
-      console.error('Error rendering thumbnail:', error);
-      // Even on error, set progress to 100% to remove the loading indicator
-      setRenderProgress(100);
-    } finally {
-      setIsRendering(false);
-    }
-  };
+    renderThumbnail();
+  }, [page, rotation, isVisible, hasRendered]);
   
   return (
     <div 
@@ -136,21 +112,15 @@ export const Thumbnail = ({ page, pageNumber, isSelected, onClick, quality = 1 }
       </div>
       <canvas ref={canvasRef}></canvas>
       
-      {!hasRendered && !isRendering && isVisible && (
+      {!hasRendered && isVisible && (
         <div className={styles.placeholderOverlay}>
-          <div>Loading thumbnail...</div>
+          <div>Loading...</div>
         </div>
       )}
       
       {isRendering && (
         <div className={styles.renderingOverlay}>
-          <div>Loading{renderProgress > 0 ? ` (${renderProgress}%)` : '...'}</div>
-          <div className={styles.progressBar}>
-            <div 
-              className={styles.progressFill} 
-              style={{ width: `${renderProgress}%` }}
-            ></div>
-          </div>
+          <div>Loading...</div>
         </div>
       )}
     </div>

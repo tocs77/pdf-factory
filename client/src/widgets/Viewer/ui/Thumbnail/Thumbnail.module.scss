@@ -4,10 +4,24 @@
   cursor: pointer;
   border: 1px solid #ccc;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 120px; /* Fixed width for all thumbnails */
+  height: 170px; /* Fixed height for all thumbnails */
   
   &.selected {
     border: 2px solid blue;
     background-color: #e6f7ff;
+  }
+  
+  /* Canvas container to enforce aspect ratio and scaling */
+  canvas {
+    max-width: 100%;
+    max-height: 130px; /* Leave space for the page number */
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
   }
 }
 
@@ -67,4 +81,20 @@
   background-color: #4caf50;
   border-radius: 2px;
   transition: width 0.2s ease;
+}
+
+.thumbnailItem {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* Set fixed height for all thumbnails */
+  height: 150px; /* Adjust as needed */
+  margin-bottom: 10px;
+  
+  .thumbnailCanvas {
+    max-width: 100%;
+    max-height: 100%;
+    /* Maintain aspect ratio while fitting within container */
+    object-fit: contain;
+  }
 } 

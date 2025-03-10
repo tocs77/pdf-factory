@@ -1,15 +1,17 @@
 .zoomControls {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: white;
   display: flex;
   align-items: center;
   padding: 8px 16px;
-  background-color: #f5f5f5;
   border-bottom: 1px solid #ddd;
   flex-wrap: wrap;
   gap: 8px;
-  z-index: 1000;
   width: 100%;
   box-sizing: border-box;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   justify-content: flex-start;
   backdrop-filter: blur(5px);
   background-color: rgba(245, 245, 245, 0.95);
