@@ -21,9 +21,9 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([]);
 
-  // Set up drawing canvas
-  useEffect(() => {
-    if (!canvasRef.current) return;
+  // Create a function to initialize the canvas with correct dimensions and context
+  const initializeCanvas = () => {
+    if (!canvasRef.current) return null;
 
     const canvas = canvasRef.current;
 
@@ -35,17 +35,50 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
       canvas.height = parent.clientHeight;
     } else {
       console.warn('No parent element found for canvas');
+      return null;
     }
 
-    // Clear canvas
+    // Get context
     const ctx = canvas.getContext('2d');
     if (!ctx) {
       console.error('Could not get canvas context');
-      return;
+      return null;
     }
 
+    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }, [scale, pageNumber, rotation]);
+
+    // Initialize drawing styles
+    ctx.strokeStyle = drawingColor;
+    ctx.lineWidth = drawingLineWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    return ctx;
+  };
+
+  // Set up drawing canvas whenever rotation, scale, or page changes
+  useEffect(() => {
+    const ctx = initializeCanvas();
+    if (!ctx) return;
+
+    // Redraw any current path after rotation or scaling
+    if (isDrawing && currentPath.length > 1) {
+      ctx.beginPath();
+      
+      // Start from the first point
+      const firstPoint = currentPath[0];
+      ctx.moveTo(firstPoint.x, firstPoint.y);
+      
+      // Draw lines to all points
+      for (let i = 1; i < currentPath.length; i++) {
+        const point = currentPath[i];
+        ctx.lineTo(point.x, point.y);
+      }
+      
+      ctx.stroke();
+    }
+  }, [scale, pageNumber, rotation, isDrawing, currentPath, drawingColor, drawingLineWidth]);
 
   // Set cursor to crosshair
   useEffect(() => {
@@ -81,10 +114,9 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
 
   // Drawing handlers
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) {
-      return;
-    }
+    // Initialize or reinitialize the canvas
+    const ctx = initializeCanvas();
+    if (!ctx) return;
 
     // Get raw coordinates
     const { x, y } = getRawCoordinates(e.clientX, e.clientY);
@@ -93,49 +125,45 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
     setCurrentPath([{ x, y }]);
 
     // Start drawing
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      return;
-    }
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Set up drawing style
     ctx.beginPath();
-    ctx.strokeStyle = drawingColor;
-    ctx.lineWidth = drawingLineWidth;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    // Start from the first point
     ctx.moveTo(x, y);
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return;
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    // Get or reinitialize the canvas context
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
 
     // Get raw coordinates
     const { x, y } = getRawCoordinates(e.clientX, e.clientY);
 
     // Add point to current path
-    setCurrentPath((prevPath) => [...prevPath, { x, y }]);
-
-    // Draw line
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Set up drawing style
-    ctx.strokeStyle = drawingColor;
-    ctx.lineWidth = drawingLineWidth;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    // Draw line to the new point
-    ctx.lineTo(x, y);
-    ctx.stroke();
+    setCurrentPath((prevPath) => {
+      const newPath = [...prevPath, { x, y }];
+      
+      // Redraw the entire path to ensure it's visible
+      if (ctx && newPath.length > 1) {
+        // Clear the canvas first
+        const canvas = canvasRef.current;
+        if (canvas) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        // Draw the complete path
+        ctx.beginPath();
+        ctx.moveTo(newPath[0].x, newPath[0].y);
+        
+        for (let i = 1; i < newPath.length; i++) {
+          ctx.lineTo(newPath[i].x, newPath[i].y);
+        }
+        
+        ctx.stroke();
+      }
+      
+      return newPath;
+    });
   };
 
   const endDrawing = () => {
