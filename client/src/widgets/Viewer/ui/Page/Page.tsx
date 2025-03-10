@@ -12,15 +12,14 @@ import { TextLayer } from '../TextLayer/TextLayer';
 // Page component for rendering a single PDF page
 interface PageProps {
   page: PDFPageProxy;
-  scale: number;
   pageNumber: number;
   id: string;
   className?: string;
 }
 
-export const Page = ({ page, scale, pageNumber, id, className }: PageProps) => {
+export const Page = ({ page, pageNumber, id, className }: PageProps) => {
   const { state } = useContext(ViewerContext);
-  const { drawingMode, pageRotations } = state;
+  const { drawingMode, pageRotations, scale } = state;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -79,10 +78,10 @@ export const Page = ({ page, scale, pageNumber, id, className }: PageProps) => {
         // Enable dontFlip to ensure consistent rendering across different rotations
         dontFlip: false,
       });
-      
+
       // Store the viewport in state for the TextLayer component
       setViewport(currentViewport);
-      
+
       const canvas = canvasRef.current;
 
       // Get the parent container for proper sizing
@@ -208,13 +207,7 @@ export const Page = ({ page, scale, pageNumber, id, className }: PageProps) => {
 
           {/* Text Layer - only render when text tool is selected */}
           {drawingMode === 'text' && viewport && renderTask && (
-            <TextLayer
-              page={page}
-              viewport={viewport}
-              scale={scale}
-              rotation={rotation}
-              renderTask={renderTask}
-            />
+            <TextLayer page={page} viewport={viewport} scale={scale} rotation={rotation} renderTask={renderTask} />
           )}
 
           {/* Drawing components - only render when respective tool is selected */}

@@ -48,18 +48,15 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
   const [scrollStartY, setScrollStartY] = useState(0);
 
   // Use the zoom to mouse hook
-  const { 
-    findVisiblePageElement,
-    handleScaleChange
-  } = useZoomToMouse({
+  const { findVisiblePageElement, handleScaleChange } = useZoomToMouse({
     scale,
     dispatch,
-    containerRef: pdfContainerRef
+    containerRef: pdfContainerRef,
   });
 
   // Create a ref to track previous scale value
   const prevScaleRef = useRef(scale);
-  
+
   // Track scale changes and adjust scroll position
   useEffect(() => {
     // Only handle scale changes, not initial render
@@ -175,7 +172,7 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
 
   // Track when the PDF is fully loaded and rendered
   const [pdfRendered, setPdfRendered] = useState(false);
-  
+
   // Set pdfRendered to true when pages are loaded
   useEffect(() => {
     if (pages.length > 0 && !isLoading) {
@@ -196,43 +193,43 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
     const handleMouseDown = (e: MouseEvent) => {
       // Only activate on left mouse button
       if (e.button !== 0) return;
-      
+
       // Don't activate if Ctrl key is pressed (for zoom)
       if (e.ctrlKey) return;
-      
+
       // Set dragging state
       setIsDragging(true);
-      
+
       // Store initial mouse position
       setDragStartX(e.clientX);
       setDragStartY(e.clientY);
-      
+
       // Store initial scroll position
       setScrollStartX(container.scrollLeft);
       setScrollStartY(container.scrollTop);
-      
+
       // Prevent default behavior
       e.preventDefault();
     };
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging) return;
-      
+
       // Calculate how far the mouse has moved
       const deltaX = e.clientX - dragStartX;
       const deltaY = e.clientY - dragStartY;
-      
+
       // Scroll the container in the opposite direction of the mouse movement
       container.scrollLeft = scrollStartX - deltaX;
       container.scrollTop = scrollStartY - deltaY;
-      
+
       // Prevent default behavior
       e.preventDefault();
     };
 
     const handleMouseUp = () => {
       if (!isDragging) return;
-      
+
       // Reset dragging state
       setIsDragging(false);
     };
@@ -241,7 +238,7 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
     container.addEventListener('mousedown', handleMouseDown);
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-    
+
     // Clean up
     return () => {
       container.removeEventListener('mousedown', handleMouseDown);
@@ -284,21 +281,14 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
       )}
 
       <div className={classes.viewerContainer}>
-        <ViewerMenu 
-          currentPage={selectedPage} 
-          totalPages={pages.length} 
-        />
+        <ViewerMenu currentPage={selectedPage} totalPages={pages.length} />
 
-        <div 
-          className={classNames(
-            classes.pdfContainer, 
-            { 
-              [classes.draggable]: state.drawingMode === 'none',
-              [classes.dragging]: isDragging 
-            }
-          )} 
-          ref={pdfContainerRef}
-        >
+        <div
+          className={classNames(classes.pdfContainer, {
+            [classes.draggable]: state.drawingMode === 'none',
+            [classes.dragging]: isDragging,
+          })}
+          ref={pdfContainerRef}>
           {state.drawingMode === 'none' && !isDragging && (
             <div className={classes.dragIndicator}>
               <span>Click and drag to scroll</span>
@@ -306,7 +296,7 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
           )}
           <div className={classes.pdfContentWrapper}>
             {pages.map((page, index) => (
-              <Page key={index + 1} page={page} scale={scale} pageNumber={index + 1} id={`page-${index + 1}`} />
+              <Page key={index + 1} page={page} pageNumber={index + 1} id={`page-${index + 1}`} />
             ))}
           </div>
         </div>
