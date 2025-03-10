@@ -21,6 +21,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber }
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
   const [endPoint, setEndPoint] = useState<{ x: number; y: number } | null>(null);
+  const [isShiftKeyPressed, setIsShiftKeyPressed] = useState(false);
 
   // Create a function to initialize the canvas with correct dimensions and context
   const initializeCanvas = () => {
@@ -57,6 +58,107 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber }
     return ctx;
   };
 
+  // Track shift key state
+  useEffect(() => {
+    if (drawingMode !== 'line') return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') {
+        setIsShiftKeyPressed(true);
+        // Redraw with constraints if we're in the middle of drawing
+        if (isDrawing && startPoint && endPoint) {
+          redrawWithConstraints();
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') {
+        setIsShiftKeyPressed(false);
+        // Redraw without constraints if we're in the middle of drawing
+        if (isDrawing && startPoint && endPoint) {
+          redrawWithoutConstraints();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [drawingMode, isDrawing, startPoint, endPoint]);
+
+  // Helper to redraw with angle constraints when shift is pressed
+  const redrawWithConstraints = () => {
+    if (!startPoint || !endPoint || !canvasRef.current) return;
+
+    const ctx = canvasRef.current.getContext('2d');
+    if (!ctx) return;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+
+    // Calculate constrained end point
+    const constrainedEnd = getConstrainedEndPoint(startPoint, endPoint);
+
+    // Draw the line
+    ctx.beginPath();
+    ctx.moveTo(startPoint.x, startPoint.y);
+    ctx.lineTo(constrainedEnd.x, constrainedEnd.y);
+    ctx.stroke();
+  };
+
+  // Helper to redraw without constraints
+  const redrawWithoutConstraints = () => {
+    if (!startPoint || !endPoint || !canvasRef.current) return;
+
+    const ctx = canvasRef.current.getContext('2d');
+    if (!ctx) return;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+
+    // Draw the line without constraints
+    ctx.beginPath();
+    ctx.moveTo(startPoint.x, startPoint.y);
+    ctx.lineTo(endPoint.x, endPoint.y);
+    ctx.stroke();
+  };
+
+  // Constrain endpoint to 0, 45, or 90 degrees
+  const getConstrainedEndPoint = (start: { x: number; y: number }, end: { x: number; y: number }) => {
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    
+    // Calculate angle in radians
+    const angle = Math.atan2(dy, dx);
+    
+    // Convert to degrees and normalize to 0-360
+    let degrees = (angle * 180) / Math.PI;
+    if (degrees < 0) degrees += 360;
+    
+    // Find closest constraint angle (0, 45, 90, 135, 180, 225, 270, 315)
+    const snapAngles = [0, 45, 90, 135, 180, 225, 270, 315];
+    const closestAngle = snapAngles.reduce((prev, curr) => {
+      return (Math.abs(curr - degrees) < Math.abs(prev - degrees)) ? curr : prev;
+    });
+    
+    // Calculate distance/length of the line
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // Convert constrained angle back to radians
+    const constrainedRadians = (closestAngle * Math.PI) / 180;
+    
+    // Calculate new endpoint
+    return {
+      x: start.x + distance * Math.cos(constrainedRadians),
+      y: start.y + distance * Math.sin(constrainedRadians)
+    };
+  };
+
   // Set up drawing canvas whenever rotation, scale, or page changes
   useEffect(() => {
     const ctx = initializeCanvas();
@@ -66,10 +168,19 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber }
     if (isDrawing && startPoint && endPoint) {
       ctx.beginPath();
       ctx.moveTo(startPoint.x, startPoint.y);
-      ctx.lineTo(endPoint.x, endPoint.y);
+      
+      if (isShiftKeyPressed) {
+        // Draw with constraints
+        const constrainedEnd = getConstrainedEndPoint(startPoint, endPoint);
+        ctx.lineTo(constrainedEnd.x, constrainedEnd.y);
+      } else {
+        // Draw without constraints
+        ctx.lineTo(endPoint.x, endPoint.y);
+      }
+      
       ctx.stroke();
     }
-  }, [scale, pageNumber, rotation, isDrawing, startPoint, endPoint, drawingColor, drawingLineWidth]);
+  }, [scale, pageNumber, rotation, isDrawing, startPoint, endPoint, drawingColor, drawingLineWidth, isShiftKeyPressed]);
 
   // Hide the canvas when drawing mode is not 'line'
   useEffect(() => {
@@ -151,7 +262,16 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber }
     // Draw the line from start point to current point
     ctx.beginPath();
     ctx.moveTo(startPoint.x, startPoint.y);
-    ctx.lineTo(currentPoint.x, currentPoint.y);
+    
+    if (isShiftKeyPressed) {
+      // Draw with constraints
+      const constrainedEnd = getConstrainedEndPoint(startPoint, currentPoint);
+      ctx.lineTo(constrainedEnd.x, constrainedEnd.y);
+    } else {
+      // Draw without constraints
+      ctx.lineTo(currentPoint.x, currentPoint.y);
+    }
+    
     ctx.stroke();
   };
 
@@ -171,9 +291,14 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber }
       return;
     }
 
+    // Get the final end point (constrained if shift is pressed)
+    const finalEndPoint = isShiftKeyPressed
+      ? getConstrainedEndPoint(startPoint, endPoint)
+      : endPoint;
+
     // Don't save if start and end points are too close (just a click)
-    const dx = endPoint.x - startPoint.x;
-    const dy = endPoint.y - startPoint.y;
+    const dx = finalEndPoint.x - startPoint.x;
+    const dy = finalEndPoint.y - startPoint.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     
     if (distance < 5) { // Minimum line length of 5 pixels
@@ -199,7 +324,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber }
     );
 
     const normalizedEndPoint = normalizeCoordinatesToZeroRotation(
-      endPoint, 
+      finalEndPoint, 
       canvas.width, 
       canvas.height, 
       scale, 
