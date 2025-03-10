@@ -15,7 +15,7 @@ interface CompleteDrawingsProps {
 const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { state } = useContext(ViewerContext);
-  const { drawings, rectangles, pins, lines, scale, pageRotations } = state;
+  const { drawings, rectangles, pins, lines, drawAreas, scale, pageRotations } = state;
 
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;
@@ -25,6 +25,7 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
   const pageRectangles = rectangles.filter((rect) => rect.pageNumber === pageNumber);
   const pagePins = pins.filter((pin) => pin.pageNumber === pageNumber);
   const pageLines = lines.filter((line) => line.pageNumber === pageNumber);
+  const pageDrawAreas = drawAreas.filter((area) => area.pageNumber === pageNumber);
 
   // Render drawings on canvas
   useEffect(() => {
@@ -188,7 +189,38 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
         renderPin(ctx, pin, x, y);
       }
     });
-  }, [pageDrawings, pageRectangles, pagePins, pageLines, scale, pageNumber, rotation]);
+    
+    // Draw all draw areas (transparent rectangles with border only)
+    pageDrawAreas.forEach((area) => {
+      // Transform draw area coordinates with rotation
+      const { x: startX, y: startY } = transformCoordinates(
+        area.startPoint.x, 
+        area.startPoint.y, 
+        canvas.width, 
+        canvas.height,
+        scale,
+        rotation
+      );
+
+      const { x: endX, y: endY } = transformCoordinates(
+        area.endPoint.x, 
+        area.endPoint.y, 
+        canvas.width, 
+        canvas.height,
+        scale,
+        rotation
+      );
+
+      const width = endX - startX;
+      const height = endY - startY;
+
+      // Draw border only (no fill) with the line width from the context
+      ctx.strokeStyle = area.color;
+      // Apply the line width from the context that was saved with the area
+      ctx.lineWidth = area.lineWidth * scale;
+      ctx.strokeRect(startX, startY, width, height);
+    });
+  }, [pageDrawings, pageRectangles, pagePins, pageLines, pageDrawAreas, scale, pageNumber, rotation]);
 
   return <canvas ref={canvasRef} className={styles.drawingsCanvas} data-testid='complete-drawings-canvas' />;
 };
