@@ -1,5 +1,8 @@
 import { Pin } from '../model/types/viewerSchema';
 
+// Constants for pin rendering
+const MAX_ARROW_HEAD_LENGTH = 15; // Maximum length of the arrow head
+
 /**
  * Renders a pin on the canvas
  * @param ctx Canvas rendering context
@@ -26,65 +29,116 @@ export const renderPin = (
   ctx.shadowOffsetX = 2;
   ctx.shadowOffsetY = 2;
   
-  // Draw a thinner arrow with true 45-degree angle pointing part and thinner, longer arrowhead
+  // Draw a thinner arrow with arrowhead
   ctx.fillStyle = pin.color;
   
   // Calculate arrow dimensions
-  const arrowLength = pinSize * 3; // Length of the diagonal pointing part
-  const arrowTailLength = pinSize * 5; // Length of the horizontal part
   const arrowHeadWidth = pinSize * 0.5; // Width of the arrowhead (thinner)
+  const arrowTailLength = pinSize * 5; // Length of the tail
   
-  // Calculate points for a true 45-degree angle
-  // For a 45-degree angle, the x and y distances should be equal
-  const diagonalOffset = arrowLength / Math.sqrt(2); // Equal x and y offset for 45 degrees
+  // Use the bendPoint if provided, otherwise calculate a default bend point
+  let bendX: number, bendY: number;
   
-  // Calculate the bend point (where diagonal meets horizontal)
-  const bendX = x - diagonalOffset;
-  const bendY = y - diagonalOffset;
+  if (pin.bendPoint) {
+    // If a bendPoint is provided, use it directly
+    bendX = pin.bendPoint.x;
+    bendY = pin.bendPoint.y;
+  } else {
+    // Fallback to the old calculation for backward compatibility
+    const arrowLength = pinSize * 3; // Length of the diagonal pointing part
+    const diagonalOffset = arrowLength / Math.sqrt(2); // Equal x and y offset for 45 degrees
+    bendX = x - diagonalOffset;
+    bendY = y - diagonalOffset;
+  }
   
-  // Draw the arrow shaft with stroke
+  // Calculate the vector from bend point to arrow tip
+  const arrowDx = x - bendX;
+  const arrowDy = y - bendY;
+  
+  // Avoid zero-length vectors
+  if (arrowDx === 0 && arrowDy === 0) {
+    // If bend point equals the arrow tip (shouldn't normally happen), 
+    // just use a horizontal tail to the left as fallback
+    const tailEndX = bendX - arrowTailLength;
+    const tailEndY = bendY;
+    
+    // Draw a simple horizontal arrow
+    ctx.beginPath();
+    ctx.lineWidth = arrowThickness;
+    ctx.strokeStyle = pin.color;
+    ctx.lineCap = 'round';
+    
+    // Draw tail
+    ctx.moveTo(tailEndX, tailEndY);
+    ctx.lineTo(bendX, bendY);
+    ctx.stroke();
+    
+    // Draw text
+    if (pin.text && pin.text.length > 0) {
+      renderArrowText(ctx, pin, pinSize, arrowTailLength, bendX, bendY, tailEndX, tailEndY);
+    }
+    
+    ctx.restore();
+    return;
+  }
+  
+  // Calculate the arrow length
+  const arrowLength = Math.sqrt(arrowDx * arrowDx + arrowDy * arrowDy);
+  
+  // Normalize the arrow direction vector
+  const normalizedArrowDx = arrowDx / arrowLength;
+  const normalizedArrowDy = arrowDy / arrowLength;
+  
+  // Determine which direction the horizontal tail should go
+  // Check if the arrow is pointing more to the left or right
+  const tailDirection = (arrowDx > 0) ? -1 : 1; // -1 for tail to left, 1 for tail to right
+  
+  // Always make the tail horizontal
+  const tailEndX = bendX + (tailDirection * arrowTailLength);
+  const tailEndY = bendY; // Same Y as bend point to make it horizontal
+  
+  // Draw the arrow
   ctx.beginPath();
   ctx.lineWidth = arrowThickness;
   ctx.strokeStyle = pin.color;
-  ctx.lineCap = 'round'; // Round the ends of the lines
+  ctx.lineCap = 'round';
   
-  // Draw the horizontal tail
-  ctx.moveTo(bendX - arrowTailLength, bendY);
+  // Draw the tail (horizontal)
+  ctx.moveTo(tailEndX, tailEndY);
   ctx.lineTo(bendX, bendY);
   
-  // Draw the 45-degree pointing part (but stop short of the tip to add arrowhead)
-  // Calculate a point further back from the tip for a longer arrowhead
-  const arrowHeadBaseX = x - (diagonalOffset * 0.2);
-  const arrowHeadBaseY = y - (diagonalOffset * 0.2);
-  ctx.lineTo(arrowHeadBaseX, arrowHeadBaseY);
+  // Calculate the length for the arrow head
+  // Use the minimum of the actual arrow length and MAX_ARROW_HEAD_LENGTH
+  const arrowHeadLength = Math.min(arrowLength * 0.2, MAX_ARROW_HEAD_LENGTH);
   
+  // Calculate the ratio based on the constrained arrow head length
+  const ratio = 1 - (arrowHeadLength / arrowLength);
+  
+  // Calculate arrowhead base point
+  const arrowHeadBaseX = bendX + normalizedArrowDx * arrowLength * ratio;
+  const arrowHeadBaseY = bendY + normalizedArrowDy * arrowLength * ratio;
+  
+  // Draw the arrow shaft (from bend to arrowhead base)
+  ctx.lineTo(arrowHeadBaseX, arrowHeadBaseY);
   ctx.stroke();
   
-  // Draw the arrowhead as an outline (no fill)
+  // Draw the arrowhead
   ctx.beginPath();
   ctx.lineWidth = arrowThickness;
   ctx.strokeStyle = pin.color;
   
-  // Tip of the arrow
-  ctx.moveTo(x, y);
+  // Calculate the perpendicular vectors for the arrowhead sides
+  const perpX = -normalizedArrowDy;
+  const perpY = normalizedArrowDx;
   
-  // Calculate perpendicular direction for arrowhead sides
-  const dx = arrowHeadBaseX - x;
-  const dy = arrowHeadBaseY - y;
-  const length = Math.sqrt(dx * dx + dy * dy);
-  
-  // Normalize and rotate for perpendicular direction
-  const perpX = -dy / length;
-  const perpY = dx / length;
-  
-  // Calculate arrowhead points for a thinner, longer shape
+  // Calculate the arrowhead points
   const leftX = arrowHeadBaseX + perpX * arrowHeadWidth;
   const leftY = arrowHeadBaseY + perpY * arrowHeadWidth;
   const rightX = arrowHeadBaseX - perpX * arrowHeadWidth;
   const rightY = arrowHeadBaseY - perpY * arrowHeadWidth;
   
-  // Draw arrowhead as lines (no fill)
-  ctx.moveTo(x, y);
+  // Draw the arrowhead lines
+  ctx.moveTo(x, y); // Arrow tip
   ctx.lineTo(leftX, leftY);
   ctx.moveTo(x, y);
   ctx.lineTo(rightX, rightY);
@@ -93,9 +147,9 @@ export const renderPin = (
   // Restore context (remove shadow)
   ctx.restore();
   
-  // Draw text over the tail of the arrow
-  if (pin.text.length > 0) {
-    renderArrowText(ctx, pin, pinSize, arrowTailLength, bendX, bendY);
+  // Draw text on the tail
+  if (pin.text && pin.text.length > 0) {
+    renderArrowText(ctx, pin, pinSize, arrowTailLength, bendX, bendY, tailEndX, tailEndY);
   }
 };
 
@@ -107,6 +161,8 @@ export const renderPin = (
  * @param arrowTailLength Length of the arrow tail
  * @param bendX X coordinate of the bend point
  * @param bendY Y coordinate of the bend point
+ * @param tailEndX X coordinate of the tail end point
+ * @param tailEndY Y coordinate of the tail end point (unused for horizontal tails)
  */
 export const renderArrowText = (
   ctx: CanvasRenderingContext2D,
@@ -114,11 +170,18 @@ export const renderArrowText = (
   pinSize: number,
   arrowTailLength: number,
   bendX: number,
-  bendY: number
+  bendY: number,
+  tailEndX: number,
+  tailEndY: number // Kept for API compatibility
 ): void => {
-  // Calculate text position (centered over the tail)
-  const textX = bendX - arrowTailLength/2;
-  const textY = bendY - pinSize * 0.8; // Position above the tail
+  // Check for empty text
+  if (!pin.text || pin.text.trim().length === 0) return;
+  
+  // Calculate text position (centered over the horizontal tail)
+  const textX = (bendX + tailEndX) / 2;
+  
+  // Position above the tail
+  const textY = bendY - pinSize * 0.8;
   
   // Fixed font size that doesn't scale with zoom
   const fontSize = 11;
@@ -127,11 +190,18 @@ export const renderArrowText = (
   // Set font before measuring text
   ctx.font = `bold ${fontSize}px Arial, sans-serif`;
   
-  // Draw text background for better readability
+  // Measure text width
   const textWidth = ctx.measureText(pin.text).width;
-  const textBgWidth = Math.min(textWidth + padding * 2, arrowTailLength * 0.9);
+  
+  // Calculate the actual distance between bend and tail end
+  const tailDistance = Math.abs(tailEndX - bendX); // For horizontal tail, just the X distance
+  
+  // Use the smaller of tail distance or arrowTailLength for constraints
+  const effectiveTailLength = Math.min(tailDistance, arrowTailLength);
+  const textBgWidth = Math.min(textWidth + padding * 2, effectiveTailLength * 0.9);
   const textBgHeight = 16;
   
+  // Draw text background for better readability
   ctx.fillStyle = 'white';
   ctx.beginPath();
   ctx.roundRect(
@@ -150,10 +220,10 @@ export const renderArrowText = (
   
   // If text is too long, truncate it
   let displayText = pin.text;
-  if (textWidth > arrowTailLength * 0.8) {
+  if (textWidth > effectiveTailLength * 0.8) {
     // Calculate how many characters we can fit
     const charsPerWidth = pin.text.length / textWidth;
-    const maxChars = Math.floor(arrowTailLength * 0.8 * charsPerWidth);
+    const maxChars = Math.floor(effectiveTailLength * 0.8 * charsPerWidth);
     displayText = pin.text.substring(0, maxChars - 3) + '...';
   }
   

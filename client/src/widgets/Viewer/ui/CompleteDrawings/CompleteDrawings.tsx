@@ -164,8 +164,29 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
         rotation
       );
 
-      // Use the pin renderer utility
-      renderPin(ctx, pin, x, y);
+      // If there's a bend point, transform it too
+      if (pin.bendPoint) {
+        const transformedBend = transformCoordinates(
+          pin.bendPoint.x, 
+          pin.bendPoint.y, 
+          canvas.width, 
+          canvas.height,
+          scale,
+          rotation
+        );
+        
+        // Create a temporary pin with the transformed bend point
+        const tempPin = {
+          ...pin,
+          bendPoint: { x: transformedBend.x, y: transformedBend.y }
+        };
+        
+        // Use the pin renderer utility with transformed coordinates
+        renderPin(ctx, tempPin, x, y);
+      } else {
+        // Use the pin renderer utility with just the position
+        renderPin(ctx, pin, x, y);
+      }
     });
   }, [pageDrawings, pageRectangles, pagePins, pageLines, scale, pageNumber, rotation]);
 

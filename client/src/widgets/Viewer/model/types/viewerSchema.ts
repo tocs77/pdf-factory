@@ -47,10 +47,15 @@ export interface Rectangle {
 
 export interface Pin {
   /**
-   * Position of the pin on the page
+   * Position of the pin target (arrow end point) on the page
    * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
    */
   position: { x: number; y: number };
+  /**
+   * Position of the bend point for the arrow
+   * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
+   */
+  bendPoint?: { x: number; y: number };
   /**
    * Text content of the pin
    */
