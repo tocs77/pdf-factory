@@ -34,12 +34,6 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
   const [error, setError] = useState<string | null>(null);
   const pdfContainerRef = useRef<HTMLDivElement>(null);
 
-  // Validate quality value
-  const renderQuality = Math.max(0.5, Math.min(4, 1));
-
-  // Use a lower quality for thumbnails to improve performance
-  const thumbnailQuality = Math.max(0.5, renderQuality * 0.5);
-
   // State for drag-to-scroll functionality
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartX, setDragStartX] = useState(0);
@@ -286,7 +280,6 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
               key={index + 1}
               page={page}
               pageNumber={index + 1}
-              quality={thumbnailQuality}
               isSelected={selectedPage === index + 1}
               onClick={handleThumbnailClick}
             />
