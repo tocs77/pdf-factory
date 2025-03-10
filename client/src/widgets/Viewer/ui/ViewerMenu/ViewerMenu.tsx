@@ -11,7 +11,7 @@ interface ViewerMenuProps {
 
 export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages = 0 }) => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, drawingMode, drawings, rectangles, pins, showThumbnails, pageRotations } = state;
+  const { scale, drawingColor, drawingLineWidth, drawingMode, drawings, rectangles, pins, lines, showThumbnails, pageRotations } = state;
   console.log('drawingMode', drawingMode);
   const zoomIn = () => {
     dispatch({ type: 'setScale', payload: scale + 0.25 });
@@ -46,12 +46,14 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
     dispatch({ type: 'clearDrawings' });
     dispatch({ type: 'clearRectangles' });
     dispatch({ type: 'clearPins' });
+    dispatch({ type: 'clearLines' });
   };
 
   const clearPageDrawings = () => {
     dispatch({ type: 'clearDrawings', payload: currentPage });
     dispatch({ type: 'clearRectangles', payload: currentPage });
     dispatch({ type: 'clearPins', payload: currentPage });
+    dispatch({ type: 'clearLines', payload: currentPage });
   };
 
   const rotatePageClockwise = () => {
@@ -66,10 +68,11 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
   const currentPageDrawingsCount = drawings.filter((d) => d.pageNumber === currentPage).length;
   const currentPageRectanglesCount = rectangles.filter((r) => r.pageNumber === currentPage).length;
   const currentPagePinsCount = pins.filter((p) => p.pageNumber === currentPage).length;
-  const currentPageTotalCount = currentPageDrawingsCount + currentPageRectanglesCount + currentPagePinsCount;
+  const currentPageLinesCount = lines.filter((l) => l.pageNumber === currentPage).length;
+  const currentPageTotalCount = currentPageDrawingsCount + currentPageRectanglesCount + currentPagePinsCount + currentPageLinesCount;
 
   // Count all drawings
-  const totalDrawingsCount = drawings.length + rectangles.length + pins.length;
+  const totalDrawingsCount = drawings.length + rectangles.length + pins.length + lines.length;
 
   // Get current page rotation
   const currentRotation = pageRotations[currentPage] || 0;
@@ -231,15 +234,34 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
               <circle cx='12' cy='10' r='3'></circle>
             </svg>
           </button>
+
+          {/* Line Drawing Tool */}
+          <button
+            className={`${classes.toolButton} ${drawingMode === 'line' ? classes.active : ''}`}
+            onClick={() => changeDrawingMode('line')}
+            title={drawingMode === 'line' ? 'Disable line tool' : 'Enable line tool'}>
+            <svg
+              xmlns='http://www.w3.org/2000/svg'
+              width='16'
+              height='16'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='currentColor'
+              strokeWidth='2'
+              strokeLinecap='round'
+              strokeLinejoin='round'>
+              <line x1='5' y1='19' x2='19' y2='5'></line>
+            </svg>
+          </button>
         </div>
 
         {/* Separator */}
-        {(drawingMode === 'freehand' || drawingMode === 'rectangle' || drawingMode === 'pin') && (
+        {(drawingMode === 'freehand' || drawingMode === 'rectangle' || drawingMode === 'pin' || drawingMode === 'line') && (
           <div className={classes.separator}></div>
         )}
 
         {/* Drawing Options - Only show when a drawing tool is selected */}
-        {(drawingMode === 'freehand' || drawingMode === 'rectangle' || drawingMode === 'pin') && (
+        {(drawingMode === 'freehand' || drawingMode === 'rectangle' || drawingMode === 'pin' || drawingMode === 'line') && (
           <div className={classes.drawingOptions}>
             <div className={classes.colorPicker}>
               <span>Color:</span>
@@ -277,7 +299,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
               </div>
             </div>
 
-            {(drawingMode === 'freehand' || drawingMode === 'rectangle') && (
+            {(drawingMode === 'freehand' || drawingMode === 'rectangle' || drawingMode === 'line') && (
               <div className={classes.lineWidthPicker}>
                 <span>Width:</span>
                 <div className={classes.lineWidthOptions}>

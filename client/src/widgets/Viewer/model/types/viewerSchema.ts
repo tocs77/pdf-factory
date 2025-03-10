@@ -69,7 +69,33 @@ export interface Pin {
   rotation?: RotationAngle;
 }
 
-export type DrawingMode = 'freehand' | 'rectangle' | 'pin' | 'text' | 'none';
+export interface Line {
+  /**
+   * Start point of the line
+   * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
+   */
+  startPoint: { x: number; y: number };
+  /**
+   * End point of the line
+   * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
+   */
+  endPoint: { x: number; y: number };
+  color: string;
+  lineWidth: number;
+  pageNumber: number;
+  /**
+   * Canvas dimensions at scale=1 when the line was created.
+   * Used to properly position lines when rendering at different scales.
+   */
+  canvasDimensions?: { width: number; height: number };
+  /**
+   * Rotation angle at which the line was created.
+   * Used to properly transform coordinates when rendering at different rotation angles.
+   */
+  rotation?: RotationAngle;
+}
+
+export type DrawingMode = 'freehand' | 'rectangle' | 'pin' | 'text' | 'line' | 'none';
 
 // Valid rotation angles: 0, 90, 180, 270 degrees
 export type RotationAngle = 0 | 90 | 180 | 270;
@@ -82,6 +108,7 @@ export interface ViewerSchema {
   drawings: DrawingPath[];
   rectangles: Rectangle[];
   pins: Pin[];
+  lines: Line[];
   showThumbnails: boolean;
   // Map of page numbers to rotation angles
   pageRotations: Record<number, RotationAngle>;
@@ -97,9 +124,11 @@ export type Action =
   | { type: 'addDrawing'; payload: DrawingPath }
   | { type: 'addRectangle'; payload: Rectangle }
   | { type: 'addPin'; payload: Pin }
+  | { type: 'addLine'; payload: Line }
   | { type: 'clearDrawings'; payload?: number } // Optional page number, if not provided clear all
   | { type: 'clearRectangles'; payload?: number } // Optional page number, if not provided clear all
   | { type: 'clearPins'; payload?: number } // Optional page number, if not provided clear all
+  | { type: 'clearLines'; payload?: number } // Optional page number, if not provided clear all
   | { type: 'toggleThumbnails' }
   | { type: 'toggleTextLayer' } // Toggle text layer visibility
   | { type: 'rotatePageClockwise'; payload: number } // Page number to rotate

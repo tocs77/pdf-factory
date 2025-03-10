@@ -8,6 +8,7 @@ import PinDrawingComponent from '../PinDrawingComponent/PinDrawingComponent';
 import CompleteDrawings from '../CompleteDrawings/CompleteDrawings';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { TextLayer } from '../TextLayer/TextLayer';
+import { LineDrawingLayer } from '../LineDrawingLayer/LineDrawingLayer';
 
 // Page component for rendering a single PDF page
 interface PageProps {
@@ -216,6 +217,7 @@ export const Page = ({ page, pageNumber, id, className }: PageProps) => {
               {drawingMode === 'freehand' && <DrawingComponent pageNumber={pageNumber} />}
               {drawingMode === 'rectangle' && <DrawRect pageNumber={pageNumber} />}
               {drawingMode === 'pin' && <PinDrawingComponent pageNumber={pageNumber} />}
+              {drawingMode === 'line' && <LineDrawingLayer pageNumber={pageNumber} />}
             </>
           )}
 

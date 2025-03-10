@@ -15,7 +15,7 @@ interface CompleteDrawingsProps {
 const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { state } = useContext(ViewerContext);
-  const { drawings, rectangles, pins, scale, pageRotations } = state;
+  const { drawings, rectangles, pins, lines, scale, pageRotations } = state;
 
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;
@@ -24,6 +24,7 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
   const pageDrawings = drawings.filter((drawing) => drawing.pageNumber === pageNumber);
   const pageRectangles = rectangles.filter((rect) => rect.pageNumber === pageNumber);
   const pagePins = pins.filter((pin) => pin.pageNumber === pageNumber);
+  const pageLines = lines.filter((line) => line.pageNumber === pageNumber);
 
   // Render drawings on canvas
   useEffect(() => {
@@ -120,6 +121,37 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
       ctx.strokeRect(startX, startY, width, height);
     });
 
+    // Draw all lines
+    pageLines.forEach((line) => {
+      ctx.beginPath();
+      ctx.strokeStyle = line.color;
+      ctx.lineWidth = line.lineWidth * scale;
+      ctx.lineCap = 'round';
+
+      // Transform line points with rotation
+      const { x: startX, y: startY } = transformCoordinates(
+        line.startPoint.x, 
+        line.startPoint.y, 
+        canvas.width, 
+        canvas.height,
+        scale,
+        rotation
+      );
+
+      const { x: endX, y: endY } = transformCoordinates(
+        line.endPoint.x, 
+        line.endPoint.y, 
+        canvas.width, 
+        canvas.height,
+        scale,
+        rotation
+      );
+
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(endX, endY);
+      ctx.stroke();
+    });
+
     // Draw all pins
     pagePins.forEach((pin) => {
       // Transform pin position with rotation
@@ -135,7 +167,7 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
       // Use the pin renderer utility
       renderPin(ctx, pin, x, y);
     });
-  }, [pageDrawings, pageRectangles, pagePins, scale, pageNumber, rotation]);
+  }, [pageDrawings, pageRectangles, pagePins, pageLines, scale, pageNumber, rotation]);
 
   return <canvas ref={canvasRef} className={styles.drawingsCanvas} data-testid='complete-drawings-canvas' />;
 };

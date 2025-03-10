@@ -19,6 +19,7 @@ export const initialViewerState: ViewerSchema = {
   drawings: [],
   rectangles: [],
   pins: [],
+  lines: [],
   showThumbnails: false,
   pageRotations: {},
   textLayerEnabled: true
@@ -63,6 +64,12 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
         pins: [...state.pins, action.payload]
       };
     
+    case 'addLine':
+      return {
+        ...state,
+        lines: [...state.lines, action.payload]
+      };
+    
     case 'clearDrawings':
       // If payload is provided, clear drawings for that page only
       if (action.payload !== undefined) {
@@ -95,6 +102,17 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
       }
       // Otherwise clear all pins
       return { ...state, pins: [] };
+    
+    case 'clearLines':
+      // If payload is provided, clear lines for that page only
+      if (action.payload !== undefined) {
+        return {
+          ...state,
+          lines: state.lines.filter(line => line.pageNumber !== action.payload)
+        };
+      }
+      // Otherwise clear all lines
+      return { ...state, lines: [] };
     
     case 'toggleThumbnails':
       return { ...state, showThumbnails: !state.showThumbnails };
