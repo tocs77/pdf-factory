@@ -256,6 +256,7 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber }) => {
 
     // Create a new DrawArea object
     const newDrawArea = {
+      type: 'drawArea' as const,
       startPoint: normalizedStartPoint,
       endPoint: normalizedEndPoint,
       color: drawingColor,
@@ -264,7 +265,7 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber }) => {
     };
 
     // Add the drawing area to the context
-    dispatch({ type: 'addDrawArea', payload: newDrawArea });
+    dispatch({ type: 'addDrawing', payload: newDrawArea });
 
     // Reset drawing state
     setIsDrawing(false);

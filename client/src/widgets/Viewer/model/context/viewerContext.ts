@@ -16,11 +16,7 @@ export const initialViewerState: ViewerSchema = {
   drawingColor: DEFAULT_DRAWING_COLOR,
   drawingLineWidth: 2,
   drawingMode: 'none',
-  drawings: [],
-  rectangles: [],
-  pins: [],
-  lines: [],
-  drawAreas: [],
+  drawings: [], // Single array for all drawing types
   showThumbnails: false,
   pageRotations: {},
   textLayerEnabled: true,
@@ -53,84 +49,33 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
         drawings: [...state.drawings, action.payload],
       };
 
-    case 'addRectangle':
-      return {
-        ...state,
-        rectangles: [...state.rectangles, action.payload],
-      };
-
-    case 'addPin':
-      return {
-        ...state,
-        pins: [...state.pins, action.payload],
-      };
-
-    case 'addLine':
-      return {
-        ...state,
-        lines: [...state.lines, action.payload],
-      };
-
-    case 'addDrawArea':
-      return {
-        ...state,
-        drawAreas: [...state.drawAreas, action.payload],
-      };
-
     case 'clearDrawings':
-      // If payload is provided, clear drawings for that page only
-      if (action.payload !== undefined) {
+      // If payload is provided, filter drawings based on criteria
+      if (action.payload) {
+        const { type, pageNumber } = action.payload;
+        
         return {
           ...state,
-          drawings: state.drawings.filter((drawing) => drawing.pageNumber !== action.payload),
+          drawings: state.drawings.filter((drawing) => {
+            // Filter by both type and page number if both are provided
+            if (type && pageNumber !== undefined) {
+              return drawing.type !== type || drawing.pageNumber !== pageNumber;
+            }
+            // Filter by type only
+            if (type) {
+              return drawing.type !== type;
+            }
+            // Filter by page number only
+            if (pageNumber !== undefined) {
+              return drawing.pageNumber !== pageNumber;
+            }
+            // This case shouldn't be reached if payload is provided
+            return true;
+          }),
         };
       }
       // Otherwise clear all drawings
       return { ...state, drawings: [] };
-
-    case 'clearRectangles':
-      // If payload is provided, clear rectangles for that page only
-      if (action.payload !== undefined) {
-        return {
-          ...state,
-          rectangles: state.rectangles.filter((rect) => rect.pageNumber !== action.payload),
-        };
-      }
-      // Otherwise clear all rectangles
-      return { ...state, rectangles: [] };
-
-    case 'clearPins':
-      // If payload is provided, clear pins for that page only
-      if (action.payload !== undefined) {
-        return {
-          ...state,
-          pins: state.pins.filter((pin) => pin.pageNumber !== action.payload),
-        };
-      }
-      // Otherwise clear all pins
-      return { ...state, pins: [] };
-
-    case 'clearLines':
-      // If payload is provided, clear lines for that page only
-      if (action.payload !== undefined) {
-        return {
-          ...state,
-          lines: state.lines.filter((line) => line.pageNumber !== action.payload),
-        };
-      }
-      // Otherwise clear all lines
-      return { ...state, lines: [] };
-
-    case 'clearDrawAreas':
-      // If payload is provided, clear drawing areas for that page only
-      if (action.payload !== undefined) {
-        return {
-          ...state,
-          drawAreas: state.drawAreas.filter((area) => area.pageNumber !== action.payload),
-        };
-      }
-      // Otherwise clear all drawing areas
-      return { ...state, drawAreas: [] };
 
     case 'toggleThumbnails':
       return { ...state, showThumbnails: !state.showThumbnails };

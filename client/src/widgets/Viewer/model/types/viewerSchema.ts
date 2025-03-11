@@ -1,4 +1,5 @@
 export interface DrawingPath {
+  type: 'freehand';
   /**
    * Array of points representing the drawing path.
    * All coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
@@ -10,6 +11,7 @@ export interface DrawingPath {
 }
 
 export interface Rectangle {
+  type: 'rectangle';
   /**
    * Start point (top-left) of the rectangle
    * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
@@ -26,6 +28,7 @@ export interface Rectangle {
 }
 
 export interface Pin {
+  type: 'pin';
   /**
    * Position of the pin target (arrow end point) on the page
    * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
@@ -45,6 +48,7 @@ export interface Pin {
 }
 
 export interface Line {
+  type: 'line';
   /**
    * Start point of the line
    * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
@@ -61,6 +65,7 @@ export interface Line {
 }
 
 export interface DrawArea {
+  type: 'drawArea';
   /**
    * Bounding rectangle of the drawn area
    * Start point (top-left) and end point (bottom-right)
@@ -73,6 +78,9 @@ export interface DrawArea {
   pageNumber: number;
 }
 
+// Union type for all drawings
+export type Drawing = DrawingPath | Rectangle | Pin | Line | DrawArea;
+
 export type DrawingMode = 'freehand' | 'rectangle' | 'pin' | 'text' | 'line' | 'drawArea' | 'none';
 
 // Valid rotation angles: 0, 90, 180, 270 degrees
@@ -83,11 +91,7 @@ export interface ViewerSchema {
   drawingColor: string;
   drawingLineWidth: number;
   drawingMode: DrawingMode;
-  drawings: DrawingPath[];
-  rectangles: Rectangle[];
-  pins: Pin[];
-  lines: Line[];
-  drawAreas: DrawArea[];
+  drawings: Drawing[]; // Single array for all drawing types
   showThumbnails: boolean;
   // Map of page numbers to rotation angles
   pageRotations: Record<number, RotationAngle>;
@@ -100,16 +104,8 @@ export type Action =
   | { type: 'setDrawingColor'; payload: string }
   | { type: 'setDrawingLineWidth'; payload: number }
   | { type: 'setDrawingMode'; payload: DrawingMode }
-  | { type: 'addDrawing'; payload: DrawingPath }
-  | { type: 'addRectangle'; payload: Rectangle }
-  | { type: 'addPin'; payload: Pin }
-  | { type: 'addLine'; payload: Line }
-  | { type: 'addDrawArea'; payload: DrawArea }
-  | { type: 'clearDrawings'; payload?: number } // Optional page number, if not provided clear all
-  | { type: 'clearRectangles'; payload?: number } // Optional page number, if not provided clear all
-  | { type: 'clearPins'; payload?: number } // Optional page number, if not provided clear all
-  | { type: 'clearLines'; payload?: number } // Optional page number, if not provided clear all
-  | { type: 'clearDrawAreas'; payload?: number } // Optional page number, if not provided clear all
+  | { type: 'addDrawing'; payload: Drawing } // Single action for adding any drawing type
+  | { type: 'clearDrawings'; payload?: { type?: DrawingMode; pageNumber?: number } } // Optional parameters for clearing specific types or pages
   | { type: 'toggleThumbnails' }
   | { type: 'toggleTextLayer' } // Toggle text layer visibility
   | { type: 'rotatePageClockwise'; payload: number } // Page number to rotate

@@ -333,6 +333,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber }
 
     // Create a new line object with normalized coordinates
     const newLine = {
+      type: 'line' as const,
       startPoint: normalizedStartPoint,
       endPoint: normalizedEndPoint,
       color: drawingColor,
@@ -340,8 +341,8 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber }
       pageNumber
     };
 
-    // Add the line to the context
-    dispatch({ type: 'addLine', payload: newLine });
+    // Add the line to the context using the unified addDrawing action
+    dispatch({ type: 'addDrawing', payload: newLine });
 
     // Reset state
     setIsDrawing(false);

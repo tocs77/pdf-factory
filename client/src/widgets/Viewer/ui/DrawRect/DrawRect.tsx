@@ -160,15 +160,16 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
     
     // Create a new rectangle object with normalized coordinates
     const newRectangle = {
+      type: 'rectangle' as const,
       startPoint: normalizedStartPoint,
       endPoint: normalizedEndPoint,
       color: drawingColor,
       lineWidth: drawingLineWidth / scale, // Store line width at scale 1
-      pageNumber,
+      pageNumber
     };
     
     // Add the rectangle to the context
-    dispatch({ type: 'addRectangle', payload: newRectangle });
+    dispatch({ type: 'addDrawing', payload: newRectangle });
     
     // Reset state
     setIsDrawing(false);

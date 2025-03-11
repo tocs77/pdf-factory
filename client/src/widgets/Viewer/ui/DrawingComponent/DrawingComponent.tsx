@@ -185,8 +185,9 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
       normalizeCoordinatesToZeroRotation(point, canvas.width, canvas.height, scale, rotation),
     );
 
-    // Create a new drawing object with normalized coordinates
+    // Create a new drawing object
     const newDrawing = {
+      type: 'freehand' as const,
       points: normalizedPath,
       color: drawingColor,
       lineWidth: drawingLineWidth / scale, // Store line width at scale 1

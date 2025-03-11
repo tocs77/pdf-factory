@@ -92,9 +92,10 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber })
     if (drawingStage === 'positioning' && currentMousePosition) {
       // If we're in the positioning stage, draw a preview of the arrow
       const previewPin = {
+        type: 'pin' as const,
         position: pinPosition,
-        bendPoint: bendPosition || currentMousePosition,
-        text: "",
+        bendPoint: currentMousePosition,
+        text: 'Pin Preview',
         color: drawingColor,
         pageNumber
       };
@@ -170,6 +171,7 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber })
 
       // Create a new pin object with normalized coordinates
       const newPin = {
+        type: 'pin' as const,
         position: normalizedPinPoint,
         bendPoint: normalizedBendPoint,
         text,
@@ -178,7 +180,7 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber })
       };
 
       // Add the pin to the context
-      dispatch({ type: 'addPin', payload: newPin });
+      dispatch({ type: 'addDrawing', payload: newPin });
 
       // Reset drawing state
       setPinPosition(null);
