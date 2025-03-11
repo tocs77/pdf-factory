@@ -9,21 +9,16 @@ import { ViewerProvider } from '../../model/context/ViewerProvider';
 import { classNames } from '@/shared/utils';
 import classes from './Viewer.module.scss';
 import { useZoomToMouse } from '../../hooks/useZoomToMouse';
-
+import { Drawing } from '../../model/types/viewerSchema';
 interface PdfViewerProps {
   url: string;
-  /**
-   * Drawing color for annotation when text layer is disabled (default: blue)
-   */
-  drawingColor?: string;
-  /**
-   * Drawing line width for annotation (default: 2)
-   */
-  drawingLineWidth?: number;
+  drawings: Drawing[];
+  drawingCreated: (drawing: Drawing) => void;
 }
 
 // Internal viewer component that will be wrapped with the provider
-const PdfViewerInternal = ({ url }: PdfViewerProps) => {
+const PdfViewerInternal = (props: PdfViewerProps) => {
+  const { url, drawings, drawingCreated } = props;
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, showThumbnails } = state;
 
@@ -303,7 +298,14 @@ const PdfViewerInternal = ({ url }: PdfViewerProps) => {
           )}
           <div className={classes.pdfContentWrapper}>
             {pages.map((page, index) => (
-              <Page key={index + 1} page={page} pageNumber={index + 1} id={`page-${index + 1}`} />
+              <Page
+                key={index + 1}
+                page={page}
+                pageNumber={index + 1}
+                id={`page-${index + 1}`}
+                drawings={drawings}
+                onDrawingCreated={drawingCreated}
+              />
             ))}
           </div>
         </div>

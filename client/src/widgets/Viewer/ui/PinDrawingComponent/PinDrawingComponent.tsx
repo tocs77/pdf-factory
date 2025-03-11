@@ -2,17 +2,19 @@ import React, { useEffect, useRef, useContext, useState } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import { renderPin } from '../../utils/pinRenderer';
+import { Drawing } from '../../model/types/viewerSchema';
 import styles from './PinDrawingComponent.module.scss';
 
 interface PinDrawingComponentProps {
   pageNumber: number;
+  onDrawingCreated: (drawing: Drawing) => void;
 }
 
 /**
  * Component for handling pin drawing with arrow and bend point
  */
-const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber }) => {
-  const { state, dispatch } = useContext(ViewerContext);
+const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber, onDrawingCreated }) => {
+  const { state } = useContext(ViewerContext);
   const { scale, drawingColor, pageRotations, drawingMode } = state;
 
   // Get the rotation angle for this page
@@ -95,7 +97,7 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber })
         type: 'pin' as const,
         position: pinPosition,
         bendPoint: currentMousePosition,
-        text: 'Pin Preview',
+        text: '',
         color: drawingColor,
         pageNumber
       };
@@ -129,30 +131,36 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber })
 
   // Handle clicks for pin placement
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Only process clicks when in pin drawing mode
+    if (drawingMode !== 'pin') return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const point = getRawCoordinates(e.clientX, e.clientY);
+    // Get click coordinates relative to canvas
+    const coords = getRawCoordinates(e.clientX, e.clientY);
 
+    // If this is the first click, set the pin position
     if (drawingStage === 'initial') {
-      // First click: Set the pin position (arrow end)
-      setPinPosition(point);
+      setPinPosition(coords);
       setDrawingStage('positioning');
-    } else if (drawingStage === 'positioning') {
-      // Second click: Set the bend point
-      setBendPosition(point);
-      
-      // Normalize coordinates to scale 1 and 0 degrees rotation
+    } 
+    // If this is the second click, save the bend position and create pin
+    else if (drawingStage === 'positioning' && pinPosition) {
+      // Set the bend position to current mouse position
+      setBendPosition(coords);
+
+      // Normalize the pin and bend points to scale 1 and 0 degrees rotation
       const normalizedPinPoint = normalizeCoordinatesToZeroRotation(
-        pinPosition!, 
+        pinPosition, 
         canvas.width, 
         canvas.height, 
         scale, 
         rotation
       );
-      
+
       const normalizedBendPoint = normalizeCoordinatesToZeroRotation(
-        point, 
+        coords, 
         canvas.width, 
         canvas.height, 
         scale, 
@@ -170,8 +178,8 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber })
       }
 
       // Create a new pin object with normalized coordinates
-      const newPin = {
-        type: 'pin' as const,
+      const newPin: Drawing = {
+        type: 'pin',
         position: normalizedPinPoint,
         bendPoint: normalizedBendPoint,
         text,
@@ -179,8 +187,8 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber })
         pageNumber
       };
 
-      // Add the pin to the context
-      dispatch({ type: 'addDrawing', payload: newPin });
+      // Call the callback with the new drawing
+      onDrawingCreated(newPin);
 
       // Reset drawing state
       setPinPosition(null);

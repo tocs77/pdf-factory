@@ -1,8 +1,29 @@
-import React, { useReducer } from 'react';
+import React, { useReducer, ReactNode } from 'react';
 import { ViewerContext, viewerReducer, initialViewerState } from './viewerContext';
 
-export const ViewerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(viewerReducer, initialViewerState);
+interface ViewerProviderProps {
+  children: ReactNode;
+  initialDrawingColor?: string;
+  initialDrawingLineWidth?: number;
+}
 
-  return <ViewerContext.Provider value={{ state, dispatch }}>{children}</ViewerContext.Provider>;
+export const ViewerProvider: React.FC<ViewerProviderProps> = ({ 
+  children, 
+  initialDrawingColor, 
+  initialDrawingLineWidth 
+}) => {
+  // Create an initial state that overrides defaults with provided props
+  const customInitialState = {
+    ...initialViewerState,
+    ...(initialDrawingColor && { drawingColor: initialDrawingColor }),
+    ...(initialDrawingLineWidth && { drawingLineWidth: initialDrawingLineWidth }),
+  };
+
+  const [state, dispatch] = useReducer(viewerReducer, customInitialState);
+
+  return (
+    <ViewerContext.Provider value={{ state, dispatch }}>
+      {children}
+    </ViewerContext.Provider>
+  );
 };

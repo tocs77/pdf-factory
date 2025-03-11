@@ -1,18 +1,20 @@
 import React, { useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
+import { Drawing } from '../../model/types/viewerSchema';
 import styles from './DrawingComponent.module.scss';
 
 interface DrawingComponentProps {
   pageNumber: number;
+  onDrawingCreated: (drawing: Drawing) => void;
 }
 
 /**
  * Component for handling freehand drawing
  */
-export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }) => {
-  const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, pageRotations } = state;
+export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, onDrawingCreated }) => {
+  const { state } = useContext(ViewerContext);
+  const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations } = state;
 
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;
@@ -167,7 +169,7 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
   };
 
   const endDrawing = () => {
-    if (!isDrawing || currentPath.length < 2) {
+    if (!isDrawing || drawingMode !== 'freehand' || currentPath.length < 2) {
       setIsDrawing(false);
       setCurrentPath([]);
       return;
@@ -180,33 +182,37 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber }
       return;
     }
 
-    // Normalize the path to scale 1 and 0 degrees rotation
-    const normalizedPath = currentPath.map((point) =>
-      normalizeCoordinatesToZeroRotation(point, canvas.width, canvas.height, scale, rotation),
+    // Normalize all points to scale 1 and 0 degrees rotation
+    const normalizedPath = currentPath.map(point => 
+      normalizeCoordinatesToZeroRotation(
+        point, 
+        canvas.width, 
+        canvas.height, 
+        scale, 
+        rotation
+      )
     );
 
     // Create a new drawing object
-    const newDrawing = {
-      type: 'freehand' as const,
+    const newDrawing: Drawing = {
+      type: 'freehand',
       points: normalizedPath,
       color: drawingColor,
       lineWidth: drawingLineWidth / scale, // Store line width at scale 1
-      pageNumber,
+      pageNumber
     };
 
-    // Add the drawing to the context
-    dispatch({ type: 'addDrawing', payload: newDrawing });
+    // Call the callback with the new drawing
+    onDrawingCreated(newDrawing);
 
     // Reset state
     setIsDrawing(false);
     setCurrentPath([]);
 
     // Clear the canvas since the drawing will be rendered by the CompleteDrawings component
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
   };
 

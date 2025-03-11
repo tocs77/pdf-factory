@@ -91,7 +91,6 @@ export interface ViewerSchema {
   drawingColor: string;
   drawingLineWidth: number;
   drawingMode: DrawingMode;
-  drawings: Drawing[]; // Single array for all drawing types
   showThumbnails: boolean;
   // Map of page numbers to rotation angles
   pageRotations: Record<number, RotationAngle>;
@@ -104,8 +103,6 @@ export type Action =
   | { type: 'setDrawingColor'; payload: string }
   | { type: 'setDrawingLineWidth'; payload: number }
   | { type: 'setDrawingMode'; payload: DrawingMode }
-  | { type: 'addDrawing'; payload: Drawing } // Single action for adding any drawing type
-  | { type: 'clearDrawings'; payload?: { type?: DrawingMode; pageNumber?: number } } // Optional parameters for clearing specific types or pages
   | { type: 'toggleThumbnails' }
   | { type: 'toggleTextLayer' } // Toggle text layer visibility
   | { type: 'rotatePageClockwise'; payload: number } // Page number to rotate

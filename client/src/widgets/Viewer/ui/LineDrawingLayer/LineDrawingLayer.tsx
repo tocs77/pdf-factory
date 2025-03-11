@@ -1,17 +1,19 @@
 import React, { useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
+import { Drawing } from '../../model/types/viewerSchema';
 import styles from './LineDrawingLayer.module.scss';
 
 interface LineDrawingLayerProps {
   pageNumber: number;
+  onDrawingCreated: (drawing: Drawing) => void;
 }
 
 /**
  * Component for handling straight line drawing
  */
-export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber }) => {
-  const { state, dispatch } = useContext(ViewerContext);
+export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, onDrawingCreated }) => {
+  const { state } = useContext(ViewerContext);
   const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations } = state;
 
   // Get the rotation angle for this page
@@ -332,8 +334,8 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber }
     );
 
     // Create a new line object with normalized coordinates
-    const newLine = {
-      type: 'line' as const,
+    const newLine: Drawing = {
+      type: 'line',
       startPoint: normalizedStartPoint,
       endPoint: normalizedEndPoint,
       color: drawingColor,
@@ -341,8 +343,8 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber }
       pageNumber
     };
 
-    // Add the line to the context using the unified addDrawing action
-    dispatch({ type: 'addDrawing', payload: newLine });
+    // Call the callback with the new drawing
+    onDrawingCreated(newLine);
 
     // Reset state
     setIsDrawing(false);

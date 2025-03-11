@@ -10,6 +10,7 @@ import { ViewerContext } from '../../model/context/viewerContext';
 import { TextLayer } from '../TextLayer/TextLayer';
 import { LineDrawingLayer } from '../LineDrawingLayer/LineDrawingLayer';
 import { DrawAreaLayer } from '../DrawAreaLayer/DrawAreaLayer';
+import { Drawing } from '../../model/types/viewerSchema';
 
 // Page component for rendering a single PDF page
 interface PageProps {
@@ -17,9 +18,11 @@ interface PageProps {
   pageNumber: number;
   id: string;
   className?: string;
+  drawings: Drawing[];
+  onDrawingCreated: (drawing: Drawing) => void;
 }
 
-export const Page = ({ page, pageNumber, id, className }: PageProps) => {
+export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreated }: PageProps) => {
   const { state } = useContext(ViewerContext);
   const { drawingMode, pageRotations, scale } = state;
 
@@ -215,16 +218,16 @@ export const Page = ({ page, pageNumber, id, className }: PageProps) => {
           {/* Drawing components - only render when respective tool is selected */}
           {inView && (
             <>
-              {drawingMode === 'freehand' && <DrawingComponent pageNumber={pageNumber} />}
-              {drawingMode === 'rectangle' && <DrawRect pageNumber={pageNumber} />}
-              {drawingMode === 'pin' && <PinDrawingComponent pageNumber={pageNumber} />}
-              {drawingMode === 'line' && <LineDrawingLayer pageNumber={pageNumber} />}
-              {drawingMode === 'drawArea' && <DrawAreaLayer pageNumber={pageNumber} />}
+              {drawingMode === 'freehand' && <DrawingComponent pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} />}
+              {drawingMode === 'rectangle' && <DrawRect pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} />}
+              {drawingMode === 'pin' && <PinDrawingComponent pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} />}
+              {drawingMode === 'line' && <LineDrawingLayer pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} />}
+              {drawingMode === 'drawArea' && <DrawAreaLayer pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} />}
             </>
           )}
 
           {/* Always render completed drawings */}
-          {inView && <CompleteDrawings pageNumber={pageNumber} />}
+          {inView && <CompleteDrawings pageNumber={pageNumber} drawings={drawings} />}
         </div>
       </div>
     </div>

@@ -11,7 +11,7 @@ interface ViewerMenuProps {
 
 export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages = 0 }) => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, drawingMode, drawings, showThumbnails, pageRotations } = state;
+  const { scale, drawingColor, drawingLineWidth, drawingMode, showThumbnails, pageRotations } = state;
 
   console.log('drawingMode', drawingMode);
   const zoomIn = () => {
@@ -43,14 +43,6 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
     }
   };
 
-  const clearAllDrawings = () => {
-    dispatch({ type: 'clearDrawings' });
-  };
-
-  const clearPageDrawings = () => {
-    dispatch({ type: 'clearDrawings', payload: { pageNumber: currentPage } });
-  };
-
   const rotatePageClockwise = () => {
     dispatch({ type: 'rotatePageClockwise', payload: currentPage });
   };
@@ -58,13 +50,6 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
   const rotatePageCounterClockwise = () => {
     dispatch({ type: 'rotatePageCounterClockwise', payload: currentPage });
   };
-
-  // Count drawings on current page by type
-  const currentPageDrawings = drawings.filter((d) => d.pageNumber === currentPage);
-  const currentPageTotalCount = currentPageDrawings.length;
-
-  // Count all drawings
-  const totalDrawingsCount = drawings.length;
 
   // Get current page rotation
   const currentRotation = pageRotations[currentPage] || 0;
@@ -348,27 +333,6 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
                 </div>
               </div>
             )}
-          </div>
-        )}
-
-        {/* Separator */}
-        {totalDrawingsCount > 0 && <div className={classes.separator}></div>}
-
-        {/* Drawing Management */}
-        {totalDrawingsCount > 0 && (
-          <div className={classes.drawingManagement}>
-            <div className={classes.clearButtons}>
-              <button
-                className={classes.clearButton}
-                onClick={clearPageDrawings}
-                disabled={currentPageTotalCount === 0}
-                title='Clear annotations on current page'>
-                Page
-              </button>
-              <button className={classes.clearButton} onClick={clearAllDrawings} title='Clear all annotations'>
-                All
-              </button>
-            </div>
           </div>
         )}
       </div>

@@ -2,20 +2,22 @@ import React, { useEffect, useRef, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { renderPin } from '../../utils/pinRenderer';
 import { transformCoordinates } from '../../utils/rotationUtils';
+import { Drawing } from '../../model/types/viewerSchema';
 import styles from './CompleteDrawings.module.scss';
 
 interface CompleteDrawingsProps {
   pageNumber: number;
+  drawings: Drawing[];
 }
 
 /**
  * Component to display completed drawings and rectangles
  * This component is always visible, even when text layer is enabled
  */
-const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber }) => {
+const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, drawings }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { state } = useContext(ViewerContext);
-  const { drawings, scale, pageRotations } = state;
+  const { scale, pageRotations } = state;
 
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;

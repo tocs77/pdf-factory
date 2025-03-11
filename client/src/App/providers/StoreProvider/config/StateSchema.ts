@@ -3,10 +3,11 @@ import { AxiosInstance } from 'axios';
 import { rtkApi } from '@/shared/api';
 import { NavigateFunction } from 'react-router';
 import { OptionalRecord } from '@/shared/helpers';
+import { VIEWER_PAGE_SLICE_NAME, ViewerPageSchema } from '@/Pages/ViewPage';
 
 export interface StateSchema {
   [rtkApi.reducerPath]: ReturnType<typeof rtkApi.reducer>;
-
+  [VIEWER_PAGE_SLICE_NAME]: ViewerPageSchema;
   // Async reducers
 }
 

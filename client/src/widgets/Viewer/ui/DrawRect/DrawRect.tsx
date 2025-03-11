@@ -1,18 +1,20 @@
 import React, { useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
+import { Drawing } from '../../model/types/viewerSchema';
 import styles from './DrawRect.module.scss';
 
 interface DrawRectProps {
   pageNumber: number;
+  onDrawingCreated: (drawing: Drawing) => void;
 }
 
 /**
  * Component for handling rectangle drawing
  */
-const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
-  const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, pageRotations } = state;
+const DrawRect: React.FC<DrawRectProps> = ({ pageNumber, onDrawingCreated }) => {
+  const { state } = useContext(ViewerContext);
+  const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations } = state;
   
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;
@@ -126,7 +128,7 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
   };
   
   const endDrawing = () => {
-    if (!isDrawing || !startPoint || !endPoint) {
+    if (!isDrawing || drawingMode !== 'rectangle' || !startPoint || !endPoint) {
       setIsDrawing(false);
       setStartPoint(null);
       setEndPoint(null);
@@ -135,32 +137,52 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
     
     const canvas = canvasRef.current;
     if (!canvas) {
+      return;
+    }
+    
+    // Check if the rectangle is too small (just a click)
+    const width = Math.abs(endPoint.x - startPoint.x);
+    const height = Math.abs(endPoint.y - startPoint.y);
+    
+    if (width < 5 || height < 5) {
       setIsDrawing(false);
       setStartPoint(null);
       setEndPoint(null);
+      
+      // Clear the canvas
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
       return;
     }
     
     // Normalize coordinates to scale 1 and 0 degrees rotation
     const normalizedStartPoint = normalizeCoordinatesToZeroRotation(
-      startPoint,
-      canvas.width,
-      canvas.height,
-      scale,
+      { 
+        x: Math.min(startPoint.x, endPoint.x), 
+        y: Math.min(startPoint.y, endPoint.y) 
+      }, 
+      canvas.width, 
+      canvas.height, 
+      scale, 
       rotation
     );
     
     const normalizedEndPoint = normalizeCoordinatesToZeroRotation(
-      endPoint,
-      canvas.width,
-      canvas.height,
-      scale,
+      { 
+        x: Math.max(startPoint.x, endPoint.x), 
+        y: Math.max(startPoint.y, endPoint.y) 
+      }, 
+      canvas.width, 
+      canvas.height, 
+      scale, 
       rotation
     );
     
     // Create a new rectangle object with normalized coordinates
-    const newRectangle = {
-      type: 'rectangle' as const,
+    const newRectangle: Drawing = {
+      type: 'rectangle',
       startPoint: normalizedStartPoint,
       endPoint: normalizedEndPoint,
       color: drawingColor,
@@ -168,8 +190,8 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
       pageNumber
     };
     
-    // Add the rectangle to the context
-    dispatch({ type: 'addDrawing', payload: newRectangle });
+    // Call the callback with the new drawing
+    onDrawingCreated(newRectangle);
     
     // Reset state
     setIsDrawing(false);
@@ -177,11 +199,9 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber }) => {
     setEndPoint(null);
     
     // Clear the canvas since the rectangle will be rendered by the CompleteDrawings component
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
   };
 

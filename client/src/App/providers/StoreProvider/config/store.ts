@@ -3,11 +3,13 @@ import { rtkApi } from '@/shared/api';
 
 import { createReducerManager } from './reducerManager';
 import { StateSchema, ThunkExtraArg } from './StateSchema';
+import { viewerPageReducer } from '@/Pages/ViewPage/model/slice/viewerPageSlice';
+import { VIEWER_PAGE_SLICE_NAME } from '@/Pages/ViewPage';
 
 export const createReduxStore = (intialState?: StateSchema, asyncReducers?: ReducersMapObject<StateSchema>) => {
   const rootReducers: ReducersMapObject<StateSchema> = {
     [rtkApi.reducerPath]: rtkApi.reducer,
-
+    [VIEWER_PAGE_SLICE_NAME]: viewerPageReducer,
     ...asyncReducers,
   };
 

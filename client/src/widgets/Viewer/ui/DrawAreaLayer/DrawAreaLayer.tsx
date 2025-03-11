@@ -1,17 +1,19 @@
 import React, { useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
+import { Drawing } from '../../model/types/viewerSchema';
 import styles from './DrawAreaLayer.module.scss';
 
 interface DrawAreaLayerProps {
   pageNumber: number;
+  onDrawingCreated: (drawing: Drawing) => void;
 }
 
 /**
  * Component for handling draw area with thick line (32px) that converts to rectangle
  */
-export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber }) => {
-  const { state, dispatch } = useContext(ViewerContext);
+export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDrawingCreated }) => {
+  const { state } = useContext(ViewerContext);
   const { scale, drawingColor, drawingLineWidth, pageRotations, drawingMode } = state;
 
   // Get the rotation angle for this page
@@ -20,12 +22,12 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([]);
-  
+
   // Track the bounding box of the drawing
-  const [minX, setMinX] = useState<number | null>(null);
-  const [minY, setMinY] = useState<number | null>(null);
-  const [maxX, setMaxX] = useState<number | null>(null);
-  const [maxY, setMaxY] = useState<number | null>(null);
+  const [minX, setMinX] = useState<number>(0);
+  const [minY, setMinY] = useState<number>(0);
+  const [maxX, setMaxX] = useState<number>(0);
+  const [maxY, setMaxY] = useState<number>(0);
 
   // Constant for the thick line width used for drawing (32px)
   const DRAW_AREA_LINE_WIDTH = 32;
@@ -69,7 +71,7 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber }) => {
   // Hide canvas when not in drawArea mode
   useEffect(() => {
     if (!canvasRef.current) return;
-    
+
     if (drawingMode === 'drawArea') {
       canvasRef.current.style.display = 'block';
     } else {
@@ -89,17 +91,17 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber }) => {
     // Redraw any current path after rotation or scaling
     if (isDrawing && currentPath.length > 1) {
       ctx.beginPath();
-      
+
       // Start from the first point
       const firstPoint = currentPath[0];
       ctx.moveTo(firstPoint.x, firstPoint.y);
-      
+
       // Draw lines to all points
       for (let i = 1; i < currentPath.length; i++) {
         const point = currentPath[i];
         ctx.lineTo(point.x, point.y);
       }
-      
+
       ctx.stroke();
     }
   }, [scale, pageNumber, rotation, isDrawing, currentPath, drawingColor]);
@@ -124,10 +126,10 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber }) => {
 
   // Reset bounding box tracking
   const resetBoundingBox = () => {
-    setMinX(null);
-    setMinY(null);
-    setMaxX(null);
-    setMaxY(null);
+    setMinX(0);
+    setMinY(0);
+    setMaxX(0);
+    setMaxY(0);
   };
 
   // Update bounding box with new point
@@ -155,7 +157,7 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber }) => {
   // Drawing handlers
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (drawingMode !== 'drawArea') return;
-    
+
     // Initialize or reinitialize the canvas
     const ctx = initializeCanvas();
     if (!ctx) return;
@@ -190,7 +192,7 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber }) => {
     // Add point to current path
     setCurrentPath((prevPath) => {
       const newPath = [...prevPath, { x, y }];
-      
+
       // Redraw the entire path to ensure it's visible
       if (ctx && newPath.length > 1) {
         // Clear the canvas first
@@ -198,24 +200,24 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber }) => {
         if (canvas) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
-        
+
         // Draw the complete path
         ctx.beginPath();
         ctx.moveTo(newPath[0].x, newPath[0].y);
-        
+
         for (let i = 1; i < newPath.length; i++) {
           ctx.lineTo(newPath[i].x, newPath[i].y);
         }
-        
+
         ctx.stroke();
       }
-      
+
       return newPath;
     });
   };
 
   const endDrawing = () => {
-    if (!isDrawing || drawingMode !== 'drawArea' || currentPath.length < 2) {
+    if (!isDrawing || drawingMode !== 'drawArea') {
       setIsDrawing(false);
       setCurrentPath([]);
       resetBoundingBox();
@@ -223,49 +225,63 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber }) => {
     }
 
     const canvas = canvasRef.current;
-    if (!canvas || minX === null || minY === null || maxX === null || maxY === null) {
+    if (!canvas) {
       setIsDrawing(false);
       setCurrentPath([]);
       resetBoundingBox();
       return;
     }
+    // Check if the bounding box is too small
+    const width = Math.abs((maxX ?? 0) - (minX ?? 0));
+    const height = Math.abs((maxY ?? 0) - (minY ?? 0));
 
-    // Add padding to the bounding box (half the line width)
-    const padding = DRAW_AREA_LINE_WIDTH / 2;
-    const boundingStartX = Math.max(0, minX - padding);
-    const boundingStartY = Math.max(0, minY - padding);
-    const boundingEndX = Math.min(canvas.width, maxX + padding);
-    const boundingEndY = Math.min(canvas.height, maxY + padding);
+    if (width < 10 || height < 10) {
+      setIsDrawing(false);
+      setCurrentPath([]);
+      resetBoundingBox();
 
-    // Normalize the bounding box coordinates
+      // Clear the canvas
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      return;
+    }
+
+    // Make sure start is top-left and end is bottom-right
+    const [startX, endX] = minX < maxX ? [minX, maxX] : [maxX, minX];
+
+    const [startY, endY] = minY < maxY ? [minY, maxY] : [maxY, minY];
+
+    // Normalize the points to scale 1 and 0 degrees rotation
     const normalizedStartPoint = normalizeCoordinatesToZeroRotation(
-      { x: boundingStartX, y: boundingStartY }, 
-      canvas.width, 
-      canvas.height, 
-      scale, 
-      rotation
+      { x: startX, y: startY },
+      canvas.width,
+      canvas.height,
+      scale,
+      rotation,
     );
 
     const normalizedEndPoint = normalizeCoordinatesToZeroRotation(
-      { x: boundingEndX, y: boundingEndY }, 
-      canvas.width, 
-      canvas.height, 
-      scale, 
-      rotation
+      { x: endX, y: endY },
+      canvas.width,
+      canvas.height,
+      scale,
+      rotation,
     );
 
     // Create a new DrawArea object
-    const newDrawArea = {
-      type: 'drawArea' as const,
+    const newDrawArea: Drawing = {
+      type: 'drawArea',
       startPoint: normalizedStartPoint,
       endPoint: normalizedEndPoint,
       color: drawingColor,
       lineWidth: drawingLineWidth / scale, // Use context.drawingLineWidth for the final rectangle
-      pageNumber
+      pageNumber,
     };
 
-    // Add the drawing area to the context
-    dispatch({ type: 'addDrawing', payload: newDrawArea });
+    // Call the callback with the new drawing
+    onDrawingCreated(newDrawArea);
 
     // Reset drawing state
     setIsDrawing(false);
@@ -290,4 +306,4 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber }) => {
       data-testid='draw-area-canvas'
     />
   );
-}; 
+};

@@ -10,18 +10,24 @@ interface ViewerContextType {
 const MAX_ZOOM = 5;
 const DEFAULT_DRAWING_COLOR = '#2196f3';
 
-// Define a single source of truth for the initial state
+// Define the initial state
 export const initialViewerState: ViewerSchema = {
-  scale: 1.5,
-  drawingColor: DEFAULT_DRAWING_COLOR,
-  drawingLineWidth: 2,
+  scale: 1.5, // Initial zoom level
+  drawingColor: DEFAULT_DRAWING_COLOR, // Red
+  drawingLineWidth: 3,
   drawingMode: 'none',
-  drawings: [], // Single array for all drawing types
-  showThumbnails: false,
+  showThumbnails: true,
   pageRotations: {},
-  textLayerEnabled: true,
+  textLayerEnabled: true
 };
 
+// Create the context with default values
+export const ViewerContext = createContext<ViewerContextType>({
+  state: initialViewerState,
+  dispatch: () => null,
+});
+
+// Reducer function to handle state updates
 export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema => {
   switch (action.type) {
     case 'setScale':
@@ -31,105 +37,61 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
       if (action.payload > MAX_ZOOM) {
         return { ...state, scale: MAX_ZOOM };
       }
-      return { ...state, scale: action.payload };
-
+      return {
+        ...state,
+        scale: action.payload,
+      };
     case 'setDrawingColor':
-      return { ...state, drawingColor: action.payload };
-
+      return {
+        ...state,
+        drawingColor: action.payload,
+      };
     case 'setDrawingLineWidth':
-      return { ...state, drawingLineWidth: action.payload };
-
+      return {
+        ...state,
+        drawingLineWidth: action.payload,
+      };
     case 'setDrawingMode':
       console.log('setDrawingMode', action.payload);
-      return { ...state, drawingMode: action.payload };
-
-    case 'addDrawing':
       return {
         ...state,
-        drawings: [...state.drawings, action.payload],
+        drawingMode: action.payload,
       };
-
-    case 'clearDrawings':
-      // If payload is provided, filter drawings based on criteria
-      if (action.payload) {
-        const { type, pageNumber } = action.payload;
-        
-        return {
-          ...state,
-          drawings: state.drawings.filter((drawing) => {
-            // Filter by both type and page number if both are provided
-            if (type && pageNumber !== undefined) {
-              return drawing.type !== type || drawing.pageNumber !== pageNumber;
-            }
-            // Filter by type only
-            if (type) {
-              return drawing.type !== type;
-            }
-            // Filter by page number only
-            if (pageNumber !== undefined) {
-              return drawing.pageNumber !== pageNumber;
-            }
-            // This case shouldn't be reached if payload is provided
-            return true;
-          }),
-        };
-      }
-      // Otherwise clear all drawings
-      return { ...state, drawings: [] };
-
     case 'toggleThumbnails':
-      return { ...state, showThumbnails: !state.showThumbnails };
-
+      return {
+        ...state,
+        showThumbnails: !state.showThumbnails,
+      };
     case 'toggleTextLayer':
-      return { ...state, textLayerEnabled: !state.textLayerEnabled };
-
-    case 'rotatePageClockwise': {
-      const pageNumber = action.payload;
-      const currentRotation = state.pageRotations[pageNumber] || 0;
-      // Calculate new rotation (clockwise: 0 -> 90 -> 180 -> 270 -> 0)
-      const newRotation: RotationAngle = ((currentRotation + 90) % 360) as RotationAngle;
-
+      return {
+        ...state,
+        textLayerEnabled: !state.textLayerEnabled,
+      };
+    case 'rotatePageClockwise':
       return {
         ...state,
         pageRotations: {
           ...state.pageRotations,
-          [pageNumber]: newRotation,
+          [action.payload]: ((state.pageRotations[action.payload] || 0) + 90) % 360 as RotationAngle,
         },
       };
-    }
-
-    case 'rotatePageCounterClockwise': {
-      const pageNumber = action.payload;
-      const currentRotation = state.pageRotations[pageNumber] || 0;
-      // Calculate new rotation (counter-clockwise: 0 -> 270 -> 180 -> 90 -> 0)
-      const newRotation: RotationAngle = ((currentRotation - 90 + 360) % 360) as RotationAngle;
-
+    case 'rotatePageCounterClockwise':
       return {
         ...state,
         pageRotations: {
           ...state.pageRotations,
-          [pageNumber]: newRotation,
+          [action.payload]: ((state.pageRotations[action.payload] || 0) + 270) % 360 as RotationAngle,
         },
       };
-    }
-    case 'setPageRotation': {
-      const { pageNumber, angle } = action.payload;
+    case 'setPageRotation':
       return {
         ...state,
         pageRotations: {
           ...state.pageRotations,
-          [pageNumber]: angle as RotationAngle,
+          [action.payload.pageNumber]: action.payload.angle as RotationAngle,
         },
       };
-    }
-
     default:
       return state;
   }
 };
-
-// Create context with proper typing
-export const ViewerContext = createContext<ViewerContextType>({
-  state: initialViewerState,
-  dispatch: () => null,
-});
