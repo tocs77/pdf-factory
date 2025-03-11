@@ -13,7 +13,7 @@ import { Drawing } from '../../model/types/viewerSchema';
 interface PdfViewerProps {
   url: string;
   drawings: Drawing[];
-  drawingCreated: (drawing: Drawing) => void;
+  drawingCreated: (drawing: Omit<Drawing, 'id'>) => void;
 }
 
 // Internal viewer component that will be wrapped with the provider

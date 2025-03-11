@@ -67,17 +67,17 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
     // Redraw any current path after rotation or scaling
     if (isDrawing && currentPath.length > 1) {
       ctx.beginPath();
-      
+
       // Start from the first point
       const firstPoint = currentPath[0];
       ctx.moveTo(firstPoint.x, firstPoint.y);
-      
+
       // Draw lines to all points
       for (let i = 1; i < currentPath.length; i++) {
         const point = currentPath[i];
         ctx.lineTo(point.x, point.y);
       }
-      
+
       ctx.stroke();
     }
   }, [scale, pageNumber, rotation, isDrawing, currentPath, drawingColor, drawingLineWidth]);
@@ -144,7 +144,7 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
     // Add point to current path
     setCurrentPath((prevPath) => {
       const newPath = [...prevPath, { x, y }];
-      
+
       // Redraw the entire path to ensure it's visible
       if (ctx && newPath.length > 1) {
         // Clear the canvas first
@@ -152,18 +152,18 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
         if (canvas) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
-        
+
         // Draw the complete path
         ctx.beginPath();
         ctx.moveTo(newPath[0].x, newPath[0].y);
-        
+
         for (let i = 1; i < newPath.length; i++) {
           ctx.lineTo(newPath[i].x, newPath[i].y);
         }
-        
+
         ctx.stroke();
       }
-      
+
       return newPath;
     });
   };
@@ -183,27 +183,19 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
     }
 
     // Normalize all points to scale 1 and 0 degrees rotation
-    const normalizedPath = currentPath.map(point => 
-      normalizeCoordinatesToZeroRotation(
-        point, 
-        canvas.width, 
-        canvas.height, 
-        scale, 
-        rotation
-      )
+    const normalizedPath = currentPath.map((point) =>
+      normalizeCoordinatesToZeroRotation(point, canvas.width, canvas.height, scale, rotation),
     );
 
-    // Create a new drawing object
-    const newDrawing: Drawing = {
+    // Call the callback with the new drawing
+    onDrawingCreated({
+      id: '',
       type: 'freehand',
       points: normalizedPath,
       color: drawingColor,
       lineWidth: drawingLineWidth / scale, // Store line width at scale 1
-      pageNumber
-    };
-
-    // Call the callback with the new drawing
-    onDrawingCreated(newDrawing);
+      pageNumber,
+    });
 
     // Reset state
     setIsDrawing(false);

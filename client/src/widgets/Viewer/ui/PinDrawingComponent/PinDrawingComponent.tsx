@@ -94,6 +94,7 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber, o
     if (drawingStage === 'positioning' && currentMousePosition) {
       // If we're in the positioning stage, draw a preview of the arrow
       const previewPin = {
+        id: '',
         type: 'pin' as const,
         position: pinPosition,
         bendPoint: currentMousePosition,
@@ -179,6 +180,7 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber, o
 
       // Create a new pin object with normalized coordinates
       const newPin: Drawing = {
+        id: '',
         type: 'pin',
         position: normalizedPinPoint,
         bendPoint: normalizedBendPoint,
@@ -204,12 +206,23 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber, o
     }
   };
 
+  // Handle keyboard events for accessibility
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Trigger click handler when Enter or Space is pressed
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick(e as unknown as React.MouseEvent<HTMLCanvasElement>);
+    }
+  };
+
   return (
     <canvas 
       ref={canvasRef} 
       className={styles.pinCanvas} 
       onClick={handleClick}
       onMouseMove={handleMouseMove}
+      onKeyDown={handleKeyDown}
+      tabIndex={0} // Make canvas focusable
       data-testid='pin-drawing-canvas' 
     />
   );

@@ -14,8 +14,8 @@ const viewerPageSlice = createSlice({
     setDrawings(state, action: PayloadAction<Drawing[]>) {
       state.drawings = action.payload;
     },
-    addDrawing(state, action: PayloadAction<Drawing>) {
-      state.drawings.push(action.payload);
+    addDrawing(state, action: PayloadAction<Omit<Drawing, 'id'>>) {
+      state.drawings.push({ ...action.payload, id: crypto.randomUUID() } as Drawing);
     },
     clearDrawings(state) {
       state.drawings = [];

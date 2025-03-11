@@ -1,4 +1,10 @@
-export interface DrawingPath {
+interface BaseDrawing {
+  type: string;
+  pageNumber: number;
+  id: string;
+}
+
+export interface DrawingPath extends BaseDrawing {
   type: 'freehand';
   /**
    * Array of points representing the drawing path.
@@ -7,10 +13,9 @@ export interface DrawingPath {
   points: { x: number; y: number }[];
   color: string;
   lineWidth: number;
-  pageNumber: number;
 }
 
-export interface Rectangle {
+export interface Rectangle extends BaseDrawing {
   type: 'rectangle';
   /**
    * Start point (top-left) of the rectangle
@@ -24,10 +29,9 @@ export interface Rectangle {
   endPoint: { x: number; y: number };
   color: string;
   lineWidth: number;
-  pageNumber: number;
 }
 
-export interface Pin {
+export interface Pin extends BaseDrawing {
   type: 'pin';
   /**
    * Position of the pin target (arrow end point) on the page
@@ -44,10 +48,9 @@ export interface Pin {
    */
   text: string;
   color: string;
-  pageNumber: number;
 }
 
-export interface Line {
+export interface Line extends BaseDrawing {
   type: 'line';
   /**
    * Start point of the line
@@ -61,10 +64,9 @@ export interface Line {
   endPoint: { x: number; y: number };
   color: string;
   lineWidth: number;
-  pageNumber: number;
 }
 
-export interface DrawArea {
+export interface DrawArea extends BaseDrawing {
   type: 'drawArea';
   /**
    * Bounding rectangle of the drawn area
@@ -75,7 +77,6 @@ export interface DrawArea {
   endPoint: { x: number; y: number };
   color: string;
   lineWidth: number;
-  pageNumber: number;
 }
 
 // Union type for all drawings

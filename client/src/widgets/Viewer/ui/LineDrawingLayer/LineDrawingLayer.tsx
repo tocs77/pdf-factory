@@ -335,6 +335,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
 
     // Create a new line object with normalized coordinates
     const newLine: Drawing = {
+      id: '',
       type: 'line',
       startPoint: normalizedStartPoint,
       endPoint: normalizedEndPoint,
