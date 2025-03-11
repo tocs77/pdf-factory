@@ -10,6 +10,7 @@ import { ViewerContext } from '../../model/context/viewerContext';
 import { TextLayer } from '../TextLayer/TextLayer';
 import { LineDrawingLayer } from '../LineDrawingLayer/LineDrawingLayer';
 import { DrawAreaLayer } from '../DrawAreaLayer/DrawAreaLayer';
+import { ZoomAreaLayer } from '../ZoomAreaLayer/ZoomAreaLayer';
 import { Drawing } from '../../model/types/viewerSchema';
 
 // Page component for rendering a single PDF page
@@ -223,6 +224,7 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
               {drawingMode === 'pin' && <PinDrawingComponent pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />}
               {drawingMode === 'line' && <LineDrawingLayer pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />}
               {drawingMode === 'drawArea' && <DrawAreaLayer pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />}
+              {drawingMode === 'zoomArea' && <ZoomAreaLayer pageNumber={pageNumber} />}
             </>
           )}
 

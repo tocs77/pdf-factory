@@ -79,7 +79,7 @@ export interface DrawArea extends BaseDrawing {
 // Union type for all drawings
 export type Drawing = DrawingPath | Rectangle | Pin | Line | DrawArea;
 
-export type DrawingMode = 'freehand' | 'rectangle' | 'pin' | 'text' | 'line' | 'drawArea' | 'none';
+export type DrawingMode = 'freehand' | 'rectangle' | 'pin' | 'text' | 'line' | 'drawArea' | 'zoomArea' | 'none';
 
 // Valid rotation angles: 0, 90, 180, 270 degrees
 export type RotationAngle = 0 | 90 | 180 | 270;

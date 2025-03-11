@@ -26,9 +26,18 @@
   border-radius: 3px;
   cursor: pointer;
   font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   
   &:hover {
     background-color: #f0f0f0;
+  }
+  
+  &.active {
+    background-color: #e3f2fd;
+    border-color: #2196f3;
+    color: #2196f3;
   }
 }
 
