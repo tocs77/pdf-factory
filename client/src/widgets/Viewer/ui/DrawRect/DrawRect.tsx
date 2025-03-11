@@ -174,11 +174,12 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber, onDrawingCreated, pdfCa
       height: Math.min(canvas.height - top + padding, rectHeight + padding * 2)
     };
     
-    // Capture the image
+    // Capture the image - only the PDF background, without the drawing layer
     const image = captureDrawingImage(
       pdfCanvasRef?.current || null,
       canvas,
-      boundingBox
+      boundingBox,
+      false // Set to false to only capture the PDF background
     );
     
     // Normalize coordinates to scale 1 and 0 degrees rotation

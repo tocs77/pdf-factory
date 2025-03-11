@@ -256,7 +256,8 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
     const image = captureDrawingImage(
       pdfCanvasRef?.current || null,
       canvas,
-      boundingBox
+      boundingBox,
+      false // Set to false to only capture the PDF background
     );
 
     // Normalize the points to scale 1 and 0 degrees rotation
