@@ -25,12 +25,6 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([]);
 
-  // Track the bounding box of the drawing
-  const [minX, setMinX] = useState<number>(0);
-  const [minY, setMinY] = useState<number>(0);
-  const [maxX, setMaxX] = useState<number>(0);
-  const [maxY, setMaxY] = useState<number>(0);
-
   // Constant for the thick line width used for drawing (32px)
   const DRAW_AREA_LINE_WIDTH = 32;
 
@@ -81,7 +75,6 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
       // Reset drawing state when switching out of draw area mode
       setIsDrawing(false);
       setCurrentPath([]);
-      resetBoundingBox();
     }
   }, [drawingMode]);
 
@@ -126,22 +119,6 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
     };
   }, [drawingMode]);
 
-  // Reset bounding box tracking
-  const resetBoundingBox = () => {
-    setMinX(0);
-    setMinY(0);
-    setMaxX(0);
-    setMaxY(0);
-  };
-
-  // Update bounding box with new point
-  const updateBoundingBox = (x: number, y: number) => {
-    setMinX((prev) => (prev === null || x < prev ? x : prev));
-    setMinY((prev) => (prev === null || y < prev ? y : prev));
-    setMaxX((prev) => (prev === null || x > prev ? x : prev));
-    setMaxY((prev) => (prev === null || y > prev ? y : prev));
-  };
-
   // Get raw coordinates relative to canvas
   const getRawCoordinates = (clientX: number, clientY: number): { x: number; y: number } => {
     if (!canvasRef.current) return { x: 0, y: 0 };
@@ -170,8 +147,6 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
     // Start drawing and tracking
     setIsDrawing(true);
     setCurrentPath([{ x, y }]);
-    resetBoundingBox();
-    updateBoundingBox(x, y);
 
     // Start drawing
     ctx.beginPath();
@@ -187,9 +162,6 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
 
     // Get raw coordinates
     const { x, y } = getRawCoordinates(e.clientX, e.clientY);
-
-    // Update bounding box
-    updateBoundingBox(x, y);
 
     // Add point to current path
     setCurrentPath((prevPath) => {
@@ -222,26 +194,46 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
     if (!isDrawing || drawingMode !== 'drawArea') {
       setIsDrawing(false);
       setCurrentPath([]);
-      resetBoundingBox();
       return;
     }
 
     const canvas = canvasRef.current;
-    if (!canvas || minX === null || minY === null || maxX === null || maxY === null) {
+    if (!canvas || currentPath.length < 2) {
       setIsDrawing(false);
       setCurrentPath([]);
-      resetBoundingBox();
       return;
     }
 
+    // Calculate the bounding box of the current path
+    // This ensures we use the actual path points rather than potentially incorrect state variables
+    let pathMinX = Infinity;
+    let pathMinY = Infinity;
+    let pathMaxX = -Infinity;
+    let pathMaxY = -Infinity;
+
+    // Find the min/max coordinates from the current path
+    currentPath.forEach(point => {
+      pathMinX = Math.min(pathMinX, point.x);
+      pathMinY = Math.min(pathMinY, point.y);
+      pathMaxX = Math.max(pathMaxX, point.x);
+      pathMaxY = Math.max(pathMaxY, point.y);
+    });
+
+    // Account for line width when calculating the bounding box
+    // Add half the line width to each edge of the bounding box
+    const halfLineWidth = DRAW_AREA_LINE_WIDTH / 2;
+    pathMinX = Math.max(0, pathMinX - halfLineWidth);
+    pathMinY = Math.max(0, pathMinY - halfLineWidth);
+    pathMaxX = Math.min(canvas.width, pathMaxX + halfLineWidth);
+    pathMaxY = Math.min(canvas.height, pathMaxY + halfLineWidth);
+
     // Check if the bounding box is too small
-    const width = maxX - minX;
-    const height = maxY - minY;
+    const width = pathMaxX - pathMinX;
+    const height = pathMaxY - pathMinY;
     
     if (width < 10 || height < 10) {
       setIsDrawing(false);
       setCurrentPath([]);
-      resetBoundingBox();
       
       // Clear the canvas
       const ctx = canvas.getContext('2d');
@@ -251,22 +243,13 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
       return;
     }
 
-    // Make sure start is top-left and end is bottom-right
-    const [startX, endX] = minX < maxX 
-      ? [minX, maxX] 
-      : [maxX, minX];
-    
-    const [startY, endY] = minY < maxY 
-      ? [minY, maxY] 
-      : [maxY, minY];
-
     // Add padding for the bounding box for image capture
     const padding = 10;
     const boundingBox = {
-      left: Math.max(0, startX - padding),
-      top: Math.max(0, startY - padding),
-      width: Math.min(canvas.width - startX + padding, endX - startX + padding * 2),
-      height: Math.min(canvas.height - startY + padding, endY - startY + padding * 2)
+      left: Math.max(0, pathMinX - padding),
+      top: Math.max(0, pathMinY - padding),
+      width: Math.min(canvas.width - pathMinX + padding, pathMaxX - pathMinX + padding * 2),
+      height: Math.min(canvas.height - pathMinY + padding, pathMaxY - pathMinY + padding * 2)
     };
 
     // Capture the image
@@ -278,7 +261,7 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
 
     // Normalize the points to scale 1 and 0 degrees rotation
     const normalizedStartPoint = normalizeCoordinatesToZeroRotation(
-      { x: startX, y: startY }, 
+      { x: pathMinX, y: pathMinY }, 
       canvas.width, 
       canvas.height, 
       scale, 
@@ -286,7 +269,7 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
     );
 
     const normalizedEndPoint = normalizeCoordinatesToZeroRotation(
-      { x: endX, y: endY }, 
+      { x: pathMaxX, y: pathMaxY }, 
       canvas.width, 
       canvas.height, 
       scale, 
@@ -310,7 +293,6 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
     // Reset drawing state
     setIsDrawing(false);
     setCurrentPath([]);
-    resetBoundingBox();
 
     // Clear the canvas since the drawing area will be rendered by the CompleteDrawings component
     const ctx = canvas.getContext('2d');

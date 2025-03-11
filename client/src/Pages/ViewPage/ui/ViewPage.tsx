@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
 import { useParams } from 'react-router';
-
-import { useGetFileBlobUrlQuery } from '@/entities/File';
-import { Drawing, PdfViewer } from '@/widgets/Viewer';
+import { useEffect, useRef } from 'react';
 import { useAppSelector } from '@/shared/hooks';
+import { useGetFileBlobUrlQuery } from '@/entities/File';
+import { PdfViewer } from '@/widgets/Viewer';
+import { Drawing } from '@/widgets/Viewer';
 import { useAppDispatch } from '@/shared/hooks';
+import { PdfViewerRef } from '@/widgets/Viewer/ui/Viewer/Viewer';
 
 import { viewerPageActions } from '../model/slice/viewerPageSlice';
 import { viewerPageSelectors } from '../model/selectors/viewerPageSelectors';
@@ -15,6 +16,7 @@ export const ViewPage = () => {
   const dispatch = useAppDispatch();
   const { data: fileBlobUrl, isLoading } = useGetFileBlobUrlQuery(id || '');
   const drawings = useAppSelector(viewerPageSelectors.getDrawings);
+  const pdfViewerRef = useRef<PdfViewerRef>(null);
 
   useEffect(() => {
     return () => {
@@ -26,13 +28,29 @@ export const ViewPage = () => {
     dispatch(viewerPageActions.addDrawing(drawing));
   };
 
+  const handleDrawingClick = (drawingId: string) => {
+    pdfViewerRef.current?.scrollToDraw(drawingId);
+  };
+
   if (isLoading) return <div>Loading...</div>;
   return (
     <div className={classes.ViewPage}>
-      <PdfViewer url={fileBlobUrl || ''} drawings={drawings} drawingCreated={handleDrawingCreated} />
+      <PdfViewer 
+        ref={pdfViewerRef}
+        url={fileBlobUrl || ''} 
+        drawings={drawings} 
+        drawingCreated={handleDrawingCreated} 
+      />
       <div className={classes.drawings}>
-        {drawings.map((drawing) => (
-          <div key={drawing.id} className={classes.drawing}>
+        {drawings.map((drawing: Drawing) => (
+          <div 
+            key={drawing.id} 
+            className={classes.drawing}
+            onClick={() => drawing.id && handleDrawingClick(drawing.id)}
+            role="button"
+            tabIndex={0}
+            aria-label={`View ${drawing.type} drawing`}
+          >
             <img src={drawing.image} alt={drawing.type} className={classes.drawingImage} />
           </div>
         ))}

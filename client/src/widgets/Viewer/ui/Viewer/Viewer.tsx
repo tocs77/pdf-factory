@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState, useRef } from 'react';
+import { useContext, useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import * as pdfjs from 'pdfjs-dist';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import { Thumbnail } from '../Thumbnail/Thumbnail';
@@ -10,6 +10,12 @@ import { classNames } from '@/shared/utils';
 import classes from './Viewer.module.scss';
 import { useZoomToMouse } from '../../hooks/useZoomToMouse';
 import { Drawing } from '../../model/types/viewerSchema';
+
+// Define the ref type for scrollToDraw function
+export type PdfViewerRef = {
+  scrollToDraw: (id: string) => void;
+};
+
 interface PdfViewerProps {
   url: string;
   drawings: Drawing[];
@@ -17,7 +23,7 @@ interface PdfViewerProps {
 }
 
 // Internal viewer component that will be wrapped with the provider
-const PdfViewerInternal = (props: PdfViewerProps) => {
+const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) => {
   const { url, drawings, drawingCreated } = props;
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, showThumbnails } = state;
@@ -42,6 +48,30 @@ const PdfViewerInternal = (props: PdfViewerProps) => {
     dispatch,
     containerRef: pdfContainerRef,
   });
+
+  // Expose scrollToDraw function to parent component
+  useImperativeHandle(ref, () => ({
+    scrollToDraw: (id: string) => {
+      if (!pdfContainerRef.current || !drawings || drawings.length === 0) return;
+      
+      // Find the drawing with the matching ID
+      const drawing = drawings.find(d => d.id === id);
+      if (!drawing) {
+        console.warn(`Drawing with ID ${id} not found`);
+        return;
+      }
+      
+      // Get the page number from the drawing
+      const pageNumber = drawing.pageNumber;
+      
+      // Scroll to the page
+      const pageElement = document.getElementById(`page-${pageNumber}`);
+      if (pageElement) {
+        pageElement.scrollIntoView({ behavior: 'smooth' });
+        setSelectedPage(pageNumber);
+      }
+    }
+  }));
 
   // Create a ref to track previous scale value
   const prevScaleRef = useRef(scale);
@@ -312,11 +342,11 @@ const PdfViewerInternal = (props: PdfViewerProps) => {
       </div>
     </div>
   );
-};
+});
 
-// Wrap the internal component with the provider
-export const PdfViewer = (props: PdfViewerProps) => (
+// Wrap the internal component with the provider and forward the ref
+export const PdfViewer = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) => (
   <ViewerProvider>
-    <PdfViewerInternal {...props} />
+    <PdfViewerInternal {...props} ref={ref} />
   </ViewerProvider>
-);
+));
