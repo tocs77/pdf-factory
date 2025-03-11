@@ -260,12 +260,7 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber }) => {
       endPoint: normalizedEndPoint,
       color: drawingColor,
       lineWidth: drawingLineWidth / scale, // Use context.drawingLineWidth for the final rectangle
-      pageNumber,
-      canvasDimensions: {
-        width: canvas.width / scale,
-        height: canvas.height / scale
-      },
-      rotation: rotation as 0 | 90 | 180 | 270
+      pageNumber
     };
 
     // Add the drawing area to the context

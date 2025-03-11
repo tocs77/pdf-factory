@@ -174,12 +174,7 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber })
         bendPoint: normalizedBendPoint,
         text,
         color: drawingColor,
-        pageNumber,
-        canvasDimensions: {
-          width: canvas.width / scale,
-          height: canvas.height / scale
-        },
-        rotation: rotation as 0 | 90 | 180 | 270
+        pageNumber
       };
 
       // Add the pin to the context

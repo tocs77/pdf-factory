@@ -337,12 +337,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber }
       endPoint: normalizedEndPoint,
       color: drawingColor,
       lineWidth: drawingLineWidth / scale, // Store line width at scale 1
-      pageNumber,
-      canvasDimensions: {
-        width: canvas.width / scale,
-        height: canvas.height / scale
-      },
-      rotation: rotation as 0 | 90 | 180 | 270
+      pageNumber
     };
 
     // Add the line to the context

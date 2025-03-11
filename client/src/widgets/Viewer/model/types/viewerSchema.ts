@@ -7,16 +7,6 @@ export interface DrawingPath {
   color: string;
   lineWidth: number;
   pageNumber: number;
-  /**
-   * Canvas dimensions at scale=1 when the drawing was created.
-   * Used to properly position drawings when rendering at different scales.
-   */
-  canvasDimensions?: { width: number; height: number };
-  /**
-   * Rotation angle at which the drawing was created.
-   * Used to properly transform coordinates when rendering at different rotation angles.
-   */
-  rotation?: RotationAngle;
 }
 
 export interface Rectangle {
@@ -33,16 +23,6 @@ export interface Rectangle {
   color: string;
   lineWidth: number;
   pageNumber: number;
-  /**
-   * Canvas dimensions at scale=1 when the rectangle was created.
-   * Used to properly position rectangles when rendering at different scales.
-   */
-  canvasDimensions?: { width: number; height: number };
-  /**
-   * Rotation angle at which the rectangle was created.
-   * Used to properly transform coordinates when rendering at different rotation angles.
-   */
-  rotation?: RotationAngle;
 }
 
 export interface Pin {
@@ -62,16 +42,6 @@ export interface Pin {
   text: string;
   color: string;
   pageNumber: number;
-  /**
-   * Canvas dimensions at scale=1 when the pin was created.
-   * Used to properly position pins when rendering at different scales.
-   */
-  canvasDimensions?: { width: number; height: number };
-  /**
-   * Rotation angle at which the pin was created.
-   * Used to properly transform coordinates when rendering at different rotation angles.
-   */
-  rotation?: RotationAngle;
 }
 
 export interface Line {
@@ -88,16 +58,6 @@ export interface Line {
   color: string;
   lineWidth: number;
   pageNumber: number;
-  /**
-   * Canvas dimensions at scale=1 when the line was created.
-   * Used to properly position lines when rendering at different scales.
-   */
-  canvasDimensions?: { width: number; height: number };
-  /**
-   * Rotation angle at which the line was created.
-   * Used to properly transform coordinates when rendering at different rotation angles.
-   */
-  rotation?: RotationAngle;
 }
 
 export interface DrawArea {
@@ -111,16 +71,6 @@ export interface DrawArea {
   color: string;
   lineWidth: number;
   pageNumber: number;
-  /**
-   * Canvas dimensions at scale=1 when the drawing area was created.
-   * Used to properly position the area when rendering at different scales.
-   */
-  canvasDimensions?: { width: number; height: number };
-  /**
-   * Rotation angle at which the drawing area was created.
-   * Used to properly transform coordinates when rendering at different rotation angles.
-   */
-  rotation?: RotationAngle;
 }
 
 export type DrawingMode = 'freehand' | 'rectangle' | 'pin' | 'text' | 'line' | 'drawArea' | 'none';
