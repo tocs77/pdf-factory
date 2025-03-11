@@ -218,11 +218,11 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
           {/* Drawing components - only render when respective tool is selected */}
           {inView && (
             <>
-              {drawingMode === 'freehand' && <DrawingComponent pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} />}
-              {drawingMode === 'rectangle' && <DrawRect pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} />}
-              {drawingMode === 'pin' && <PinDrawingComponent pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} />}
-              {drawingMode === 'line' && <LineDrawingLayer pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} />}
-              {drawingMode === 'drawArea' && <DrawAreaLayer pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} />}
+              {drawingMode === 'freehand' && <DrawingComponent pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />}
+              {drawingMode === 'rectangle' && <DrawRect pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />}
+              {drawingMode === 'pin' && <PinDrawingComponent pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />}
+              {drawingMode === 'line' && <LineDrawingLayer pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />}
+              {drawingMode === 'drawArea' && <DrawAreaLayer pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />}
             </>
           )}
 

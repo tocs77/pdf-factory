@@ -16,9 +16,9 @@ export const initialViewerState: ViewerSchema = {
   drawingColor: DEFAULT_DRAWING_COLOR, // Red
   drawingLineWidth: 3,
   drawingMode: 'none',
-  showThumbnails: true,
+  showThumbnails: false,
   pageRotations: {},
-  textLayerEnabled: true
+  textLayerEnabled: true,
 };
 
 // Create the context with default values
@@ -72,7 +72,7 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
         ...state,
         pageRotations: {
           ...state.pageRotations,
-          [action.payload]: ((state.pageRotations[action.payload] || 0) + 90) % 360 as RotationAngle,
+          [action.payload]: (((state.pageRotations[action.payload] || 0) + 90) % 360) as RotationAngle,
         },
       };
     case 'rotatePageCounterClockwise':
@@ -80,7 +80,7 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
         ...state,
         pageRotations: {
           ...state.pageRotations,
-          [action.payload]: ((state.pageRotations[action.payload] || 0) + 270) % 360 as RotationAngle,
+          [action.payload]: (((state.pageRotations[action.payload] || 0) + 270) % 360) as RotationAngle,
         },
       };
     case 'setPageRotation':

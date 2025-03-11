@@ -30,9 +30,11 @@ export const ViewPage = () => {
   return (
     <div className={classes.ViewPage}>
       <PdfViewer url={fileBlobUrl || ''} drawings={drawings} drawingCreated={handleDrawingCreated} />
-      <div>
+      <div className={classes.drawings}>
         {drawings.map((drawing) => (
-          <div key={drawing.id}>{drawing.type}</div>
+          <div key={drawing.id} className={classes.drawing}>
+            <img src={drawing.image} alt={drawing.type} className={classes.drawingImage} />
+          </div>
         ))}
       </div>
     </div>

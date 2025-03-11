@@ -1,7 +1,9 @@
-interface BaseDrawing {
-  type: string;
+// Base interface for common drawing properties
+export interface BaseDrawing {
+  id?: string;
+  color: string;
   pageNumber: number;
-  id: string;
+  image?: string; // Store base64 image of the drawing area
 }
 
 export interface DrawingPath extends BaseDrawing {
@@ -11,7 +13,6 @@ export interface DrawingPath extends BaseDrawing {
    * All coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
    */
   points: { x: number; y: number }[];
-  color: string;
   lineWidth: number;
 }
 
@@ -27,7 +28,6 @@ export interface Rectangle extends BaseDrawing {
    * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
    */
   endPoint: { x: number; y: number };
-  color: string;
   lineWidth: number;
 }
 
@@ -47,7 +47,6 @@ export interface Pin extends BaseDrawing {
    * Text content of the pin
    */
   text: string;
-  color: string;
 }
 
 export interface Line extends BaseDrawing {
@@ -62,7 +61,6 @@ export interface Line extends BaseDrawing {
    * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
    */
   endPoint: { x: number; y: number };
-  color: string;
   lineWidth: number;
 }
 
@@ -75,7 +73,6 @@ export interface DrawArea extends BaseDrawing {
    */
   startPoint: { x: number; y: number };
   endPoint: { x: number; y: number };
-  color: string;
   lineWidth: number;
 }
 

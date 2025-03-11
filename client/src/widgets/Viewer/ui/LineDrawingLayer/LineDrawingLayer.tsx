@@ -1,18 +1,20 @@
 import React, { useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
+import { captureDrawingImage } from '../../utils/captureDrawingImage';
 import { Drawing } from '../../model/types/viewerSchema';
 import styles from './LineDrawingLayer.module.scss';
 
 interface LineDrawingLayerProps {
   pageNumber: number;
   onDrawingCreated: (drawing: Drawing) => void;
+  pdfCanvasRef?: React.RefObject<HTMLCanvasElement>; // Reference to the PDF canvas
 }
 
 /**
  * Component for handling straight line drawing
  */
-export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, onDrawingCreated }) => {
+export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, onDrawingCreated, pdfCanvasRef }) => {
   const { state } = useContext(ViewerContext);
   const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations } = state;
 
@@ -316,6 +318,28 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
       return;
     }
 
+    // Calculate bounding box for image capture
+    const padding = 10;
+    const left = Math.min(startPoint.x, finalEndPoint.x) - padding;
+    const top = Math.min(startPoint.y, finalEndPoint.y) - padding;
+    const width = Math.abs(finalEndPoint.x - startPoint.x) + padding * 2;
+    const height = Math.abs(finalEndPoint.y - startPoint.y) + padding * 2;
+
+    // Ensure the bounding box is within canvas bounds
+    const boundingBox = {
+      left: Math.max(0, left),
+      top: Math.max(0, top),
+      width: Math.min(canvas.width - left, width),
+      height: Math.min(canvas.height - top, height)
+    };
+
+    // Capture the image
+    const image = captureDrawingImage(
+      pdfCanvasRef?.current || null,
+      canvas,
+      boundingBox
+    );
+
     // Normalize the points to scale 1 and 0 degrees rotation
     const normalizedStartPoint = normalizeCoordinatesToZeroRotation(
       startPoint, 
@@ -335,13 +359,13 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
 
     // Create a new line object with normalized coordinates
     const newLine: Drawing = {
-      id: '',
       type: 'line',
       startPoint: normalizedStartPoint,
       endPoint: normalizedEndPoint,
       color: drawingColor,
       lineWidth: drawingLineWidth / scale, // Store line width at scale 1
-      pageNumber
+      pageNumber,
+      image
     };
 
     // Call the callback with the new drawing

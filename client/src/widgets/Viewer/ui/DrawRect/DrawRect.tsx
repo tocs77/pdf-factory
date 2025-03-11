@@ -1,18 +1,20 @@
 import React, { useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
+import { captureDrawingImage } from '../../utils/captureDrawingImage';
 import { Drawing } from '../../model/types/viewerSchema';
 import styles from './DrawRect.module.scss';
 
 interface DrawRectProps {
   pageNumber: number;
   onDrawingCreated: (drawing: Drawing) => void;
+  pdfCanvasRef?: React.RefObject<HTMLCanvasElement>; // Reference to the PDF canvas
 }
 
 /**
  * Component for handling rectangle drawing
  */
-const DrawRect: React.FC<DrawRectProps> = ({ pageNumber, onDrawingCreated }) => {
+const DrawRect: React.FC<DrawRectProps> = ({ pageNumber, onDrawingCreated, pdfCanvasRef }) => {
   const { state } = useContext(ViewerContext);
   const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations } = state;
   
@@ -157,6 +159,28 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber, onDrawingCreated }) => 
       return;
     }
     
+    // Calculate the rectangle bounds for the image capture
+    const left = Math.min(startPoint.x, endPoint.x);
+    const top = Math.min(startPoint.y, endPoint.y);
+    const rectWidth = Math.abs(endPoint.x - startPoint.x);
+    const rectHeight = Math.abs(endPoint.y - startPoint.y);
+    
+    // Add padding to the bounding box
+    const padding = 10;
+    const boundingBox = {
+      left: Math.max(0, left - padding),
+      top: Math.max(0, top - padding),
+      width: Math.min(canvas.width - left + padding, rectWidth + padding * 2),
+      height: Math.min(canvas.height - top + padding, rectHeight + padding * 2)
+    };
+    
+    // Capture the image
+    const image = captureDrawingImage(
+      pdfCanvasRef?.current || null,
+      canvas,
+      boundingBox
+    );
+    
     // Normalize coordinates to scale 1 and 0 degrees rotation
     const normalizedStartPoint = normalizeCoordinatesToZeroRotation(
       { 
@@ -182,13 +206,13 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber, onDrawingCreated }) => 
     
     // Create a new rectangle object with normalized coordinates
     const newRectangle: Drawing = {
-      id: '',
       type: 'rectangle',
       startPoint: normalizedStartPoint,
       endPoint: normalizedEndPoint,
       color: drawingColor,
       lineWidth: drawingLineWidth / scale, // Store line width at scale 1
-      pageNumber
+      pageNumber,
+      image
     };
     
     // Call the callback with the new drawing

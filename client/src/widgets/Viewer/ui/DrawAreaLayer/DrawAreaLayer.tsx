@@ -1,18 +1,20 @@
 import React, { useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
+import { captureDrawingImage } from '../../utils/captureDrawingImage';
 import { Drawing } from '../../model/types/viewerSchema';
 import styles from './DrawAreaLayer.module.scss';
 
 interface DrawAreaLayerProps {
   pageNumber: number;
   onDrawingCreated: (drawing: Drawing) => void;
+  pdfCanvasRef?: React.RefObject<HTMLCanvasElement>; // Reference to the PDF canvas
 }
 
 /**
  * Component for handling draw area with thick line (32px) that converts to rectangle
  */
-export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDrawingCreated }) => {
+export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDrawingCreated, pdfCanvasRef }) => {
   const { state } = useContext(ViewerContext);
   const { scale, drawingColor, drawingLineWidth, pageRotations, drawingMode } = state;
 
@@ -225,21 +227,22 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
     }
 
     const canvas = canvasRef.current;
-    if (!canvas) {
+    if (!canvas || minX === null || minY === null || maxX === null || maxY === null) {
       setIsDrawing(false);
       setCurrentPath([]);
       resetBoundingBox();
       return;
     }
-    // Check if the bounding box is too small
-    const width = Math.abs((maxX ?? 0) - (minX ?? 0));
-    const height = Math.abs((maxY ?? 0) - (minY ?? 0));
 
+    // Check if the bounding box is too small
+    const width = maxX - minX;
+    const height = maxY - minY;
+    
     if (width < 10 || height < 10) {
       setIsDrawing(false);
       setCurrentPath([]);
       resetBoundingBox();
-
+      
       // Clear the canvas
       const ctx = canvas.getContext('2d');
       if (ctx) {
@@ -249,36 +252,56 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
     }
 
     // Make sure start is top-left and end is bottom-right
-    const [startX, endX] = minX < maxX ? [minX, maxX] : [maxX, minX];
+    const [startX, endX] = minX < maxX 
+      ? [minX, maxX] 
+      : [maxX, minX];
+    
+    const [startY, endY] = minY < maxY 
+      ? [minY, maxY] 
+      : [maxY, minY];
 
-    const [startY, endY] = minY < maxY ? [minY, maxY] : [maxY, minY];
+    // Add padding for the bounding box for image capture
+    const padding = 10;
+    const boundingBox = {
+      left: Math.max(0, startX - padding),
+      top: Math.max(0, startY - padding),
+      width: Math.min(canvas.width - startX + padding, endX - startX + padding * 2),
+      height: Math.min(canvas.height - startY + padding, endY - startY + padding * 2)
+    };
+
+    // Capture the image
+    const image = captureDrawingImage(
+      pdfCanvasRef?.current || null,
+      canvas,
+      boundingBox
+    );
 
     // Normalize the points to scale 1 and 0 degrees rotation
     const normalizedStartPoint = normalizeCoordinatesToZeroRotation(
-      { x: startX, y: startY },
-      canvas.width,
-      canvas.height,
-      scale,
-      rotation,
+      { x: startX, y: startY }, 
+      canvas.width, 
+      canvas.height, 
+      scale, 
+      rotation
     );
 
     const normalizedEndPoint = normalizeCoordinatesToZeroRotation(
-      { x: endX, y: endY },
-      canvas.width,
-      canvas.height,
-      scale,
-      rotation,
+      { x: endX, y: endY }, 
+      canvas.width, 
+      canvas.height, 
+      scale, 
+      rotation
     );
 
     // Create a new DrawArea object
     const newDrawArea: Drawing = {
-      id: '',
       type: 'drawArea',
       startPoint: normalizedStartPoint,
       endPoint: normalizedEndPoint,
       color: drawingColor,
       lineWidth: drawingLineWidth / scale, // Use context.drawingLineWidth for the final rectangle
       pageNumber,
+      image
     };
 
     // Call the callback with the new drawing

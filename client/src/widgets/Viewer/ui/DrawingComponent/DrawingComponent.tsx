@@ -1,18 +1,20 @@
 import React, { useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
+import { captureDrawingImage } from '../../utils/captureDrawingImage';
 import { Drawing } from '../../model/types/viewerSchema';
 import styles from './DrawingComponent.module.scss';
 
 interface DrawingComponentProps {
   pageNumber: number;
   onDrawingCreated: (drawing: Drawing) => void;
+  pdfCanvasRef?: React.RefObject<HTMLCanvasElement>; // Reference to the PDF canvas
 }
 
 /**
  * Component for handling freehand drawing
  */
-export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, onDrawingCreated }) => {
+export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, onDrawingCreated, pdfCanvasRef }) => {
   const { state } = useContext(ViewerContext);
   const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations } = state;
 
@@ -183,19 +185,62 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
     }
 
     // Normalize all points to scale 1 and 0 degrees rotation
-    const normalizedPath = currentPath.map((point) =>
-      normalizeCoordinatesToZeroRotation(point, canvas.width, canvas.height, scale, rotation),
+    const normalizedPath = currentPath.map(point => 
+      normalizeCoordinatesToZeroRotation(
+        point, 
+        canvas.width, 
+        canvas.height, 
+        scale, 
+        rotation
+      )
     );
 
-    // Call the callback with the new drawing
-    onDrawingCreated({
-      id: '',
+    // Calculate bounding box of the drawing
+    let minX = Number.MAX_VALUE;
+    let minY = Number.MAX_VALUE;
+    let maxX = 0;
+    let maxY = 0;
+
+    currentPath.forEach(point => {
+      minX = Math.min(minX, point.x);
+      minY = Math.min(minY, point.y);
+      maxX = Math.max(maxX, point.x);
+      maxY = Math.max(maxY, point.y);
+    });
+
+    // Add padding to the bounding box
+    const padding = 10;
+    minX = Math.max(0, minX - padding);
+    minY = Math.max(0, minY - padding);
+    maxX = Math.min(canvas.width, maxX + padding);
+    maxY = Math.min(canvas.height, maxY + padding);
+
+    // Capture drawing as image
+    const boundingBox = {
+      left: minX,
+      top: minY,
+      width: maxX - minX,
+      height: maxY - minY
+    };
+
+    const image = captureDrawingImage(
+      pdfCanvasRef?.current || null,
+      canvas,
+      boundingBox
+    );
+
+    // Create a new drawing object
+    const newDrawing: Drawing = {
       type: 'freehand',
       points: normalizedPath,
       color: drawingColor,
       lineWidth: drawingLineWidth / scale, // Store line width at scale 1
       pageNumber,
-    });
+      image
+    };
+
+    // Call the callback with the new drawing
+    onDrawingCreated(newDrawing);
 
     // Reset state
     setIsDrawing(false);

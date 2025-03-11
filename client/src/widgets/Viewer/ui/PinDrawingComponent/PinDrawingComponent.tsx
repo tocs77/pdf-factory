@@ -2,18 +2,20 @@ import React, { useEffect, useRef, useContext, useState } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import { renderPin } from '../../utils/pinRenderer';
+import { captureDrawingImage } from '../../utils/captureDrawingImage';
 import { Drawing } from '../../model/types/viewerSchema';
 import styles from './PinDrawingComponent.module.scss';
 
 interface PinDrawingComponentProps {
   pageNumber: number;
   onDrawingCreated: (drawing: Drawing) => void;
+  pdfCanvasRef?: React.RefObject<HTMLCanvasElement>; // Reference to the PDF canvas
 }
 
 /**
  * Component for handling pin drawing with arrow and bend point
  */
-const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber, onDrawingCreated }) => {
+const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber, onDrawingCreated, pdfCanvasRef }) => {
   const { state } = useContext(ViewerContext);
   const { scale, drawingColor, pageRotations, drawingMode } = state;
 
@@ -178,15 +180,32 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber, o
         return;
       }
 
+      // Calculate the bounding box for image capture
+      // Expand the area around the pin
+      const padding = 50; // Pins need more padding for the arrow
+      const boundingBox = {
+        left: Math.max(0, Math.min(pinPosition.x, coords.x) - padding),
+        top: Math.max(0, Math.min(pinPosition.y, coords.y) - padding),
+        width: Math.min(canvas.width, Math.abs(coords.x - pinPosition.x) + padding * 2),
+        height: Math.min(canvas.height, Math.abs(coords.y - pinPosition.y) + padding * 2)
+      };
+
+      // Capture the image
+      const image = captureDrawingImage(
+        pdfCanvasRef?.current || null,
+        canvas,
+        boundingBox
+      );
+
       // Create a new pin object with normalized coordinates
       const newPin: Drawing = {
-        id: '',
         type: 'pin',
         position: normalizedPinPoint,
         bendPoint: normalizedBendPoint,
         text,
         color: drawingColor,
-        pageNumber
+        pageNumber,
+        image
       };
 
       // Call the callback with the new drawing
