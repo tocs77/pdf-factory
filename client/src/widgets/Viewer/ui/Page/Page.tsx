@@ -213,7 +213,16 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
 
           {/* Text Layer - only render when text tool is selected */}
           {drawingMode === 'text' && viewport && renderTask && (
-            <TextLayer page={page} viewport={viewport} scale={scale} rotation={rotation} renderTask={renderTask} />
+            <TextLayer 
+              page={page} 
+              viewport={viewport} 
+              scale={scale} 
+              rotation={rotation} 
+              renderTask={renderTask} 
+              pageNumber={pageNumber}
+              onDrawingCreated={onDrawingCreated}
+              pdfCanvasRef={canvasRef}
+            />
           )}
 
           {/* Drawing components - only render when respective tool is selected */}

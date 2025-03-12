@@ -13,7 +13,7 @@ export const captureDrawingImage = (
   boundingBox: { left: number; top: number; width: number; height: number },
   captureDrawingLayer: boolean = true
 ): string => {
-  if (!pdfCanvas || !drawingCanvas) {
+  if (!pdfCanvas || (!drawingCanvas && captureDrawingLayer)) {
     return '';
   }
 
@@ -52,7 +52,7 @@ export const captureDrawingImage = (
   );
 
   // Draw drawing on top only if captureDrawingLayer is true
-  if (captureDrawingLayer) {
+  if (captureDrawingLayer && drawingCanvas) {
     newCanvasContext.drawImage(
       drawingCanvas, 
       left * dpr, 

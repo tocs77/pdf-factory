@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, MouseEvent as ReactMouseEvent } from 'react';
 import type { PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import * as pdfjs from 'pdfjs-dist';
 import classes from './TextLayer.module.scss';
+import TextUnderlineButton from '../TextUnderlineButton/TextUnderlineButton';
+import buttonStyles from '../TextUnderlineButton/TextUnderlineButton.module.scss';
+import { Drawing } from '../../model/types/viewerSchema';
 
 interface TextLayerProps {
   page: PDFPageProxy;
@@ -9,7 +12,9 @@ interface TextLayerProps {
   scale: number;
   rotation: number;
   renderTask: any;
-  onSelectionChange?: (hasSelection: boolean) => void;
+  pageNumber: number;
+  onDrawingCreated: (drawing: Drawing) => void;
+  pdfCanvasRef?: React.RefObject<HTMLCanvasElement>;
 }
 
 // Define a proper type for text content items
@@ -27,12 +32,21 @@ export const TextLayer = ({
   scale,
   rotation,
   renderTask,
-  onSelectionChange,
+  pageNumber,
+  onDrawingCreated,
+  pdfCanvasRef,
 }: TextLayerProps) => {
   const textLayerRef = useRef<HTMLDivElement>(null);
   const [isSelecting, setIsSelecting] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
   const [showCopyButton, setShowCopyButton] = useState(false);
+
+  // State to track toolbar position
+  const [toolbarPosition, setToolbarPosition] = useState({ top: 60, left: 10 });
+  // State for dragging functionality
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const toolbarRef = useRef<HTMLDivElement>(null);
 
   // Handle text selection
   useEffect(() => {
@@ -69,21 +83,11 @@ export const TextLayer = ({
 
       if (isInTextLayer || isSelecting) {
         setHasSelection(true);
-        
-        // Notify parent component about selection change
-        if (onSelectionChange) {
-          onSelectionChange(true);
-        }
 
         // Add hasSelection class to keep text visible
         textLayer.classList.add(classes.hasSelection);
       } else {
         setHasSelection(false);
-        
-        // Notify parent component about selection change
-        if (onSelectionChange) {
-          onSelectionChange(false);
-        }
 
         // Remove hasSelection class when no text is selected
         textLayer.classList.remove(classes.hasSelection);
@@ -135,13 +139,20 @@ export const TextLayer = ({
 
     // Clear selection when clicking outside
     const handleClickOutside = (e: MouseEvent) => {
+      // Don't hide if clicking on any part of the toolbar or buttons
+      const isClickingToolbar = !!(e.target as HTMLElement).closest(`.${classes.textSelectionToolbar}`);
+      const isClickingTextButton = !!(e.target as HTMLElement).closest(`.${buttonStyles.textUnderlineButton}`);
+      const isClickingCopyButton = !!(e.target as HTMLElement).closest(`.${classes.copyButton}`);
+      
       if (
         hasSelection &&
         textLayerRef.current &&
         !textLayerRef.current.contains(e.target as Node) &&
-        !(e.target as HTMLElement).classList.contains(classes.copyButton)
+        !isClickingToolbar &&
+        !isClickingTextButton &&
+        !isClickingCopyButton
       ) {
-        // Only clear if we're not clicking the copy button
+        // Only clear if we're not clicking the copy button or toolbar
         const selection = window.getSelection();
         if (selection) {
           // Check if we should clear the selection
@@ -151,11 +162,6 @@ export const TextLayer = ({
           if (shouldClear) {
             setHasSelection(false);
             setShowCopyButton(false);
-            
-            // Notify parent component about selection change
-            if (onSelectionChange) {
-              onSelectionChange(false);
-            }
 
             // Remove hasSelection class
             if (textLayerRef.current) {
@@ -180,14 +186,21 @@ export const TextLayer = ({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keyup', handleSelectionEnd);
     };
-  }, [isSelecting, hasSelection, onSelectionChange]);
+  }, [isSelecting, hasSelection]);
 
   // Hide copy button when clicking elsewhere
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
+      // Don't hide if clicking on any part of the toolbar or buttons
+      const isClickingToolbar = !!(e.target as HTMLElement).closest(`.${classes.textSelectionToolbar}`);
+      const isClickingTextButton = !!(e.target as HTMLElement).closest(`.${buttonStyles.textUnderlineButton}`);
+      const isClickingCopyButton = !!(e.target as HTMLElement).closest(`.${classes.copyButton}`);
+      
       if (
         showCopyButton &&
-        !(e.target as HTMLElement).classList.contains(classes.copyButton) &&
+        !isClickingToolbar &&
+        !isClickingTextButton &&
+        !isClickingCopyButton &&
         textLayerRef.current &&
         !textLayerRef.current.contains(e.target as Node)
       ) {
@@ -745,23 +758,173 @@ export const TextLayer = ({
     }
   };
 
+  // Handler for starting drag operation
+  const handleDragStart = (e: ReactMouseEvent) => {
+    if (!toolbarRef.current) return;
+    
+    const rect = toolbarRef.current.getBoundingClientRect();
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+    setIsDragging(true);
+  };
+
+  // Handler for drag movement
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleDragMove = (e: MouseEvent) => {
+      e.preventDefault();
+      
+      // Calculate new position based on mouse coordinates and drag offset
+      const left = e.clientX - dragOffset.x;
+      const top = e.clientY - dragOffset.y;
+      
+      // Get viewport dimensions
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      // Get toolbar dimensions
+      let toolbarWidth = 150;
+      let toolbarHeight = 80;
+      if (toolbarRef.current) {
+        const rect = toolbarRef.current.getBoundingClientRect();
+        toolbarWidth = rect.width;
+        toolbarHeight = rect.height;
+      }
+      
+      // Ensure toolbar stays within viewport bounds
+      const boundedLeft = Math.max(0, Math.min(left, viewportWidth - toolbarWidth));
+      const boundedTop = Math.max(0, Math.min(top, viewportHeight - toolbarHeight));
+      
+      setToolbarPosition({ 
+        left: boundedLeft, 
+        top: boundedTop 
+      });
+    };
+
+    const handleDragEnd = () => {
+      setIsDragging(false);
+    };
+
+    // Add event listeners for dragging
+    document.addEventListener('mousemove', handleDragMove);
+    document.addEventListener('mouseup', handleDragEnd);
+
+    return () => {
+      document.removeEventListener('mousemove', handleDragMove);
+      document.removeEventListener('mouseup', handleDragEnd);
+    };
+  }, [isDragging, dragOffset]);
+
+  // Update toolbar position based on visible area
+  useEffect(() => {
+    // Only auto-position if not currently being dragged by the user
+    if (!hasSelection || isDragging) return;
+
+    const updatePosition = () => {
+      // Get the page element containing this text layer
+      const pageElement = textLayerRef.current?.closest('[data-page-number]');
+      if (!pageElement) return;
+
+      // Calculate page position relative to viewport
+      const pageRect = pageElement.getBoundingClientRect();
+      
+      // Get the viewport width to ensure toolbar doesn't go off-screen to the right
+      const viewportWidth = window.innerWidth;
+      
+      // Create a placeholder element to measure toolbar width (if needed)
+      let toolbarWidth = 150; // Estimate for toolbar width
+      const toolbarElement = document.querySelector(`.${classes.textSelectionToolbar}`);
+      if (toolbarElement) {
+        toolbarWidth = toolbarElement.getBoundingClientRect().width;
+      }
+      
+      // Use a larger top offset to avoid overlapping with the viewer menu
+      // 60px should be enough to clear most menu bars
+      const topOffset = 60;
+      
+      // If page top is out of view (negative value), adjust toolbar position
+      const top = Math.max(topOffset, -pageRect.top + topOffset); // offset from top of visible area
+      
+      // Calculate left position, ensuring it stays within viewport
+      let left = Math.max(10, -pageRect.left + 10); // 10px from left of visible area
+      
+      // Ensure toolbar doesn't go off-screen to the right
+      if (left + toolbarWidth > viewportWidth) {
+        left = viewportWidth - toolbarWidth - 10; // 10px margin from right edge
+      }
+
+      setToolbarPosition({ top, left });
+    };
+
+    // Initial positioning
+    updatePosition();
+
+    // Update position on scroll and resize
+    window.addEventListener('scroll', updatePosition, { passive: true });
+    window.addEventListener('resize', updatePosition, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', updatePosition);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [hasSelection, isDragging]);
+
   return (
     <>
-      <div
-        ref={textLayerRef}
+      <div 
+        ref={textLayerRef} 
         className={classes.textLayer}
         onMouseUp={() => {
+          // Force selection change check after mouse up
           const selection = window.getSelection();
           if (selection && selection.toString().trim()) {
             setShowCopyButton(true);
+            setHasSelection(true);
+            
+            // Force a selectionchange event to trigger the TextUnderlineButton
+            const event = new Event('selectionchange', {
+              bubbles: true,
+              cancelable: true
+            });
+            document.dispatchEvent(event);
           }
         }}
       />
-
-      {showCopyButton && (
-        <button className={classes.copyButton} onClick={copySelectedText}>
-          Copy
-        </button>
+      
+      {/* Text selection toolbar with both buttons */}
+      {hasSelection && (
+        <div 
+          ref={toolbarRef}
+          className={classes.textSelectionToolbar}
+          style={{
+            top: `${toolbarPosition.top}px`,
+            left: `${toolbarPosition.left}px`,
+            cursor: isDragging ? 'grabbing' : 'grab'
+          }}
+          onMouseDown={handleDragStart}
+        >
+          <div className={classes.toolbarHandle}>
+            <div className={classes.dragHandle}></div>
+          </div>
+          {showCopyButton && (
+            <button
+              className={classes.copyButton}
+              onClick={copySelectedText}
+              title="Copy to clipboard">
+              Copy
+            </button>
+          )}
+          
+          <TextUnderlineButton 
+            pageNumber={pageNumber}
+            onDrawingCreated={onDrawingCreated}
+            scale={scale}
+            pdfCanvasRef={pdfCanvasRef}
+          />
+        </div>
       )}
     </>
   );

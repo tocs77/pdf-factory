@@ -76,8 +76,20 @@ export interface DrawArea extends BaseDrawing {
   lineWidth: number;
 }
 
+export interface TextUnderline extends BaseDrawing {
+  type: 'textUnderline';
+  /**
+   * Array of line segments for underlining text
+   * Each segment represents a line of text to be underlined
+   * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
+   */
+  lines: { start: { x: number, y: number }, end: { x: number, y: number } }[];
+  lineWidth: number;
+  text?: string; // The text that was underlined (optional)
+}
+
 // Union type for all drawings
-export type Drawing = DrawingPath | Rectangle | Pin | Line | DrawArea;
+export type Drawing = DrawingPath | Rectangle | Pin | Line | DrawArea | TextUnderline;
 
 export type DrawingMode = 'freehand' | 'rectangle' | 'pin' | 'text' | 'line' | 'drawArea' | 'zoomArea' | 'none';
 

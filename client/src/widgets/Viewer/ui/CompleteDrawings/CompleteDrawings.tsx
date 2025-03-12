@@ -221,6 +221,43 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, drawing
           ctx.strokeRect(areaStartX, areaStartY, areaWidth, areaHeight);
           break;
         }
+        
+        case 'textUnderline': {
+          ctx.beginPath();
+          ctx.strokeStyle = drawing.color;
+          ctx.lineWidth = drawing.lineWidth * scale;
+          ctx.setLineDash([]); // Solid line
+          
+          // Draw each line segment
+          drawing.lines.forEach(line => {
+            // Transform start and end points with rotation
+            const { x: startX, y: startY } = transformCoordinates(
+              line.start.x, 
+              line.start.y, 
+              canvas.width, 
+              canvas.height,
+              scale,
+              rotation
+            );
+
+            const { x: endX, y: endY } = transformCoordinates(
+              line.end.x, 
+              line.end.y, 
+              canvas.width, 
+              canvas.height,
+              scale,
+              rotation
+            );
+            
+            // Draw the underline
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+          });
+          
+          break;
+        }
       }
     });
   }, [pageDrawings, scale, pageNumber, rotation]);
