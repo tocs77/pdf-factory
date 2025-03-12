@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, KeyboardEvent, useEffect, useRef } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { DrawingMode } from '../../model/types/viewerSchema';
 import { classNames } from '@/shared/utils';
@@ -7,12 +7,56 @@ import classes from './ViewerMenu.module.scss';
 interface ViewerMenuProps {
   currentPage: number;
   totalPages?: number;
+  onPageChange?: (pageNumber: number) => void;
 }
 
-export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages = 0 }) => {
+const DEBOUNCE_TIME = 1000;
+
+export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages = 0, onPageChange }) => {
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, drawingColor, drawingLineWidth, drawingMode, showThumbnails, pageRotations, textLayerEnabled } = state;
+  const [pageInputValue, setPageInputValue] = useState<string>(currentPage.toString());
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Update the input value when currentPage prop changes
+  React.useEffect(() => {
+    setPageInputValue(currentPage.toString());
+  }, [currentPage]);
+
+  const navigateToEnteredPage = () => {
+    const pageNumber = parseInt(pageInputValue, 10);
+    if (pageNumber && pageNumber >= 1 && pageNumber <= totalPages && onPageChange) {
+      onPageChange(pageNumber);
+    } else {
+      // Reset to current page if invalid
+      setPageInputValue(currentPage.toString());
+    }
+  };
+
+  // Debounce effect for page input
+  useEffect(() => {
+    // Don't trigger if it's the initial render or just syncing with currentPage
+    if (pageInputValue === currentPage.toString()) {
+      return;
+    }
+    
+    // Clear any existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
+    // Set a new timer
+    debounceTimerRef.current = setTimeout(() => {
+      navigateToEnteredPage();
+    }, DEBOUNCE_TIME);
+    
+    // Cleanup on unmount or when pageInputValue changes again
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [pageInputValue, currentPage, totalPages, onPageChange]);
 
   const zoomIn = () => {
     dispatch({ type: 'setScale', payload: scale + 0.25 });
@@ -57,12 +101,86 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
     changeDrawingMode('text');
   };
 
+  const goToPreviousPage = () => {
+    if (currentPage > 1 && onPageChange) {
+      onPageChange(currentPage - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages && onPageChange) {
+      onPageChange(currentPage + 1);
+    }
+  };
+
+  const handlePageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only allow numeric input
+    const value = e.target.value.replace(/[^0-9]/g, '');
+    setPageInputValue(value);
+  };
+
+  const handlePageInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      navigateToEnteredPage();
+    }
+  };
+
   const currentRotation = pageRotations[currentPage] || 0;
 
   return (
     <div className={classes.zoomControls}>
-      <div className={classes.pageCounter}>
-        {currentPage}/{totalPages}
+      <div className={classes.pageControls}>
+        <button 
+          className={classes.pageButton} 
+          onClick={goToPreviousPage} 
+          disabled={currentPage <= 1}
+          title="Previous page"
+        >
+          <svg
+            xmlns='http://www.w3.org/2000/svg'
+            width='16'
+            height='16'
+            viewBox='0 0 24 24'
+            fill='none'
+            stroke='currentColor'
+            strokeWidth='2'
+            strokeLinecap='round'
+            strokeLinejoin='round'>
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+        <div className={classes.pageCounter}>
+          <input
+            type="text"
+            value={pageInputValue}
+            onChange={handlePageInputChange}
+            onKeyDown={handlePageInputKeyDown}
+            onBlur={navigateToEnteredPage}
+            className={classes.pageInput}
+            title="Enter page number and press Enter"
+            aria-label="Current page"
+          />
+          <span>/{totalPages}</span>
+        </div>
+        <button 
+          className={classes.pageButton} 
+          onClick={goToNextPage} 
+          disabled={currentPage >= totalPages}
+          title="Next page"
+        >
+          <svg
+            xmlns='http://www.w3.org/2000/svg'
+            width='16'
+            height='16'
+            viewBox='0 0 24 24'
+            fill='none'
+            stroke='currentColor'
+            strokeWidth='2'
+            strokeLinecap='round'
+            strokeLinejoin='round'>
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
       </div>
 
       <button

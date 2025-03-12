@@ -53,24 +53,24 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   useImperativeHandle(ref, () => ({
     scrollToDraw: (id: string) => {
       if (!pdfContainerRef.current || !drawings || drawings.length === 0) return;
-      
+
       // Find the drawing with the matching ID
-      const drawing = drawings.find(d => d.id === id);
+      const drawing = drawings.find((d) => d.id === id);
       if (!drawing) {
         console.warn(`Drawing with ID ${id} not found`);
         return;
       }
-      
+
       // Get the page number from the drawing
       const pageNumber = drawing.pageNumber;
-      
+
       // Scroll to the page
       const pageElement = document.getElementById(`page-${pageNumber}`);
       if (pageElement) {
         pageElement.scrollIntoView({ behavior: 'smooth' });
         setSelectedPage(pageNumber);
       }
-    }
+    },
   }));
 
   // Create a ref to track previous scale value
@@ -280,6 +280,19 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     };
   }, [isDragging, dragStartX, dragStartY, scrollStartX, scrollStartY, state.drawingMode, pdfRendered]);
 
+  const handlePageChange = (newPage: number) => {
+    setSelectedPage(newPage);
+
+    // Scroll to the selected page
+    const pageElement = document.getElementById(`page-${newPage}`);
+    if (pageElement) {
+      // Use smooth scrolling for nearby pages (within 3 pages), instant for distant jumps
+      const pageDifference = Math.abs(newPage - selectedPage);
+      const scrollBehavior = pageDifference <= 3 ? 'smooth' : 'instant';
+      pageElement.scrollIntoView({ behavior: scrollBehavior });
+    }
+  };
+
   // Show loading message or error
   if (isLoading || error) {
     return (
@@ -313,7 +326,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       )}
 
       <div className={classes.viewerContainer}>
-        <ViewerMenu currentPage={selectedPage} totalPages={pages.length} />
+        <ViewerMenu currentPage={selectedPage} totalPages={pages.length} onPageChange={handlePageChange} />
 
         <div
           className={classNames(classes.pdfContainer, {

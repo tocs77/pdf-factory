@@ -18,6 +18,64 @@
   grid-area: menu;
 }
 
+/* Page navigation controls */
+.pageControls {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-right: 10px;
+}
+
+.pageButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover:not(:disabled) {
+    background-color: #f0f0f0;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.pageCounter {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  color: #666;
+}
+
+.pageInput {
+  width: 30px;
+  height: 24px;
+  text-align: center;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-size: 12px;
+  padding: 0 4px;
+  
+  &:focus {
+    outline: none;
+    border-color: #2196f3;
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+  }
+}
+
 .zoomButton {
   margin-right: 5px;
   padding: 4px 8px;
@@ -261,19 +319,6 @@
   color: #666;
   min-width: 30px;
   text-align: center;
-}
-
-.pageCounter {
-  display: flex;
-  align-items: center;
-  padding: 4px 10px;
-  background-color: #fff;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  font-size: 12px;
-  color: #333;
-  margin-right: 10px;
-  font-weight: 500;
 }
 
 .separator {
