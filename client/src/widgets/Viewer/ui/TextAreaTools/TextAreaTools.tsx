@@ -478,9 +478,11 @@ export const TextAreaTools: React.FC<TextAreaToolsProps> = ({
     // Create the underline drawing
     const underlineDrawing: Drawing = {
       type: 'textUnderline',
-      color: drawingColor,
+      style: {
+        strokeColor: drawingColor,
+        strokeWidth: drawingLineWidth / scale,
+      },
       pageNumber,
-      lineWidth: drawingLineWidth / scale,
       lines: lineSegments,
       text: selectedText,
       image
@@ -588,11 +590,9 @@ export const TextAreaTools: React.FC<TextAreaToolsProps> = ({
       let maxBottom = -Infinity;
       
       lineElements.forEach(el => {
-        const rect = el.getBoundingClientRect();
-        const top = (rect.top - pageRect.top) / scale;
-        const bottom = (rect.bottom - pageRect.top) / scale;
-        minTop = Math.min(minTop, top);
-        maxBottom = Math.max(maxBottom, bottom);
+        const elRect = el.getBoundingClientRect();
+        minTop = Math.min(minTop, elRect.top);
+        maxBottom = Math.max(maxBottom, elRect.bottom);
       });
       
       // Calculate middle point between top and bottom
@@ -608,9 +608,11 @@ export const TextAreaTools: React.FC<TextAreaToolsProps> = ({
     // Create the crossed out drawing
     const crossedOutDrawing: Drawing = {
       type: 'textCrossedOut',
-      color: drawingColor,
+      style: {
+        strokeColor: drawingColor,
+        strokeWidth: drawingLineWidth / scale,
+      },
       pageNumber,
-      lineWidth: drawingLineWidth / scale,
       lines: crossedOutSegments,
       text: selectedText,
       image
@@ -637,7 +639,10 @@ export const TextAreaTools: React.FC<TextAreaToolsProps> = ({
     // Create the highlight drawing
     const highlightDrawing: Drawing = {
       type: 'textHighlight',
-      color: drawingColor,
+      style: {
+        strokeColor: drawingColor,
+        strokeWidth: 1, // Fixed width for highlights
+      },
       pageNumber,
       rects: highlightRects,
       opacity: 0.5, // 50% opacity for highlights

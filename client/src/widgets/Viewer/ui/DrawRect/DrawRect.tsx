@@ -210,8 +210,10 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber, onDrawingCreated, pdfCa
       type: 'rectangle',
       startPoint: normalizedStartPoint,
       endPoint: normalizedEndPoint,
-      color: drawingColor,
-      lineWidth: drawingLineWidth / scale, // Store line width at scale 1
+      style: {
+        strokeColor: drawingColor,
+        strokeWidth: drawingLineWidth / scale, // Store line width at scale 1
+      },
       pageNumber,
       image
     };

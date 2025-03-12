@@ -1,9 +1,14 @@
 // Base interface for common drawing properties
 export interface BaseDrawing {
   id?: string;
-  color: string;
   pageNumber: number;
   image?: string; // Store base64 image of the drawing area
+}
+
+// Common style properties for drawings
+export interface DrawingStyle {
+  strokeColor: string;
+  strokeWidth: number;
 }
 
 export interface DrawingPath extends BaseDrawing {
@@ -13,7 +18,15 @@ export interface DrawingPath extends BaseDrawing {
    * All coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
    */
   paths: Array<{ x: number; y: number }[]>;
-  lineWidth: number;
+  /**
+   * Style properties for the entire drawing (used as default)
+   */
+  style: DrawingStyle;
+  /**
+   * Optional per-path style overrides. Allows different colors and line widths for each path.
+   * Index corresponds to the path index in the paths array.
+   */
+  pathStyles?: DrawingStyle[];
 }
 
 export interface Rectangle extends BaseDrawing {
@@ -28,7 +41,10 @@ export interface Rectangle extends BaseDrawing {
    * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
    */
   endPoint: { x: number; y: number };
-  lineWidth: number;
+  /**
+   * Style properties for the rectangle
+   */
+  style: DrawingStyle;
 }
 
 export interface Pin extends BaseDrawing {
@@ -47,6 +63,10 @@ export interface Pin extends BaseDrawing {
    * Text content of the pin
    */
   text: string;
+  /**
+   * Color of the pin
+   */
+  color: string;
 }
 
 export interface Line extends BaseDrawing {
@@ -59,7 +79,15 @@ export interface Line extends BaseDrawing {
     startPoint: { x: number; y: number };
     endPoint: { x: number; y: number };
   }>;
-  lineWidth: number;
+  /**
+   * Style properties for the entire line drawing (used as default)
+   */
+  style: DrawingStyle;
+  /**
+   * Optional per-line style overrides. Allows different colors and line widths for each line.
+   * Index corresponds to the line index in the lines array.
+   */
+  lineStyles?: DrawingStyle[];
 }
 
 export interface DrawArea extends BaseDrawing {
@@ -71,7 +99,10 @@ export interface DrawArea extends BaseDrawing {
    */
   startPoint: { x: number; y: number };
   endPoint: { x: number; y: number };
-  lineWidth: number;
+  /**
+   * Style properties for the draw area
+   */
+  style: DrawingStyle;
 }
 
 export interface TextUnderline extends BaseDrawing {
@@ -82,7 +113,10 @@ export interface TextUnderline extends BaseDrawing {
    * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
    */
   lines: { start: { x: number, y: number }, end: { x: number, y: number } }[];
-  lineWidth: number;
+  /**
+   * Style properties for the text underline
+   */
+  style: DrawingStyle;
   text?: string; // The text that was underlined (optional)
 }
 
@@ -94,19 +128,29 @@ export interface TextCrossedOut extends BaseDrawing {
    * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
    */
   lines: { start: { x: number, y: number }, end: { x: number, y: number } }[];
-  lineWidth: number;
+  /**
+   * Style properties for the text cross-out
+   */
+  style: DrawingStyle;
   text?: string; // The text that was crossed out (optional)
 }
 
 export interface TextHighlight extends BaseDrawing {
   type: 'textHighlight';
   /**
-   * Array of rectangle areas for highlighting text
-   * Each rectangle represents a line of text to be highlighted
+   * Array of rectangles for highlighting text
+   * Each rectangle covers a section of text to be highlighted
    * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
    */
-  rects: { x: number, y: number, width: number, height: number }[];
-  opacity: number; // Opacity of the highlight, typically 0.5
+  rects: Array<{ x: number; y: number; width: number; height: number }>;
+  /**
+   * Style properties for the text highlight
+   */
+  style: DrawingStyle;
+  /**
+   * Optional opacity for the highlight (0-1)
+   */
+  opacity?: number;
   text?: string; // The text that was highlighted (optional)
 }
 

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
-import { Drawing } from '../../model/types/viewerSchema';
+import { Drawing, DrawingStyle } from '../../model/types/viewerSchema';
 import styles from './LineDrawingLayer.module.scss';
 
 interface LineDrawingLayerProps {
@@ -27,7 +27,28 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
   const [endPoint, setEndPoint] = useState<{ x: number; y: number } | null>(null);
   const [isShiftKeyPressed, setIsShiftKeyPressed] = useState(false);
   const [allLines, setAllLines] = useState<Array<{ startPoint: { x: number; y: number }; endPoint: { x: number; y: number } }>>([]);
+  const [lineStyles, setLineStyles] = useState<DrawingStyle[]>([]); // Styles for each line
+  const [currentStyle, setCurrentStyle] = useState<DrawingStyle>({
+    strokeColor: drawingColor,
+    strokeWidth: drawingLineWidth,
+  }); // Style for the current line
   const [isMultiLineMode, setIsMultiLineMode] = useState(false);
+
+  // Update current style when drawingColor changes
+  useEffect(() => {
+    setCurrentStyle(prev => ({
+      ...prev,
+      strokeColor: drawingColor
+    }));
+  }, [drawingColor]);
+
+  // Update current style when drawingLineWidth changes
+  useEffect(() => {
+    setCurrentStyle(prev => ({
+      ...prev,
+      strokeWidth: drawingLineWidth
+    }));
+  }, [drawingLineWidth]);
 
   // Create a function to initialize the canvas with correct dimensions and context
   const initializeCanvas = () => {
@@ -56,11 +77,6 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Initialize drawing styles
-    ctx.strokeStyle = drawingColor;
-    ctx.lineWidth = drawingLineWidth;
-    ctx.lineCap = 'round';
-    
     return ctx;
   };
 
@@ -71,21 +87,27 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     // Clear canvas
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     
-    // Set drawing styles
-    ctx.strokeStyle = drawingColor;
-    ctx.lineWidth = drawingLineWidth;
-    ctx.lineCap = 'round';
-    
-    // Draw all saved lines
-    for (const line of allLines) {
+    // Draw all saved lines with their styles
+    allLines.forEach((line, index) => {
+      // Get the style for this line
+      const style = lineStyles[index] || { strokeColor: drawingColor, strokeWidth: drawingLineWidth };
+      
+      ctx.strokeStyle = style.strokeColor;
+      ctx.lineWidth = style.strokeWidth;
+      ctx.lineCap = 'round';
+      
       ctx.beginPath();
       ctx.moveTo(line.startPoint.x, line.startPoint.y);
       ctx.lineTo(line.endPoint.x, line.endPoint.y);
       ctx.stroke();
-    }
+    });
     
     // Draw current line if active
     if (startPoint && endPoint) {
+      ctx.strokeStyle = currentStyle.strokeColor;
+      ctx.lineWidth = currentStyle.strokeWidth;
+      ctx.lineCap = 'round';
+      
       ctx.beginPath();
       ctx.moveTo(startPoint.x, startPoint.y);
       
@@ -135,7 +157,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [drawingMode, isDrawing, startPoint, endPoint, allLines]);
+  }, [drawingMode, isDrawing, startPoint, endPoint, allLines, lineStyles, currentStyle]);
 
   // Listen for ESC key to cancel drawing
   useEffect(() => {
@@ -157,6 +179,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     setStartPoint(null);
     setEndPoint(null);
     setAllLines([]);
+    setLineStyles([]);
     setIsMultiLineMode(false);
     
     // Clear the canvas
@@ -204,7 +227,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
 
     // Redraw all lines
     redrawAllLines(ctx);
-  }, [scale, pageNumber, rotation, drawingColor, drawingLineWidth, isShiftKeyPressed, allLines, startPoint, endPoint]);
+  }, [scale, pageNumber, rotation, isShiftKeyPressed, allLines, lineStyles, currentStyle, startPoint, endPoint]);
 
   // Hide the canvas when drawing mode is not 'line'
   useEffect(() => {
@@ -251,6 +274,22 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     return { x, y };
   };
 
+  // Change color for the next line
+  const handleColorChange = (color: string) => {
+    setCurrentStyle(prev => ({
+      ...prev,
+      strokeColor: color
+    }));
+  };
+
+  // Change line width for the next line
+  const handleLineWidthChange = (width: number) => {
+    setCurrentStyle(prev => ({
+      ...prev,
+      strokeWidth: width
+    }));
+  };
+
   // Finish drawing and save all lines as one drawing
   const finishDrawing = () => {
     if ((!isMultiLineMode && !isDrawing) || (allLines.length === 0 && (!startPoint || !endPoint))) {
@@ -266,6 +305,8 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
 
     // Save current line if it's valid
     let lines = [...allLines];
+    let styles = [...lineStyles];
+    
     if (startPoint && endPoint) {
       const finalEndPoint = isShiftKeyPressed
         ? getConstrainedEndPoint(startPoint, endPoint)
@@ -278,6 +319,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
       
       if (distance >= 5) { // Minimum line length of 5 pixels
         lines = [...lines, { startPoint, endPoint: finalEndPoint }];
+        styles = [...styles, {...currentStyle}];
       }
     }
 
@@ -339,12 +381,18 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
       boundingBox
     );
 
-    // Create a new line object with normalized coordinates
+    // Create a new line object with normalized coordinates and per-line styles
     const newLine: Drawing = {
       type: 'line',
       lines: normalizedLines,
-      color: drawingColor,
-      lineWidth: drawingLineWidth / scale, // Store line width at scale 1
+      style: {
+        strokeColor: drawingColor,
+        strokeWidth: drawingLineWidth / scale, // Store line width at scale 1
+      },
+      lineStyles: styles.map(style => ({
+        strokeColor: style.strokeColor,
+        strokeWidth: style.strokeWidth / scale, // Store line width at scale 1
+      })),
       pageNumber,
       image
     };
@@ -412,6 +460,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
         startPoint: { ...startPoint }, 
         endPoint: { ...finalEndPoint } 
       }]);
+      setLineStyles(prev => [...prev, {...currentStyle}]);
     }
     
     // Reset for next line but stay in multi-line mode
@@ -419,6 +468,20 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     setStartPoint(null);
     setEndPoint(null);
   };
+
+  // Color options
+  const colorOptions = [
+    '#FF0000', // Red
+    '#00FF00', // Green
+    '#0000FF', // Blue
+    '#FFFF00', // Yellow
+    '#FF00FF', // Magenta
+    '#00FFFF', // Cyan
+    '#000000', // Black
+  ];
+
+  // Line width options
+  const lineWidthOptions = [1, 2, 3, 5, 8];
 
   return (
     <>
@@ -432,12 +495,37 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
         data-testid='line-drawing-canvas'
       />
       {isMultiLineMode && (
-        <div className={styles.finishButtonContainer}>
-          <button 
-            className={styles.finishButton}
-            onClick={finishDrawing}>
-            Finish
-          </button>
+        <div className={styles.controlsContainer}>
+          <div className={styles.colorPicker}>
+            {colorOptions.map(color => (
+              <button 
+                key={color}
+                className={`${styles.colorOption} ${currentStyle.strokeColor === color ? styles.active : ''}`}
+                style={{ backgroundColor: color }}
+                onClick={() => handleColorChange(color)}
+                title={`Set color to ${color}`}
+              />
+            ))}
+          </div>
+          <div className={styles.lineWidthPicker}>
+            {lineWidthOptions.map(width => (
+              <button 
+                key={width}
+                className={`${styles.lineWidthOption} ${currentStyle.strokeWidth === width ? styles.active : ''}`}
+                onClick={() => handleLineWidthChange(width)}
+                title={`Set line width to ${width}px`}
+              >
+                <div style={{ height: `${width}px`, backgroundColor: currentStyle.strokeColor }} />
+              </button>
+            ))}
+          </div>
+          <div className={styles.finishButtonContainer}>
+            <button 
+              className={styles.finishButton}
+              onClick={finishDrawing}>
+              Finish
+            </button>
+          </div>
         </div>
       )}
     </>

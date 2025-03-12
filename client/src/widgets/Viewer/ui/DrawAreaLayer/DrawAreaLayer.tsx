@@ -212,7 +212,7 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
     let pathMaxY = -Infinity;
 
     // Find the min/max coordinates from the current path
-    currentPath.forEach(point => {
+    currentPath.forEach((point) => {
       pathMinX = Math.min(pathMinX, point.x);
       pathMinY = Math.min(pathMinY, point.y);
       pathMaxX = Math.max(pathMaxX, point.x);
@@ -230,11 +230,11 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
     // Check if the bounding box is too small
     const width = pathMaxX - pathMinX;
     const height = pathMaxY - pathMinY;
-    
+
     if (width < 10 || height < 10) {
       setIsDrawing(false);
       setCurrentPath([]);
-      
+
       // Clear the canvas
       const ctx = canvas.getContext('2d');
       if (ctx) {
@@ -249,7 +249,7 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
       left: Math.max(0, pathMinX - padding),
       top: Math.max(0, pathMinY - padding),
       width: Math.min(canvas.width - pathMinX + padding, pathMaxX - pathMinX + padding * 2),
-      height: Math.min(canvas.height - pathMinY + padding, pathMaxY - pathMinY + padding * 2)
+      height: Math.min(canvas.height - pathMinY + padding, pathMaxY - pathMinY + padding * 2),
     };
 
     // Capture the image
@@ -257,24 +257,24 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
       pdfCanvasRef?.current || null,
       canvas,
       boundingBox,
-      false // Set to false to only capture the PDF background
+      false, // Set to false to only capture the PDF background
     );
 
     // Normalize the points to scale 1 and 0 degrees rotation
     const normalizedStartPoint = normalizeCoordinatesToZeroRotation(
-      { x: pathMinX, y: pathMinY }, 
-      canvas.width, 
-      canvas.height, 
-      scale, 
-      rotation
+      { x: pathMinX, y: pathMinY },
+      canvas.width,
+      canvas.height,
+      scale,
+      rotation,
     );
 
     const normalizedEndPoint = normalizeCoordinatesToZeroRotation(
-      { x: pathMaxX, y: pathMaxY }, 
-      canvas.width, 
-      canvas.height, 
-      scale, 
-      rotation
+      { x: pathMaxX, y: pathMaxY },
+      canvas.width,
+      canvas.height,
+      scale,
+      rotation,
     );
 
     // Create a new DrawArea object
@@ -282,10 +282,12 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
       type: 'drawArea',
       startPoint: normalizedStartPoint,
       endPoint: normalizedEndPoint,
-      color: drawingColor,
-      lineWidth: drawingLineWidth / scale, // Use context.drawingLineWidth for the final rectangle
+      style: {
+        strokeColor: drawingColor,
+        strokeWidth: drawingLineWidth / scale, // Use context.drawingLineWidth for the final rectangle
+      },
       pageNumber,
-      image
+      image,
     };
 
     // Call the callback with the new drawing

@@ -1,11 +1,110 @@
+.lineDrawingLayer {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 2 !important;
+  cursor: crosshair;
+  background-color: transparent;
+  pointer-events: auto;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.lineDrawingContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
 .lineDrawingCanvas {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
+  z-index: 3;
+  cursor: crosshair;
+  background-color: transparent;
   pointer-events: auto;
-  z-index: 3; // Above the page but below UI elements
+  /* Add a subtle border for debugging */
+  border: 1px dashed rgba(255, 0, 0, 0.2);
+}
+
+.controlsContainer {
+  position: fixed;
+  top: 70px; /* Below the ViewerMenu height */
+  left: 10px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.colorPicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.colorOption {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+  
+  &:hover {
+    transform: scale(1.1);
+  }
+  
+  &.active {
+    border-color: #333;
+    transform: scale(1.1);
+  }
+}
+
+.lineWidthPicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.lineWidthOption {
+  width: 30px;
+  height: 25px;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.1s ease;
+  
+  > div {
+    width: 20px;
+    border-radius: 2px;
+  }
+  
+  &:hover {
+    background-color: #f0f0f0;
+  }
+  
+  &.active {
+    background-color: #e0e0e0;
+    border-color: #aaa;
+  }
 }
 
 .finishButtonContainer {

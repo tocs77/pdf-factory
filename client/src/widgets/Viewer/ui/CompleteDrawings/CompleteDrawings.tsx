@@ -53,14 +53,16 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, drawing
     pageDrawings.forEach((drawing) => {
       switch (drawing.type) {
         case 'freehand': {
-          ctx.strokeStyle = drawing.color;
-          ctx.lineWidth = drawing.lineWidth * scale; // Apply current scale to line width
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-
           // Draw each path in the paths array
-          for (const path of drawing.paths) {
-            if (path.length < 2) continue;
+          drawing.paths.forEach((path, pathIndex) => {
+            if (path.length < 2) return;
+
+            // Get path-specific style if available, otherwise use the default style
+            const pathStyle = drawing.pathStyles?.[pathIndex] || drawing.style;
+            ctx.strokeStyle = pathStyle.strokeColor;
+            ctx.lineWidth = pathStyle.strokeWidth * scale; // Apply current scale to line width
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
 
             ctx.beginPath();
             
@@ -92,14 +94,14 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, drawing
             }
 
             ctx.stroke();
-          }
+          });
           break;
         }
 
         case 'rectangle': {
           ctx.beginPath();
-          ctx.strokeStyle = drawing.color;
-          ctx.lineWidth = drawing.lineWidth * scale;
+          ctx.strokeStyle = drawing.style.strokeColor;
+          ctx.lineWidth = drawing.style.strokeWidth * scale;
 
           // Transform rectangle points with rotation
           const { x: rectStartX, y: rectStartY } = transformCoordinates(
@@ -165,12 +167,14 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, drawing
         }
 
         case 'line': {
-          ctx.strokeStyle = drawing.color;
-          ctx.lineWidth = drawing.lineWidth * scale;
-          ctx.lineCap = 'round';
-
           // Draw each line in the lines array
-          for (const line of drawing.lines) {
+          drawing.lines.forEach((line, lineIndex) => {
+            // Get line-specific style if available, otherwise use the default style
+            const lineStyle = drawing.lineStyles?.[lineIndex] || drawing.style;
+            ctx.strokeStyle = lineStyle.strokeColor;
+            ctx.lineWidth = lineStyle.strokeWidth * scale;
+            ctx.lineCap = 'round';
+
             ctx.beginPath();
             
             // Transform line points with rotation
@@ -195,7 +199,7 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, drawing
             ctx.moveTo(lineStartX, lineStartY);
             ctx.lineTo(lineEndX, lineEndY);
             ctx.stroke();
-          }
+          });
           break;
         }
 
@@ -223,17 +227,17 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, drawing
           const areaHeight = areaEndY - areaStartY;
 
           // Draw border only (no fill) with the line width from the context
-          ctx.strokeStyle = drawing.color;
+          ctx.strokeStyle = drawing.style.strokeColor;
           // Apply the line width from the context that was saved with the area
-          ctx.lineWidth = drawing.lineWidth * scale;
+          ctx.lineWidth = drawing.style.strokeWidth * scale;
           ctx.strokeRect(areaStartX, areaStartY, areaWidth, areaHeight);
           break;
         }
         
         case 'textUnderline': {
           ctx.beginPath();
-          ctx.strokeStyle = drawing.color;
-          ctx.lineWidth = drawing.lineWidth * scale;
+          ctx.strokeStyle = drawing.style.strokeColor;
+          ctx.lineWidth = drawing.style.strokeWidth * scale;
           ctx.setLineDash([]); // Solid line
           
           // Draw each line segment
@@ -268,8 +272,8 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, drawing
         
         case 'textCrossedOut': {
           ctx.beginPath();
-          ctx.strokeStyle = drawing.color;
-          ctx.lineWidth = drawing.lineWidth * scale;
+          ctx.strokeStyle = drawing.style.strokeColor;
+          ctx.lineWidth = drawing.style.strokeWidth * scale;
           ctx.setLineDash([]); // Solid line
           
           // Draw each line segment
@@ -304,12 +308,17 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, drawing
         
         case 'textHighlight': {
           // Set semi-transparent fill for highlighting
-          ctx.fillStyle = drawing.color + '80'; // Add 50% opacity
-          if (drawing.opacity) {
+          const baseColor = drawing.style.strokeColor;
+          // Default to 50% opacity if not specified
+          let fillColor = baseColor + '80';
+          
+          if (drawing.opacity !== undefined) {
             // If opacity is specified in the drawing, use that instead
             const hexOpacity = Math.round(drawing.opacity * 255).toString(16).padStart(2, '0');
-            ctx.fillStyle = drawing.color + hexOpacity;
+            fillColor = baseColor + hexOpacity;
           }
+          
+          ctx.fillStyle = fillColor;
           
           // Draw each rectangle for highlighting
           drawing.rects.forEach(rect => {
@@ -344,31 +353,25 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, drawing
             // after the transformation
             if (rotation === 90 || rotation === 270) {
               // In these rotations, the transformed points create a rectangle
-              // where width and height are different from the original
+              // where width and height are swapped
               rectWidth = Math.abs(rectBottomRightY - topLeft.y);
               rectHeight = Math.abs(rectBottomRightX - topLeft.x);
               
-              // Draw the rectangle using swapped width and height
-              ctx.fillRect(
-                Math.min(topLeft.x, rectBottomRightX), 
-                Math.min(topLeft.y, rectBottomRightY), 
-                rectHeight,
-                rectWidth
-              );
+              // Adjust starting point to account for the rotation
+              const adjustedX = Math.min(topLeft.x, rectBottomRightX);
+              const adjustedY = Math.min(topLeft.y, rectBottomRightY);
+              
+              ctx.fillRect(adjustedX, adjustedY, rectHeight, rectWidth);
             } else {
-              // For 0° and 180° rotations, width and height remain conceptually the same
-              // but we still need to calculate based on transformed corners
+              // For 0° and 180° rotations, width and height remain as is
               rectWidth = Math.abs(rectBottomRightX - topLeft.x);
               rectHeight = Math.abs(rectBottomRightY - topLeft.y);
               
-              // We need to use the minimum coordinates as the starting point
-              // because the transformation might flip the rectangle
-              ctx.fillRect(
-                Math.min(topLeft.x, rectBottomRightX), 
-                Math.min(topLeft.y, rectBottomRightY), 
-                rectWidth,
-                rectHeight
-              );
+              // Adjust starting point to account for the rotation
+              const adjustedX = Math.min(topLeft.x, rectBottomRightX);
+              const adjustedY = Math.min(topLeft.y, rectBottomRightY);
+              
+              ctx.fillRect(adjustedX, adjustedY, rectWidth, rectHeight);
             }
           });
           break;
