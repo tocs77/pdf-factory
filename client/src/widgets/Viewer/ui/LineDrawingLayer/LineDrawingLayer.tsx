@@ -26,7 +26,9 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
   const [endPoint, setEndPoint] = useState<{ x: number; y: number } | null>(null);
   const [isShiftKeyPressed, setIsShiftKeyPressed] = useState(false);
-  const [allLines, setAllLines] = useState<Array<{ startPoint: { x: number; y: number }; endPoint: { x: number; y: number } }>>([]);
+  const [allLines, setAllLines] = useState<Array<{ startPoint: { x: number; y: number }; endPoint: { x: number; y: number } }>>(
+    [],
+  );
   const [lineStyles, setLineStyles] = useState<DrawingStyle[]>([]); // Styles for each line
   const [currentStyle, setCurrentStyle] = useState<DrawingStyle>({
     strokeColor: drawingColor,
@@ -36,17 +38,17 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
 
   // Update current style when drawingColor changes
   useEffect(() => {
-    setCurrentStyle(prev => ({
+    setCurrentStyle((prev) => ({
       ...prev,
-      strokeColor: drawingColor
+      strokeColor: drawingColor,
     }));
   }, [drawingColor]);
 
   // Update current style when drawingLineWidth changes
   useEffect(() => {
-    setCurrentStyle(prev => ({
+    setCurrentStyle((prev) => ({
       ...prev,
-      strokeWidth: drawingLineWidth
+      strokeWidth: drawingLineWidth,
     }));
   }, [drawingLineWidth]);
 
@@ -83,34 +85,34 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
   // Draw all lines on the canvas
   const redrawAllLines = (ctx: CanvasRenderingContext2D) => {
     if (!canvasRef.current) return;
-    
+
     // Clear canvas
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-    
+
     // Draw all saved lines with their styles
     allLines.forEach((line, index) => {
       // Get the style for this line
       const style = lineStyles[index] || { strokeColor: drawingColor, strokeWidth: drawingLineWidth };
-      
+
       ctx.strokeStyle = style.strokeColor;
       ctx.lineWidth = style.strokeWidth;
       ctx.lineCap = 'round';
-      
+
       ctx.beginPath();
       ctx.moveTo(line.startPoint.x, line.startPoint.y);
       ctx.lineTo(line.endPoint.x, line.endPoint.y);
       ctx.stroke();
     });
-    
+
     // Draw current line if active
     if (startPoint && endPoint) {
       ctx.strokeStyle = currentStyle.strokeColor;
       ctx.lineWidth = currentStyle.strokeWidth;
       ctx.lineCap = 'round';
-      
+
       ctx.beginPath();
       ctx.moveTo(startPoint.x, startPoint.y);
-      
+
       if (isShiftKeyPressed) {
         // Draw with constraints
         const constrainedEnd = getConstrainedEndPoint(startPoint, endPoint);
@@ -119,7 +121,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
         // Draw without constraints
         ctx.lineTo(endPoint.x, endPoint.y);
       }
-      
+
       ctx.stroke();
     }
   };
@@ -181,7 +183,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     setAllLines([]);
     setLineStyles([]);
     setIsMultiLineMode(false);
-    
+
     // Clear the canvas
     const ctx = canvasRef.current?.getContext('2d');
     if (ctx && canvasRef.current) {
@@ -193,30 +195,30 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
   const getConstrainedEndPoint = (start: { x: number; y: number }, end: { x: number; y: number }) => {
     const dx = end.x - start.x;
     const dy = end.y - start.y;
-    
+
     // Calculate angle in radians
     const angle = Math.atan2(dy, dx);
-    
+
     // Convert to degrees and normalize to 0-360
     let degrees = (angle * 180) / Math.PI;
     if (degrees < 0) degrees += 360;
-    
+
     // Find closest constraint angle (0, 45, 90, 135, 180, 225, 270, 315)
     const snapAngles = [0, 45, 90, 135, 180, 225, 270, 315];
     const closestAngle = snapAngles.reduce((prev, curr) => {
-      return (Math.abs(curr - degrees) < Math.abs(prev - degrees)) ? curr : prev;
+      return Math.abs(curr - degrees) < Math.abs(prev - degrees) ? curr : prev;
     });
-    
+
     // Calculate distance/length of the line
     const distance = Math.sqrt(dx * dx + dy * dy);
-    
+
     // Convert constrained angle back to radians
     const constrainedRadians = (closestAngle * Math.PI) / 180;
-    
+
     // Calculate new endpoint
     return {
       x: start.x + distance * Math.cos(constrainedRadians),
-      y: start.y + distance * Math.sin(constrainedRadians)
+      y: start.y + distance * Math.sin(constrainedRadians),
     };
   };
 
@@ -232,7 +234,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
   // Hide the canvas when drawing mode is not 'line'
   useEffect(() => {
     if (!canvasRef.current) return;
-    
+
     if (drawingMode === 'line') {
       canvasRef.current.style.display = 'block';
     } else {
@@ -274,22 +276,6 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     return { x, y };
   };
 
-  // Change color for the next line
-  const handleColorChange = (color: string) => {
-    setCurrentStyle(prev => ({
-      ...prev,
-      strokeColor: color
-    }));
-  };
-
-  // Change line width for the next line
-  const handleLineWidthChange = (width: number) => {
-    setCurrentStyle(prev => ({
-      ...prev,
-      strokeWidth: width
-    }));
-  };
-
   // Finish drawing and save all lines as one drawing
   const finishDrawing = () => {
     if ((!isMultiLineMode && !isDrawing) || (allLines.length === 0 && (!startPoint || !endPoint))) {
@@ -306,20 +292,19 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     // Save current line if it's valid
     let lines = [...allLines];
     let styles = [...lineStyles];
-    
+
     if (startPoint && endPoint) {
-      const finalEndPoint = isShiftKeyPressed
-        ? getConstrainedEndPoint(startPoint, endPoint)
-        : endPoint;
-        
+      const finalEndPoint = isShiftKeyPressed ? getConstrainedEndPoint(startPoint, endPoint) : endPoint;
+
       // Calculate distance to check if line is valid
       const dx = finalEndPoint.x - startPoint.x;
       const dy = finalEndPoint.y - startPoint.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      if (distance >= 5) { // Minimum line length of 5 pixels
+
+      if (distance >= 5) {
+        // Minimum line length of 5 pixels
         lines = [...lines, { startPoint, endPoint: finalEndPoint }];
-        styles = [...styles, {...currentStyle}];
+        styles = [...styles, { ...currentStyle }];
       }
     }
 
@@ -333,7 +318,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     let minY = Number.MAX_VALUE;
     let maxX = 0;
     let maxY = 0;
-    
+
     for (const line of lines) {
       minX = Math.min(minX, line.startPoint.x, line.endPoint.x);
       minY = Math.min(minY, line.startPoint.y, line.endPoint.y);
@@ -353,33 +338,17 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
       left,
       top,
       width,
-      height
+      height,
     };
 
     // Normalize all lines to scale 1 and 0 degrees rotation
-    const normalizedLines = lines.map(line => ({
-      startPoint: normalizeCoordinatesToZeroRotation(
-        line.startPoint, 
-        canvas.width, 
-        canvas.height, 
-        scale, 
-        rotation
-      ),
-      endPoint: normalizeCoordinatesToZeroRotation(
-        line.endPoint, 
-        canvas.width, 
-        canvas.height, 
-        scale, 
-        rotation
-      )
+    const normalizedLines = lines.map((line) => ({
+      startPoint: normalizeCoordinatesToZeroRotation(line.startPoint, canvas.width, canvas.height, scale, rotation),
+      endPoint: normalizeCoordinatesToZeroRotation(line.endPoint, canvas.width, canvas.height, scale, rotation),
     }));
 
     // Capture the image
-    const image = captureDrawingImage(
-      pdfCanvasRef?.current || null,
-      canvas,
-      boundingBox
-    );
+    const image = captureDrawingImage(pdfCanvasRef?.current || null, canvas, boundingBox);
 
     // Create a new line object with normalized coordinates and per-line styles
     const newLine: Drawing = {
@@ -389,12 +358,12 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
         strokeColor: drawingColor,
         strokeWidth: drawingLineWidth / scale, // Store line width at scale 1
       },
-      lineStyles: styles.map(style => ({
+      lineStyles: styles.map((style) => ({
         strokeColor: style.strokeColor,
         strokeWidth: style.strokeWidth / scale, // Store line width at scale 1
       })),
       pageNumber,
-      image
+      image,
     };
 
     // Call the callback with the new drawing
@@ -407,18 +376,18 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
   // Drawing handlers
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (drawingMode !== 'line') return;
-    
+
     // Initialize or reinitialize the canvas
     const ctx = initializeCanvas();
     if (!ctx) return;
 
     // Get raw coordinates
     const coords = getRawCoordinates(e.clientX, e.clientY);
-    
+
     setIsDrawing(true);
     setStartPoint(coords);
     setEndPoint(coords); // Initially, end point is same as start point
-    
+
     if (!isMultiLineMode) {
       setIsMultiLineMode(true);
     }
@@ -445,43 +414,31 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     }
 
     // Get the final end point (constrained if shift is pressed)
-    const finalEndPoint = isShiftKeyPressed
-      ? getConstrainedEndPoint(startPoint, endPoint)
-      : endPoint;
+    const finalEndPoint = isShiftKeyPressed ? getConstrainedEndPoint(startPoint, endPoint) : endPoint;
 
     // Don't save if start and end points are too close (just a click)
     const dx = finalEndPoint.x - startPoint.x;
     const dy = finalEndPoint.y - startPoint.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
-    
-    if (distance >= 5) { // Minimum line length of 5 pixels
+
+    if (distance >= 5) {
+      // Minimum line length of 5 pixels
       // Add the line to allLines
-      setAllLines(prev => [...prev, { 
-        startPoint: { ...startPoint }, 
-        endPoint: { ...finalEndPoint } 
-      }]);
-      setLineStyles(prev => [...prev, {...currentStyle}]);
+      setAllLines((prev) => [
+        ...prev,
+        {
+          startPoint: { ...startPoint },
+          endPoint: { ...finalEndPoint },
+        },
+      ]);
+      setLineStyles((prev) => [...prev, { ...currentStyle }]);
     }
-    
+
     // Reset for next line but stay in multi-line mode
     setIsDrawing(false);
     setStartPoint(null);
     setEndPoint(null);
   };
-
-  // Color options
-  const colorOptions = [
-    '#FF0000', // Red
-    '#00FF00', // Green
-    '#0000FF', // Blue
-    '#FFFF00', // Yellow
-    '#FF00FF', // Magenta
-    '#00FFFF', // Cyan
-    '#000000', // Black
-  ];
-
-  // Line width options
-  const lineWidthOptions = [1, 2, 3, 5, 8];
 
   return (
     <>
@@ -496,33 +453,8 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
       />
       {isMultiLineMode && (
         <div className={styles.controlsContainer}>
-          <div className={styles.colorPicker}>
-            {colorOptions.map(color => (
-              <button 
-                key={color}
-                className={`${styles.colorOption} ${currentStyle.strokeColor === color ? styles.active : ''}`}
-                style={{ backgroundColor: color }}
-                onClick={() => handleColorChange(color)}
-                title={`Set color to ${color}`}
-              />
-            ))}
-          </div>
-          <div className={styles.lineWidthPicker}>
-            {lineWidthOptions.map(width => (
-              <button 
-                key={width}
-                className={`${styles.lineWidthOption} ${currentStyle.strokeWidth === width ? styles.active : ''}`}
-                onClick={() => handleLineWidthChange(width)}
-                title={`Set line width to ${width}px`}
-              >
-                <div style={{ height: `${width}px`, backgroundColor: currentStyle.strokeColor }} />
-              </button>
-            ))}
-          </div>
           <div className={styles.finishButtonContainer}>
-            <button 
-              className={styles.finishButton}
-              onClick={finishDrawing}>
+            <button className={styles.finishButton} onClick={finishDrawing}>
               Finish
             </button>
           </div>
@@ -530,4 +462,4 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
       )}
     </>
   );
-}; 
+};

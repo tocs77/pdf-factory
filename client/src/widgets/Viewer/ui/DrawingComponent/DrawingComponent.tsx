@@ -31,23 +31,23 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
     strokeWidth: drawingLineWidth,
   }); // Style for the current path
   const [isMultiStrokeMode, setIsMultiStrokeMode] = useState(false);
-  
+
   // Update current style when drawingColor changes
   useEffect(() => {
-    setCurrentStyle(prev => ({
+    setCurrentStyle((prev) => ({
       ...prev,
-      strokeColor: drawingColor
+      strokeColor: drawingColor,
     }));
   }, [drawingColor]);
 
   // Update current style when drawingLineWidth changes
   useEffect(() => {
-    setCurrentStyle(prev => ({
+    setCurrentStyle((prev) => ({
       ...prev,
-      strokeWidth: drawingLineWidth
+      strokeWidth: drawingLineWidth,
     }));
   }, [drawingLineWidth]);
-  
+
   // Create a function to initialize the canvas with correct dimensions and context
   const initializeCanvas = () => {
     if (!canvasRef.current) return null;
@@ -81,46 +81,46 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
   // Draw all paths on the canvas
   const redrawAllPaths = (ctx: CanvasRenderingContext2D) => {
     if (!canvasRef.current) return;
-    
+
     // Clear canvas
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-    
+
     // Draw all saved paths with their styles
     allPaths.forEach((path, index) => {
       if (path.length < 2) return;
-      
+
       // Get the style for this path
       const style = pathStyles[index] || { strokeColor: drawingColor, strokeWidth: drawingLineWidth };
-      
+
       ctx.strokeStyle = style.strokeColor;
       ctx.lineWidth = style.strokeWidth;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      
+
       ctx.beginPath();
       ctx.moveTo(path[0].x, path[0].y);
-      
+
       for (let i = 1; i < path.length; i++) {
         ctx.lineTo(path[i].x, path[i].y);
       }
-      
+
       ctx.stroke();
     });
-    
+
     // Draw current path if active
     if (currentPath.length > 1) {
       ctx.strokeStyle = currentStyle.strokeColor;
       ctx.lineWidth = currentStyle.strokeWidth;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      
+
       ctx.beginPath();
       ctx.moveTo(currentPath[0].x, currentPath[0].y);
-      
+
       for (let i = 1; i < currentPath.length; i++) {
         ctx.lineTo(currentPath[i].x, currentPath[i].y);
       }
-      
+
       ctx.stroke();
     }
   };
@@ -173,7 +173,7 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
     setAllPaths([]);
     setPathStyles([]);
     setIsMultiStrokeMode(false);
-    
+
     // Clear the canvas
     const ctx = canvasRef.current?.getContext('2d');
     if (ctx && canvasRef.current) {
@@ -195,22 +195,6 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
     return { x, y };
   };
 
-  // Change color for the next path
-  const handleColorChange = (color: string) => {
-    setCurrentStyle(prev => ({
-      ...prev,
-      strokeColor: color
-    }));
-  };
-
-  // Change line width for the next path
-  const handleLineWidthChange = (width: number) => {
-    setCurrentStyle(prev => ({
-      ...prev,
-      strokeWidth: width
-    }));
-  };
-
   // Finish drawing and save all paths as one drawing
   const finishDrawing = () => {
     if ((!isMultiStrokeMode && !isDrawing) || (allPaths.length === 0 && currentPath.length < 2)) {
@@ -227,10 +211,10 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
     // Save current path if it has enough points
     let paths = [...allPaths];
     let styles = [...pathStyles];
-    
+
     if (currentPath.length >= 2) {
       paths = [...paths, [...currentPath]];
-      styles = [...styles, {...currentStyle}];
+      styles = [...styles, { ...currentStyle }];
     }
 
     if (paths.length === 0) {
@@ -239,16 +223,8 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
     }
 
     // Normalize all points to scale 1 and 0 degrees rotation
-    const normalizedPaths = paths.map(path => 
-      path.map(point => 
-        normalizeCoordinatesToZeroRotation(
-          point, 
-          canvas.width, 
-          canvas.height, 
-          scale, 
-          rotation
-        )
-      )
+    const normalizedPaths = paths.map((path) =>
+      path.map((point) => normalizeCoordinatesToZeroRotation(point, canvas.width, canvas.height, scale, rotation)),
     );
 
     // Calculate bounding box of all drawings
@@ -278,14 +254,10 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
       left: minX,
       top: minY,
       width: maxX - minX,
-      height: maxY - minY
+      height: maxY - minY,
     };
 
-    const image = captureDrawingImage(
-      pdfCanvasRef?.current || null,
-      canvas,
-      boundingBox
-    );
+    const image = captureDrawingImage(pdfCanvasRef?.current || null, canvas, boundingBox);
 
     // Create a new drawing object with styles for each path
     const newDrawing: Drawing = {
@@ -295,12 +267,12 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
         strokeColor: drawingColor,
         strokeWidth: drawingLineWidth / scale, // Store line width at scale 1
       },
-      pathStyles: styles.map(style => ({
+      pathStyles: styles.map((style) => ({
         strokeColor: style.strokeColor,
         strokeWidth: style.strokeWidth / scale, // Store line width at scale 1
       })),
       pageNumber,
-      image
+      image,
     };
 
     // Call the callback with the new drawing
@@ -375,28 +347,14 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
 
     // If the path is valid, add it to allPaths
     if (currentPath.length >= 2) {
-      setAllPaths(prevPaths => [...prevPaths, [...currentPath]]);
-      setPathStyles(prevStyles => [...prevStyles, {...currentStyle}]);
+      setAllPaths((prevPaths) => [...prevPaths, [...currentPath]]);
+      setPathStyles((prevStyles) => [...prevStyles, { ...currentStyle }]);
     }
 
     // Clear current path but stay in multi-stroke mode
     setIsDrawing(false);
     setCurrentPath([]);
   };
-
-  // Color options
-  const colorOptions = [
-    '#FF0000', // Red
-    '#00FF00', // Green
-    '#0000FF', // Blue
-    '#FFFF00', // Yellow
-    '#FF00FF', // Magenta
-    '#00FFFF', // Cyan
-    '#000000', // Black
-  ];
-
-  // Line width options
-  const lineWidthOptions = [1, 2, 3, 5, 8];
 
   return (
     <>
@@ -411,33 +369,8 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
       />
       {isMultiStrokeMode && (
         <div className={styles.controlsContainer}>
-          <div className={styles.colorPicker}>
-            {colorOptions.map(color => (
-              <button 
-                key={color}
-                className={`${styles.colorOption} ${currentStyle.strokeColor === color ? styles.active : ''}`}
-                style={{ backgroundColor: color }}
-                onClick={() => handleColorChange(color)}
-                title={`Set color to ${color}`}
-              />
-            ))}
-          </div>
-          <div className={styles.lineWidthPicker}>
-            {lineWidthOptions.map(width => (
-              <button 
-                key={width}
-                className={`${styles.lineWidthOption} ${currentStyle.strokeWidth === width ? styles.active : ''}`}
-                onClick={() => handleLineWidthChange(width)}
-                title={`Set line width to ${width}px`}
-              >
-                <div style={{ height: `${width}px`, backgroundColor: currentStyle.strokeColor }} />
-              </button>
-            ))}
-          </div>
           <div className={styles.finishButtonContainer}>
-            <button 
-              className={styles.finishButton}
-              onClick={finishDrawing}>
+            <button className={styles.finishButton} onClick={finishDrawing}>
               Finish
             </button>
           </div>
