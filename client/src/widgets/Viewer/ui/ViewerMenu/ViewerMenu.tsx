@@ -11,7 +11,7 @@ interface ViewerMenuProps {
 
 export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages = 0 }) => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, drawingMode, showThumbnails, pageRotations } = state;
+  const { scale, drawingColor, drawingLineWidth, drawingMode, showThumbnails, pageRotations, textLayerEnabled } = state;
 
   console.log('drawingMode', drawingMode);
   const zoomIn = () => {
@@ -51,6 +51,10 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
     dispatch({ type: 'rotatePageCounterClockwise', payload: currentPage });
   };
 
+  const toggleTextLayer = () => {
+    dispatch({ type: 'toggleTextLayer' });
+  };
+
   // Get current page rotation
   const currentRotation = pageRotations[currentPage] || 0;
 
@@ -60,6 +64,27 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
       <div className={classes.pageCounter}>
         {currentPage}/{totalPages}
       </div>
+
+      {/* Text Layer Toggle Button */}
+      <button
+        className={classNames(classes.toolButton, { [classes.active]: textLayerEnabled }, [])}
+        onClick={toggleTextLayer}
+        title={textLayerEnabled ? 'Disable text layer' : 'Enable text layer'}>
+        <svg
+          xmlns='http://www.w3.org/2000/svg'
+          width='16'
+          height='16'
+          viewBox='0 0 24 24'
+          fill='none'
+          stroke='currentColor'
+          strokeWidth='2'
+          strokeLinecap='round'
+          strokeLinejoin='round'>
+          <polyline points='4 7 4 4 20 4 20 7'></polyline>
+          <line x1='9' y1='20' x2='15' y2='20'></line>
+          <line x1='12' y1='4' x2='12' y2='20'></line>
+        </svg>
+      </button>
 
       {/* Thumbnail toggle button */}
       <button
@@ -284,14 +309,16 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
           drawingMode === 'rectangle' ||
           drawingMode === 'pin' ||
           drawingMode === 'line' ||
-          drawingMode === 'drawArea') && <div className={classes.separator}></div>}
+          drawingMode === 'drawArea' ||
+          textLayerEnabled) && <div className={classes.separator}></div>}
 
-        {/* Drawing Options - Only show when a drawing tool is selected */}
+        {/* Drawing Options - Show when a drawing tool is selected OR text layer is enabled */}
         {(drawingMode === 'freehand' ||
           drawingMode === 'rectangle' ||
           drawingMode === 'pin' ||
           drawingMode === 'line' ||
-          drawingMode === 'drawArea') && (
+          drawingMode === 'drawArea' ||
+          textLayerEnabled) && (
           <div className={classes.drawingOptions}>
             <div className={classes.colorPicker}>
               <span>Color:</span>

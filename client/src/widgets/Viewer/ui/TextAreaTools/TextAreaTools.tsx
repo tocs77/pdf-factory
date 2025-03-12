@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { Drawing } from '../../model/types/viewerSchema';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
@@ -11,6 +11,27 @@ interface TextAreaToolsProps {
   pdfCanvasRef?: React.RefObject<HTMLCanvasElement>;
 }
 
+// Function to determine if a color is light (for text contrast)
+const isLightColor = (color: string): boolean => {
+  // Convert hex to RGB
+  let r, g, b;
+  if (color.startsWith('#')) {
+    r = parseInt(color.slice(1, 3), 16);
+    g = parseInt(color.slice(3, 5), 16);
+    b = parseInt(color.slice(5, 7), 16);
+  } else {
+    // Default to dark if not a hex color
+    return false;
+  }
+  
+  // Calculate luminance (perceived brightness)
+  // Using the formula: 0.299*R + 0.587*G + 0.114*B
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  
+  // Return true if the color is light (luminance > 0.5)
+  return luminance > 0.5;
+};
+
 export const TextAreaTools: React.FC<TextAreaToolsProps> = ({ 
   pageNumber, 
   onDrawingCreated, 
@@ -19,6 +40,23 @@ export const TextAreaTools: React.FC<TextAreaToolsProps> = ({
 }) => {
   const { state } = useContext(ViewerContext);
   const { drawingColor, drawingLineWidth } = state;
+  // Add state to track if tools are visible or hidden
+  const [toolsVisible, setToolsVisible] = useState(true);
+
+  // Listen for selection changes to show tools again when user makes a new selection
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim() !== '') {
+        setToolsVisible(true);
+      }
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, []);
 
   // Function to calculate line segments for multiple lines of text
   const getLineSegments = () => {
@@ -374,6 +412,11 @@ export const TextAreaTools: React.FC<TextAreaToolsProps> = ({
     return image;
   };
 
+  // Helper function to hide tools after applying
+  const hideToolsAfterApplying = () => {
+    setToolsVisible(false);
+  };
+
   // Create text underline drawing
   const createTextUnderline = () => {
     const lineSegments = getLineSegments();
@@ -398,6 +441,9 @@ export const TextAreaTools: React.FC<TextAreaToolsProps> = ({
 
     // Pass the drawing to the parent component
     onDrawingCreated(underlineDrawing);
+    
+    // Hide tools after applying
+    hideToolsAfterApplying();
   };
 
   // Create text crossed out drawing (strikethrough)
@@ -525,6 +571,9 @@ export const TextAreaTools: React.FC<TextAreaToolsProps> = ({
 
     // Pass the drawing to the parent component
     onDrawingCreated(crossedOutDrawing);
+    
+    // Hide tools after applying
+    hideToolsAfterApplying();
   };
 
   // Create text highlight drawing
@@ -551,14 +600,23 @@ export const TextAreaTools: React.FC<TextAreaToolsProps> = ({
 
     // Pass the drawing to the parent component
     onDrawingCreated(highlightDrawing);
+    
+    // Hide tools after applying
+    hideToolsAfterApplying();
   };
+
+  // Only render the buttons if tools are visible
+  if (!toolsVisible) {
+    return null;
+  }
 
   return (
     <div className={styles.textToolsContainer}>
       <button 
         className={styles.textToolButton} 
         onClick={createTextUnderline} 
-        title='Underline text'>
+        title='Underline text'
+        style={{ backgroundColor: drawingColor }}>
         <svg
           xmlns='http://www.w3.org/2000/svg'
           width='16'
@@ -578,7 +636,8 @@ export const TextAreaTools: React.FC<TextAreaToolsProps> = ({
       <button 
         className={styles.textToolButton} 
         onClick={createTextCrossedOut} 
-        title='Cross out text'>
+        title='Cross out text'
+        style={{ backgroundColor: drawingColor }}>
         <svg
           xmlns='http://www.w3.org/2000/svg'
           width='16'
@@ -598,7 +657,11 @@ export const TextAreaTools: React.FC<TextAreaToolsProps> = ({
       <button 
         className={styles.textToolButton} 
         onClick={createTextHighlight} 
-        title='Highlight text'>
+        title='Highlight text'
+        style={{ 
+          backgroundColor: drawingColor,
+          color: isLightColor(drawingColor) ? '#333' : 'white' 
+        }}>
         <svg
           xmlns='http://www.w3.org/2000/svg'
           width='16'

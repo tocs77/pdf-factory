@@ -915,7 +915,13 @@ export const TextLayer = ({
           
           <TextAreaTools 
             pageNumber={pageNumber}
-            onDrawingCreated={onDrawingCreated}
+            onDrawingCreated={(drawing) => {
+              onDrawingCreated(drawing);
+              // Make sure to keep the copy button and toolbar visible even after
+              // the text tools have been hidden
+              setHasSelection(true);
+              setShowCopyButton(true);
+            }}
             scale={scale}
             pdfCanvasRef={pdfCanvasRef}
           />

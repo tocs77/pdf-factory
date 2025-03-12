@@ -315,13 +315,53 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, drawing
               rotation
             );
             
-            // Transform width and height
-            // For rotated views, we need to adjust the width and height
-            let rectWidth = rect.width * scale;
-            let rectHeight = rect.height * scale;
+            // For proper rotation handling, we need to transform all four corners of the rectangle
+            // and then calculate the correct dimensions and position
+            const topLeft = { x: rectX, y: rectY };
             
-            // Fill the rectangle for highlighting
-            ctx.fillRect(rectX, rectY, rectWidth, rectHeight);
+            // Transform the bottom-right corner
+            const { x: rectBottomRightX, y: rectBottomRightY } = transformCoordinates(
+              rect.x + rect.width, 
+              rect.y + rect.height, 
+              canvas.width, 
+              canvas.height,
+              scale,
+              rotation
+            );
+
+            // Calculate the correct width and height after rotation
+            let rectWidth, rectHeight;
+            
+            // For 90° and 270° rotations, width and height are essentially swapped
+            // after the transformation
+            if (rotation === 90 || rotation === 270) {
+              // In these rotations, the transformed points create a rectangle
+              // where width and height are different from the original
+              rectWidth = Math.abs(rectBottomRightY - topLeft.y);
+              rectHeight = Math.abs(rectBottomRightX - topLeft.x);
+              
+              // Draw the rectangle using swapped width and height
+              ctx.fillRect(
+                Math.min(topLeft.x, rectBottomRightX), 
+                Math.min(topLeft.y, rectBottomRightY), 
+                rectHeight,
+                rectWidth
+              );
+            } else {
+              // For 0° and 180° rotations, width and height remain conceptually the same
+              // but we still need to calculate based on transformed corners
+              rectWidth = Math.abs(rectBottomRightX - topLeft.x);
+              rectHeight = Math.abs(rectBottomRightY - topLeft.y);
+              
+              // We need to use the minimum coordinates as the starting point
+              // because the transformation might flip the rectangle
+              ctx.fillRect(
+                Math.min(topLeft.x, rectBottomRightX), 
+                Math.min(topLeft.y, rectBottomRightY), 
+                rectWidth,
+                rectHeight
+              );
+            }
           });
           break;
         }
