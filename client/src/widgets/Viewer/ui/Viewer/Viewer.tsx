@@ -7,6 +7,7 @@ import { ViewerMenu } from '../ViewerMenu/ViewerMenu';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { ViewerProvider } from '../../model/context/ViewerProvider';
 import { classNames } from '@/shared/utils';
+import { scrollToPage } from '../../utils/pageScrollUtils';
 import classes from './Viewer.module.scss';
 import { useZoomToMouse } from '../../hooks/useZoomToMouse';
 import { Drawing } from '../../model/types/viewerSchema';
@@ -64,12 +65,17 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       // Get the page number from the drawing
       const pageNumber = drawing.pageNumber;
 
-      // Scroll to the page
-      const pageElement = document.getElementById(`page-${pageNumber}`);
-      if (pageElement) {
-        pageElement.scrollIntoView({ behavior: 'smooth' });
-        setSelectedPage(pageNumber);
-      }
+      // Update the selected page
+      setSelectedPage(pageNumber);
+      
+      // Use the utility function for consistent scrolling behavior
+      scrollToPage({
+        newPage: pageNumber,
+        currentPage: selectedPage,
+        totalPages: pages.length,
+        containerRef: pdfContainerRef,
+        pages
+      });
     },
   }));
 
@@ -146,11 +152,14 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   const handleThumbnailClick = (pageNumber: number) => {
     setSelectedPage(pageNumber);
 
-    // Scroll to the selected page
-    const pageElement = document.getElementById(`page-${pageNumber}`);
-    if (pageElement) {
-      pageElement.scrollIntoView({ behavior: 'smooth' });
-    }
+    // Use the utility function for consistent scrolling behavior
+    scrollToPage({
+      newPage: pageNumber,
+      currentPage: selectedPage,
+      totalPages: pages.length,
+      containerRef: pdfContainerRef,
+      pages
+    });
   };
 
   // Update current page on scroll - this effect sets up the scroll handler
@@ -281,16 +290,17 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   }, [isDragging, dragStartX, dragStartY, scrollStartX, scrollStartY, state.drawingMode, pdfRendered]);
 
   const handlePageChange = (newPage: number) => {
+    // Update the selected page state
     setSelectedPage(newPage);
-
-    // Scroll to the selected page
-    const pageElement = document.getElementById(`page-${newPage}`);
-    if (pageElement) {
-      // Use smooth scrolling for nearby pages (within 3 pages), instant for distant jumps
-      const pageDifference = Math.abs(newPage - selectedPage);
-      const scrollBehavior = pageDifference <= 3 ? 'smooth' : 'instant';
-      pageElement.scrollIntoView({ behavior: scrollBehavior });
-    }
+    
+    // Use the utility function to handle scrolling logic
+    scrollToPage({
+      newPage,
+      currentPage: selectedPage,
+      totalPages: pages.length,
+      containerRef: pdfContainerRef,
+      pages
+    });
   };
 
   // Show loading message or error
