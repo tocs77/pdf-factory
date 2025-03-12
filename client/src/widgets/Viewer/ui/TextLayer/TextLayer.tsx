@@ -199,7 +199,14 @@ export const TextLayer = ({
         textLayerRef.current &&
         !textLayerRef.current.contains(e.target as Node)
       ) {
-        setShowCopyButton(false);
+        // Use setTimeout to check if the selection is still valid after the click
+        setTimeout(() => {
+          const selection = window.getSelection();
+          if (!selection || selection.toString().trim() === '') {
+            setShowCopyButton(false);
+            setHasSelection(false);
+          }
+        }, 10);
       }
     };
 
@@ -924,6 +931,11 @@ export const TextLayer = ({
             }}
             scale={scale}
             pdfCanvasRef={pdfCanvasRef}
+            onHideTools={() => {
+              // Hide copy button and reset selection state
+              setShowCopyButton(false);
+              setHasSelection(false);
+            }}
           />
         </div>
       )}

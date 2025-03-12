@@ -9,6 +9,7 @@ interface TextAreaToolsProps {
   onDrawingCreated: (drawing: Drawing) => void;
   scale: number;
   pdfCanvasRef?: React.RefObject<HTMLCanvasElement>;
+  onHideTools?: () => void;
 }
 
 // Function to determine if a color is light (for text contrast)
@@ -36,7 +37,8 @@ export const TextAreaTools: React.FC<TextAreaToolsProps> = ({
   pageNumber, 
   onDrawingCreated, 
   scale,
-  pdfCanvasRef 
+  pdfCanvasRef,
+  onHideTools
 }) => {
   const { state } = useContext(ViewerContext);
   const { drawingColor, drawingLineWidth } = state;
@@ -57,6 +59,49 @@ export const TextAreaTools: React.FC<TextAreaToolsProps> = ({
       document.removeEventListener('selectionchange', handleSelectionChange);
     };
   }, []);
+
+  // Hide tools when user clicks elsewhere and clears selection
+  useEffect(() => {
+    const handleDocumentClick = () => {
+      // Use setTimeout to allow the selection to update before checking it
+      setTimeout(() => {
+        const selection = window.getSelection();
+        // Hide tools if selection is empty or not in the current page
+        if (!selection || selection.toString().trim() === '') {
+          setToolsVisible(false);
+          // Notify parent component to hide copy button as well
+          onHideTools?.();
+        } else {
+          // Check if selection is within the current page
+          const pageContainer = document.querySelector(`[data-page-number="${pageNumber}"]`);
+          if (pageContainer) {
+            let selectionInCurrentPage = false;
+            
+            // Check if any selected nodes are within the current page
+            for (let i = 0; i < selection.rangeCount; i++) {
+              const range = selection.getRangeAt(i);
+              if (pageContainer.contains(range.commonAncestorContainer)) {
+                selectionInCurrentPage = true;
+                break;
+              }
+            }
+            
+            // Hide tools if selection is not in current page
+            if (!selectionInCurrentPage) {
+              setToolsVisible(false);
+              // Notify parent component to hide copy button as well
+              onHideTools?.();
+            }
+          }
+        }
+      }, 10); // Small delay to ensure selection is updated
+    };
+
+    document.addEventListener('click', handleDocumentClick);
+    return () => {
+      document.removeEventListener('click', handleDocumentClick);
+    };
+  }, [pageNumber, onHideTools]);
 
   // Function to calculate line segments for multiple lines of text
   const getLineSegments = () => {
@@ -415,6 +460,8 @@ export const TextAreaTools: React.FC<TextAreaToolsProps> = ({
   // Helper function to hide tools after applying
   const hideToolsAfterApplying = () => {
     setToolsVisible(false);
+    // Notify parent that tools are hidden
+    // Don't call onHideTools here since we want to keep copy button visible after annotation
   };
 
   // Create text underline drawing
