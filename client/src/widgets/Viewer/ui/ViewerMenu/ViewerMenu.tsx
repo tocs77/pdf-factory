@@ -13,7 +13,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, drawingColor, drawingLineWidth, drawingMode, showThumbnails, pageRotations, textLayerEnabled } = state;
 
-  console.log('drawingMode', drawingMode);
+
   const zoomIn = () => {
     dispatch({ type: 'setScale', payload: scale + 0.25 });
   };
@@ -35,7 +35,6 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
   };
 
   const changeDrawingMode = (mode: DrawingMode) => {
-    // If the clicked mode is already active, set to 'none' (toggle off)
     if (mode === drawingMode) {
       dispatch({ type: 'setDrawingMode', payload: 'none' });
     } else {
@@ -52,25 +51,20 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
   };
 
   const toggleTextTools = () => {
-    // Enable text layer if it's not already enabled
     if (!textLayerEnabled) {
       dispatch({ type: 'toggleTextLayer' });
     }
-    // Toggle text selection mode
     changeDrawingMode('text');
   };
 
-  // Get current page rotation
   const currentRotation = pageRotations[currentPage] || 0;
 
   return (
     <div className={classes.zoomControls}>
-      {/* Page counter */}
       <div className={classes.pageCounter}>
         {currentPage}/{totalPages}
       </div>
 
-      {/* Thumbnail toggle button */}
       <button
         className={classNames(classes.thumbnailToggle, { [classes.active]: showThumbnails }, [])}
         onClick={() => dispatch({ type: 'toggleThumbnails' })}
@@ -91,7 +85,6 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
         </svg>
       </button>
 
-      {/* Rotation controls */}
       <div className={classes.rotationControls}>
         <button onClick={rotatePageCounterClockwise} className={classes.rotationButton} title='Rotate counter-clockwise'>
           <svg
@@ -126,7 +119,6 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
         </button>
       </div>
 
-      {/* Zoom controls */}
       <button onClick={zoomOut} className={classes.zoomButton} title='Zoom out'>
         -
       </button>
@@ -135,7 +127,6 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
         +
       </button>
       
-      {/* Zoom Area Tool - Moved here from drawing tools */}
       <button
         onClick={() => changeDrawingMode('zoomArea')}
         className={`${classes.zoomButton} ${drawingMode === 'zoomArea' ? classes.active : ''}`}
@@ -162,11 +153,8 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
         Reset
       </button>
 
-      {/* Tool Panel */}
       <div className={classes.toolPanel}>
-        {/* Tool Buttons */}
         <div className={classes.toolButtons}>
-          {/* Text Tools Button */}
           <button
             className={`${classes.toolButton} ${drawingMode === 'text' ? classes.active : ''}`}
             onClick={toggleTextTools}
