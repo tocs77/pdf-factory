@@ -26,6 +26,8 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
   const [endPoint, setEndPoint] = useState<{ x: number; y: number } | null>(null);
   const [isShiftKeyPressed, setIsShiftKeyPressed] = useState(false);
+  const [allLines, setAllLines] = useState<Array<{ startPoint: { x: number; y: number }; endPoint: { x: number; y: number } }>>([]);
+  const [isMultiLineMode, setIsMultiLineMode] = useState(false);
 
   // Create a function to initialize the canvas with correct dimensions and context
   const initializeCanvas = () => {
@@ -62,6 +64,44 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     return ctx;
   };
 
+  // Draw all lines on the canvas
+  const redrawAllLines = (ctx: CanvasRenderingContext2D) => {
+    if (!canvasRef.current) return;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    
+    // Set drawing styles
+    ctx.strokeStyle = drawingColor;
+    ctx.lineWidth = drawingLineWidth;
+    ctx.lineCap = 'round';
+    
+    // Draw all saved lines
+    for (const line of allLines) {
+      ctx.beginPath();
+      ctx.moveTo(line.startPoint.x, line.startPoint.y);
+      ctx.lineTo(line.endPoint.x, line.endPoint.y);
+      ctx.stroke();
+    }
+    
+    // Draw current line if active
+    if (startPoint && endPoint) {
+      ctx.beginPath();
+      ctx.moveTo(startPoint.x, startPoint.y);
+      
+      if (isShiftKeyPressed) {
+        // Draw with constraints
+        const constrainedEnd = getConstrainedEndPoint(startPoint, endPoint);
+        ctx.lineTo(constrainedEnd.x, constrainedEnd.y);
+      } else {
+        // Draw without constraints
+        ctx.lineTo(endPoint.x, endPoint.y);
+      }
+      
+      ctx.stroke();
+    }
+  };
+
   // Track shift key state
   useEffect(() => {
     if (drawingMode !== 'line') return;
@@ -71,7 +111,8 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
         setIsShiftKeyPressed(true);
         // Redraw with constraints if we're in the middle of drawing
         if (isDrawing && startPoint && endPoint) {
-          redrawWithConstraints();
+          const ctx = canvasRef.current?.getContext('2d');
+          if (ctx) redrawAllLines(ctx);
         }
       }
     };
@@ -81,7 +122,8 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
         setIsShiftKeyPressed(false);
         // Redraw without constraints if we're in the middle of drawing
         if (isDrawing && startPoint && endPoint) {
-          redrawWithoutConstraints();
+          const ctx = canvasRef.current?.getContext('2d');
+          if (ctx) redrawAllLines(ctx);
         }
       }
     };
@@ -93,43 +135,35 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [drawingMode, isDrawing, startPoint, endPoint]);
+  }, [drawingMode, isDrawing, startPoint, endPoint, allLines]);
 
-  // Helper to redraw with angle constraints when shift is pressed
-  const redrawWithConstraints = () => {
-    if (!startPoint || !endPoint || !canvasRef.current) return;
+  // Listen for ESC key to cancel drawing
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && (isDrawing || isMultiLineMode)) {
+        cancelDrawing();
+      }
+    };
 
-    const ctx = canvasRef.current.getContext('2d');
-    if (!ctx) return;
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isDrawing, isMultiLineMode]);
 
-    // Clear canvas
-    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-
-    // Calculate constrained end point
-    const constrainedEnd = getConstrainedEndPoint(startPoint, endPoint);
-
-    // Draw the line
-    ctx.beginPath();
-    ctx.moveTo(startPoint.x, startPoint.y);
-    ctx.lineTo(constrainedEnd.x, constrainedEnd.y);
-    ctx.stroke();
-  };
-
-  // Helper to redraw without constraints
-  const redrawWithoutConstraints = () => {
-    if (!startPoint || !endPoint || !canvasRef.current) return;
-
-    const ctx = canvasRef.current.getContext('2d');
-    if (!ctx) return;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-
-    // Draw the line without constraints
-    ctx.beginPath();
-    ctx.moveTo(startPoint.x, startPoint.y);
-    ctx.lineTo(endPoint.x, endPoint.y);
-    ctx.stroke();
+  // Cancel current drawing
+  const cancelDrawing = () => {
+    setIsDrawing(false);
+    setStartPoint(null);
+    setEndPoint(null);
+    setAllLines([]);
+    setIsMultiLineMode(false);
+    
+    // Clear the canvas
+    const ctx = canvasRef.current?.getContext('2d');
+    if (ctx && canvasRef.current) {
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    }
   };
 
   // Constrain endpoint to 0, 45, or 90 degrees
@@ -168,23 +202,9 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     const ctx = initializeCanvas();
     if (!ctx) return;
 
-    // Redraw the line if we're in the process of drawing
-    if (isDrawing && startPoint && endPoint) {
-      ctx.beginPath();
-      ctx.moveTo(startPoint.x, startPoint.y);
-      
-      if (isShiftKeyPressed) {
-        // Draw with constraints
-        const constrainedEnd = getConstrainedEndPoint(startPoint, endPoint);
-        ctx.lineTo(constrainedEnd.x, constrainedEnd.y);
-      } else {
-        // Draw without constraints
-        ctx.lineTo(endPoint.x, endPoint.y);
-      }
-      
-      ctx.stroke();
-    }
-  }, [scale, pageNumber, rotation, isDrawing, startPoint, endPoint, drawingColor, drawingLineWidth, isShiftKeyPressed]);
+    // Redraw all lines
+    redrawAllLines(ctx);
+  }, [scale, pageNumber, rotation, drawingColor, drawingLineWidth, isShiftKeyPressed, allLines, startPoint, endPoint]);
 
   // Hide the canvas when drawing mode is not 'line'
   useEffect(() => {
@@ -195,9 +215,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     } else {
       canvasRef.current.style.display = 'none';
       // Reset drawing state when switching out of line mode
-      setIsDrawing(false);
-      setStartPoint(null);
-      setEndPoint(null);
+      cancelDrawing();
     }
   }, [drawingMode]);
 
@@ -233,6 +251,111 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     return { x, y };
   };
 
+  // Finish drawing and save all lines as one drawing
+  const finishDrawing = () => {
+    if ((!isMultiLineMode && !isDrawing) || (allLines.length === 0 && (!startPoint || !endPoint))) {
+      cancelDrawing();
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      cancelDrawing();
+      return;
+    }
+
+    // Save current line if it's valid
+    let lines = [...allLines];
+    if (startPoint && endPoint) {
+      const finalEndPoint = isShiftKeyPressed
+        ? getConstrainedEndPoint(startPoint, endPoint)
+        : endPoint;
+        
+      // Calculate distance to check if line is valid
+      const dx = finalEndPoint.x - startPoint.x;
+      const dy = finalEndPoint.y - startPoint.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance >= 5) { // Minimum line length of 5 pixels
+        lines = [...lines, { startPoint, endPoint: finalEndPoint }];
+      }
+    }
+
+    if (lines.length === 0) {
+      cancelDrawing();
+      return;
+    }
+
+    // Calculate bounding box for all lines
+    let minX = Number.MAX_VALUE;
+    let minY = Number.MAX_VALUE;
+    let maxX = 0;
+    let maxY = 0;
+    
+    for (const line of lines) {
+      minX = Math.min(minX, line.startPoint.x, line.endPoint.x);
+      minY = Math.min(minY, line.startPoint.y, line.endPoint.y);
+      maxX = Math.max(maxX, line.startPoint.x, line.endPoint.x);
+      maxY = Math.max(maxY, line.startPoint.y, line.endPoint.y);
+    }
+
+    // Add padding
+    const padding = 10;
+    const left = Math.max(0, minX - padding);
+    const top = Math.max(0, minY - padding);
+    const width = Math.min(canvas.width - left, maxX - minX + padding * 2);
+    const height = Math.min(canvas.height - top, maxY - minY + padding * 2);
+
+    // Ensure the bounding box is within canvas bounds
+    const boundingBox = {
+      left,
+      top,
+      width,
+      height
+    };
+
+    // Normalize all lines to scale 1 and 0 degrees rotation
+    const normalizedLines = lines.map(line => ({
+      startPoint: normalizeCoordinatesToZeroRotation(
+        line.startPoint, 
+        canvas.width, 
+        canvas.height, 
+        scale, 
+        rotation
+      ),
+      endPoint: normalizeCoordinatesToZeroRotation(
+        line.endPoint, 
+        canvas.width, 
+        canvas.height, 
+        scale, 
+        rotation
+      )
+    }));
+
+    // Capture the image
+    const image = captureDrawingImage(
+      pdfCanvasRef?.current || null,
+      canvas,
+      boundingBox
+    );
+
+    // Create a new line object with normalized coordinates
+    const newLine: Drawing = {
+      type: 'line',
+      lines: normalizedLines,
+      color: drawingColor,
+      lineWidth: drawingLineWidth / scale, // Store line width at scale 1
+      pageNumber,
+      image
+    };
+
+    // Call the callback with the new drawing
+    onDrawingCreated(newLine);
+
+    // Reset state
+    cancelDrawing();
+  };
+
   // Drawing handlers
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (drawingMode !== 'line') return;
@@ -247,6 +370,10 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     setIsDrawing(true);
     setStartPoint(coords);
     setEndPoint(coords); // Initially, end point is same as start point
+    
+    if (!isMultiLineMode) {
+      setIsMultiLineMode(true);
+    }
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -260,38 +387,12 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     const currentPoint = getRawCoordinates(e.clientX, e.clientY);
     setEndPoint(currentPoint);
 
-    // Clear the canvas
-    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-    
-    // Draw the line from start point to current point
-    ctx.beginPath();
-    ctx.moveTo(startPoint.x, startPoint.y);
-    
-    if (isShiftKeyPressed) {
-      // Draw with constraints
-      const constrainedEnd = getConstrainedEndPoint(startPoint, currentPoint);
-      ctx.lineTo(constrainedEnd.x, constrainedEnd.y);
-    } else {
-      // Draw without constraints
-      ctx.lineTo(currentPoint.x, currentPoint.y);
-    }
-    
-    ctx.stroke();
+    // Redraw all lines and current line
+    redrawAllLines(ctx);
   };
 
   const endDrawing = () => {
     if (!isDrawing || drawingMode !== 'line' || !startPoint || !endPoint) {
-      setIsDrawing(false);
-      setStartPoint(null);
-      setEndPoint(null);
-      return;
-    }
-
-    const canvas = canvasRef.current;
-    if (!canvas) {
-      setIsDrawing(false);
-      setStartPoint(null);
-      setEndPoint(null);
       return;
     }
 
@@ -305,93 +406,40 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     const dy = finalEndPoint.y - startPoint.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     
-    if (distance < 5) { // Minimum line length of 5 pixels
-      setIsDrawing(false);
-      setStartPoint(null);
-      setEndPoint(null);
-      
-      // Clear the canvas
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
-      return;
+    if (distance >= 5) { // Minimum line length of 5 pixels
+      // Add the line to allLines
+      setAllLines(prev => [...prev, { 
+        startPoint: { ...startPoint }, 
+        endPoint: { ...finalEndPoint } 
+      }]);
     }
-
-    // Calculate bounding box for image capture
-    const padding = 10;
-    const left = Math.min(startPoint.x, finalEndPoint.x) - padding;
-    const top = Math.min(startPoint.y, finalEndPoint.y) - padding;
-    const width = Math.abs(finalEndPoint.x - startPoint.x) + padding * 2;
-    const height = Math.abs(finalEndPoint.y - startPoint.y) + padding * 2;
-
-    // Ensure the bounding box is within canvas bounds
-    const boundingBox = {
-      left: Math.max(0, left),
-      top: Math.max(0, top),
-      width: Math.min(canvas.width - left, width),
-      height: Math.min(canvas.height - top, height)
-    };
-
-    // Capture the image
-    const image = captureDrawingImage(
-      pdfCanvasRef?.current || null,
-      canvas,
-      boundingBox
-    );
-
-    // Normalize the points to scale 1 and 0 degrees rotation
-    const normalizedStartPoint = normalizeCoordinatesToZeroRotation(
-      startPoint, 
-      canvas.width, 
-      canvas.height, 
-      scale, 
-      rotation
-    );
-
-    const normalizedEndPoint = normalizeCoordinatesToZeroRotation(
-      finalEndPoint, 
-      canvas.width, 
-      canvas.height, 
-      scale, 
-      rotation
-    );
-
-    // Create a new line object with normalized coordinates
-    const newLine: Drawing = {
-      type: 'line',
-      startPoint: normalizedStartPoint,
-      endPoint: normalizedEndPoint,
-      color: drawingColor,
-      lineWidth: drawingLineWidth / scale, // Store line width at scale 1
-      pageNumber,
-      image
-    };
-
-    // Call the callback with the new drawing
-    onDrawingCreated(newLine);
-
-    // Reset state
+    
+    // Reset for next line but stay in multi-line mode
     setIsDrawing(false);
     setStartPoint(null);
     setEndPoint(null);
-
-    // Clear the canvas since the line will be rendered by the CompleteDrawings component
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
   };
 
   return (
-    <canvas
-      ref={canvasRef}
-      className={styles.lineDrawingCanvas}
-      onMouseDown={startDrawing}
-      onMouseMove={draw}
-      onMouseUp={endDrawing}
-      onMouseLeave={endDrawing}
-      data-testid='line-drawing-canvas'
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        className={styles.lineDrawingCanvas}
+        onMouseDown={startDrawing}
+        onMouseMove={draw}
+        onMouseUp={endDrawing}
+        onMouseLeave={endDrawing}
+        data-testid='line-drawing-canvas'
+      />
+      {isMultiLineMode && (
+        <div className={styles.finishButtonContainer}>
+          <button 
+            className={styles.finishButton}
+            onClick={finishDrawing}>
+            Finish
+          </button>
+        </div>
+      )}
+    </>
   );
 }; 

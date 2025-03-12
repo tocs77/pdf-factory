@@ -53,42 +53,46 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, drawing
     pageDrawings.forEach((drawing) => {
       switch (drawing.type) {
         case 'freehand': {
-          if (drawing.points.length < 2) return;
-
-          ctx.beginPath();
           ctx.strokeStyle = drawing.color;
           ctx.lineWidth = drawing.lineWidth * scale; // Apply current scale to line width
           ctx.lineCap = 'round';
           ctx.lineJoin = 'round';
 
-          // Start from the first point with rotation transformation
-          const startPoint = drawing.points[0];
-          const { x: startX, y: startY } = transformCoordinates(
-            startPoint.x,
-            startPoint.y,
-            canvas.width,
-            canvas.height,
-            scale,
-            rotation
-          );
+          // Draw each path in the paths array
+          for (const path of drawing.paths) {
+            if (path.length < 2) continue;
 
-          ctx.moveTo(startX, startY);
-
-          // Draw lines to each subsequent point with rotation transformation
-          for (let i = 1; i < drawing.points.length; i++) {
-            const point = drawing.points[i];
-            const { x, y } = transformCoordinates(
-              point.x, 
-              point.y, 
-              canvas.width, 
+            ctx.beginPath();
+            
+            // Start from the first point with rotation transformation
+            const startPoint = path[0];
+            const { x: startX, y: startY } = transformCoordinates(
+              startPoint.x,
+              startPoint.y,
+              canvas.width,
               canvas.height,
               scale,
               rotation
             );
-            ctx.lineTo(x, y);
-          }
 
-          ctx.stroke();
+            ctx.moveTo(startX, startY);
+
+            // Draw lines to each subsequent point with rotation transformation
+            for (let i = 1; i < path.length; i++) {
+              const point = path[i];
+              const { x, y } = transformCoordinates(
+                point.x, 
+                point.y, 
+                canvas.width, 
+                canvas.height,
+                scale,
+                rotation
+              );
+              ctx.lineTo(x, y);
+            }
+
+            ctx.stroke();
+          }
           break;
         }
 
@@ -161,33 +165,37 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, drawing
         }
 
         case 'line': {
-          ctx.beginPath();
           ctx.strokeStyle = drawing.color;
           ctx.lineWidth = drawing.lineWidth * scale;
           ctx.lineCap = 'round';
 
-          // Transform line points with rotation
-          const { x: lineStartX, y: lineStartY } = transformCoordinates(
-            drawing.startPoint.x, 
-            drawing.startPoint.y, 
-            canvas.width, 
-            canvas.height,
-            scale,
-            rotation
-          );
+          // Draw each line in the lines array
+          for (const line of drawing.lines) {
+            ctx.beginPath();
+            
+            // Transform line points with rotation
+            const { x: lineStartX, y: lineStartY } = transformCoordinates(
+              line.startPoint.x, 
+              line.startPoint.y, 
+              canvas.width, 
+              canvas.height,
+              scale,
+              rotation
+            );
 
-          const { x: lineEndX, y: lineEndY } = transformCoordinates(
-            drawing.endPoint.x, 
-            drawing.endPoint.y, 
-            canvas.width, 
-            canvas.height,
-            scale,
-            rotation
-          );
+            const { x: lineEndX, y: lineEndY } = transformCoordinates(
+              line.endPoint.x, 
+              line.endPoint.y, 
+              canvas.width, 
+              canvas.height,
+              scale,
+              rotation
+            );
 
-          ctx.moveTo(lineStartX, lineStartY);
-          ctx.lineTo(lineEndX, lineEndY);
-          ctx.stroke();
+            ctx.moveTo(lineStartX, lineStartY);
+            ctx.lineTo(lineEndX, lineEndY);
+            ctx.stroke();
+          }
           break;
         }
 

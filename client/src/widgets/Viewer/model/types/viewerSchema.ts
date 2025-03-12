@@ -9,10 +9,10 @@ export interface BaseDrawing {
 export interface DrawingPath extends BaseDrawing {
   type: 'freehand';
   /**
-   * Array of points representing the drawing path.
+   * Array of paths where each path is an array of points representing a single drawing stroke.
    * All coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
    */
-  points: { x: number; y: number }[];
+  paths: Array<{ x: number; y: number }[]>;
   lineWidth: number;
 }
 
@@ -52,15 +52,13 @@ export interface Pin extends BaseDrawing {
 export interface Line extends BaseDrawing {
   type: 'line';
   /**
-   * Start point of the line
+   * Array of lines, each with a start and end point
    * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
    */
-  startPoint: { x: number; y: number };
-  /**
-   * End point of the line
-   * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
-   */
-  endPoint: { x: number; y: number };
+  lines: Array<{
+    startPoint: { x: number; y: number };
+    endPoint: { x: number; y: number };
+  }>;
   lineWidth: number;
 }
 

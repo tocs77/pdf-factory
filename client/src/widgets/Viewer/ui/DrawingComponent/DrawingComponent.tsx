@@ -24,7 +24,9 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([]);
-
+  const [allPaths, setAllPaths] = useState<Array<{ x: number; y: number }[]>>([]);
+  const [isMultiStrokeMode, setIsMultiStrokeMode] = useState(false);
+  
   // Create a function to initialize the canvas with correct dimensions and context
   const initializeCanvas = () => {
     if (!canvasRef.current) return null;
@@ -61,28 +63,54 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
     return ctx;
   };
 
+  // Draw all paths on the canvas
+  const redrawAllPaths = (ctx: CanvasRenderingContext2D) => {
+    if (!canvasRef.current) return;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    
+    // Set drawing styles
+    ctx.strokeStyle = drawingColor;
+    ctx.lineWidth = drawingLineWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    // Draw all saved paths
+    for (const path of allPaths) {
+      if (path.length < 2) continue;
+      
+      ctx.beginPath();
+      ctx.moveTo(path[0].x, path[0].y);
+      
+      for (let i = 1; i < path.length; i++) {
+        ctx.lineTo(path[i].x, path[i].y);
+      }
+      
+      ctx.stroke();
+    }
+    
+    // Draw current path if active
+    if (currentPath.length > 1) {
+      ctx.beginPath();
+      ctx.moveTo(currentPath[0].x, currentPath[0].y);
+      
+      for (let i = 1; i < currentPath.length; i++) {
+        ctx.lineTo(currentPath[i].x, currentPath[i].y);
+      }
+      
+      ctx.stroke();
+    }
+  };
+
   // Set up drawing canvas whenever rotation, scale, or page changes
   useEffect(() => {
     const ctx = initializeCanvas();
     if (!ctx) return;
 
-    // Redraw any current path after rotation or scaling
-    if (isDrawing && currentPath.length > 1) {
-      ctx.beginPath();
-
-      // Start from the first point
-      const firstPoint = currentPath[0];
-      ctx.moveTo(firstPoint.x, firstPoint.y);
-
-      // Draw lines to all points
-      for (let i = 1; i < currentPath.length; i++) {
-        const point = currentPath[i];
-        ctx.lineTo(point.x, point.y);
-      }
-
-      ctx.stroke();
-    }
-  }, [scale, pageNumber, rotation, isDrawing, currentPath, drawingColor, drawingLineWidth]);
+    // Redraw all paths after rotation or scaling
+    redrawAllPaths(ctx);
+  }, [scale, pageNumber, rotation, drawingColor, drawingLineWidth, allPaths, currentPath]);
 
   // Set cursor to crosshair
   useEffect(() => {
@@ -102,6 +130,34 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
     };
   }, []);
 
+  // Listen for ESC key to cancel drawing
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && (isDrawing || isMultiStrokeMode)) {
+        cancelDrawing();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isDrawing, isMultiStrokeMode]);
+
+  // Cancel current drawing
+  const cancelDrawing = () => {
+    setIsDrawing(false);
+    setCurrentPath([]);
+    setAllPaths([]);
+    setIsMultiStrokeMode(false);
+    
+    // Clear the canvas
+    const ctx = canvasRef.current?.getContext('2d');
+    if (ctx && canvasRef.current) {
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    }
+  };
+
   // Get raw coordinates relative to canvas
   const getRawCoordinates = (clientX: number, clientY: number): { x: number; y: number } => {
     if (!canvasRef.current) return { x: 0, y: 0 };
@@ -116,97 +172,57 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
     return { x, y };
   };
 
-  // Drawing handlers
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    // Initialize or reinitialize the canvas
-    const ctx = initializeCanvas();
-    if (!ctx) return;
-
-    // Get raw coordinates
-    const { x, y } = getRawCoordinates(e.clientX, e.clientY);
-
-    setIsDrawing(true);
-    setCurrentPath([{ x, y }]);
-
-    // Start drawing
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-  };
-
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
-
-    // Get or reinitialize the canvas context
-    const ctx = canvasRef.current?.getContext('2d');
-    if (!ctx) return;
-
-    // Get raw coordinates
-    const { x, y } = getRawCoordinates(e.clientX, e.clientY);
-
-    // Add point to current path
-    setCurrentPath((prevPath) => {
-      const newPath = [...prevPath, { x, y }];
-
-      // Redraw the entire path to ensure it's visible
-      if (ctx && newPath.length > 1) {
-        // Clear the canvas first
-        const canvas = canvasRef.current;
-        if (canvas) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-
-        // Draw the complete path
-        ctx.beginPath();
-        ctx.moveTo(newPath[0].x, newPath[0].y);
-
-        for (let i = 1; i < newPath.length; i++) {
-          ctx.lineTo(newPath[i].x, newPath[i].y);
-        }
-
-        ctx.stroke();
-      }
-
-      return newPath;
-    });
-  };
-
-  const endDrawing = () => {
-    if (!isDrawing || drawingMode !== 'freehand' || currentPath.length < 2) {
-      setIsDrawing(false);
-      setCurrentPath([]);
+  // Finish drawing and save all paths as one drawing
+  const finishDrawing = () => {
+    if ((!isMultiStrokeMode && !isDrawing) || (allPaths.length === 0 && currentPath.length < 2)) {
+      cancelDrawing();
       return;
     }
 
     const canvas = canvasRef.current;
     if (!canvas) {
-      setIsDrawing(false);
-      setCurrentPath([]);
+      cancelDrawing();
+      return;
+    }
+
+    // Save current path if it has enough points
+    let paths = [...allPaths];
+    if (currentPath.length >= 2) {
+      paths = [...paths, [...currentPath]];
+    }
+
+    if (paths.length === 0) {
+      cancelDrawing();
       return;
     }
 
     // Normalize all points to scale 1 and 0 degrees rotation
-    const normalizedPath = currentPath.map(point => 
-      normalizeCoordinatesToZeroRotation(
-        point, 
-        canvas.width, 
-        canvas.height, 
-        scale, 
-        rotation
+    const normalizedPaths = paths.map(path => 
+      path.map(point => 
+        normalizeCoordinatesToZeroRotation(
+          point, 
+          canvas.width, 
+          canvas.height, 
+          scale, 
+          rotation
+        )
       )
     );
 
-    // Calculate bounding box of the drawing
+    // Calculate bounding box of all drawings
     let minX = Number.MAX_VALUE;
     let minY = Number.MAX_VALUE;
     let maxX = 0;
     let maxY = 0;
 
-    currentPath.forEach(point => {
-      minX = Math.min(minX, point.x);
-      minY = Math.min(minY, point.y);
-      maxX = Math.max(maxX, point.x);
-      maxY = Math.max(maxY, point.y);
-    });
+    for (const path of paths) {
+      for (const point of path) {
+        minX = Math.min(minX, point.x);
+        minY = Math.min(minY, point.y);
+        maxX = Math.max(maxX, point.x);
+        maxY = Math.max(maxY, point.y);
+      }
+    }
 
     // Add padding to the bounding box
     const padding = 10;
@@ -232,7 +248,7 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
     // Create a new drawing object
     const newDrawing: Drawing = {
       type: 'freehand',
-      points: normalizedPath,
+      paths: normalizedPaths,
       color: drawingColor,
       lineWidth: drawingLineWidth / scale, // Store line width at scale 1
       pageNumber,
@@ -245,6 +261,8 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
     // Reset state
     setIsDrawing(false);
     setCurrentPath([]);
+    setAllPaths([]);
+    setIsMultiStrokeMode(false);
 
     // Clear the canvas since the drawing will be rendered by the CompleteDrawings component
     const ctx = canvas.getContext('2d');
@@ -253,15 +271,85 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
     }
   };
 
+  // Drawing handlers
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Initialize or reinitialize the canvas
+    const ctx = initializeCanvas();
+    if (!ctx) return;
+
+    // Get raw coordinates
+    const { x, y } = getRawCoordinates(e.clientX, e.clientY);
+
+    setIsDrawing(true);
+    setCurrentPath([{ x, y }]);
+
+    if (!isMultiStrokeMode) {
+      setIsMultiStrokeMode(true);
+    }
+
+    // Start drawing
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+
+    // Get or reinitialize the canvas context
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+
+    // Get raw coordinates
+    const { x, y } = getRawCoordinates(e.clientX, e.clientY);
+
+    // Add point to current path
+    setCurrentPath((prevPath) => {
+      const newPath = [...prevPath, { x, y }];
+
+      // Redraw the entire canvas with all paths and current path
+      if (ctx && canvasRef.current) {
+        redrawAllPaths(ctx);
+      }
+
+      return newPath;
+    });
+  };
+
+  const endDrawing = () => {
+    if (!isDrawing || drawingMode !== 'freehand') {
+      return;
+    }
+
+    // If the path is valid, add it to allPaths
+    if (currentPath.length >= 2) {
+      setAllPaths(prevPaths => [...prevPaths, [...currentPath]]);
+    }
+
+    // Clear current path but stay in multi-stroke mode
+    setIsDrawing(false);
+    setCurrentPath([]);
+  };
+
   return (
-    <canvas
-      ref={canvasRef}
-      className={styles.drawingCanvas}
-      onMouseDown={startDrawing}
-      onMouseMove={draw}
-      onMouseUp={endDrawing}
-      onMouseLeave={endDrawing}
-      data-testid='freehand-drawing-canvas'
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        className={styles.drawingCanvas}
+        onMouseDown={startDrawing}
+        onMouseMove={draw}
+        onMouseUp={endDrawing}
+        onMouseLeave={endDrawing}
+        data-testid='freehand-drawing-canvas'
+      />
+      {isMultiStrokeMode && (
+        <div className={styles.finishButtonContainer}>
+          <button 
+            className={styles.finishButton}
+            onClick={finishDrawing}>
+            Finish
+          </button>
+        </div>
+      )}
+    </>
   );
 };
