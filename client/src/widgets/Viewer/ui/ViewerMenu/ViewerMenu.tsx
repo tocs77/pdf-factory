@@ -51,8 +51,13 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
     dispatch({ type: 'rotatePageCounterClockwise', payload: currentPage });
   };
 
-  const toggleTextLayer = () => {
-    dispatch({ type: 'toggleTextLayer' });
+  const toggleTextTools = () => {
+    // Enable text layer if it's not already enabled
+    if (!textLayerEnabled) {
+      dispatch({ type: 'toggleTextLayer' });
+    }
+    // Toggle text selection mode
+    changeDrawingMode('text');
   };
 
   // Get current page rotation
@@ -64,27 +69,6 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
       <div className={classes.pageCounter}>
         {currentPage}/{totalPages}
       </div>
-
-      {/* Text Layer Toggle Button */}
-      <button
-        className={classNames(classes.toolButton, { [classes.active]: textLayerEnabled }, [])}
-        onClick={toggleTextLayer}
-        title={textLayerEnabled ? 'Disable text layer' : 'Enable text layer'}>
-        <svg
-          xmlns='http://www.w3.org/2000/svg'
-          width='16'
-          height='16'
-          viewBox='0 0 24 24'
-          fill='none'
-          stroke='currentColor'
-          strokeWidth='2'
-          strokeLinecap='round'
-          strokeLinejoin='round'>
-          <polyline points='4 7 4 4 20 4 20 7'></polyline>
-          <line x1='9' y1='20' x2='15' y2='20'></line>
-          <line x1='12' y1='4' x2='12' y2='20'></line>
-        </svg>
-      </button>
 
       {/* Thumbnail toggle button */}
       <button
@@ -182,11 +166,11 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
       <div className={classes.toolPanel}>
         {/* Tool Buttons */}
         <div className={classes.toolButtons}>
-          {/* Text Selection Tool */}
+          {/* Text Tools Button */}
           <button
             className={`${classes.toolButton} ${drawingMode === 'text' ? classes.active : ''}`}
-            onClick={() => changeDrawingMode('text')}
-            title={drawingMode === 'text' ? 'Disable text selection' : 'Enable text selection'}>
+            onClick={toggleTextTools}
+            title={drawingMode === 'text' ? 'Disable text tools' : 'Enable text tools'}>
             <svg
               xmlns='http://www.w3.org/2000/svg'
               width='16'
