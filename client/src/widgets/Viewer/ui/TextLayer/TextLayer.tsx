@@ -2,8 +2,7 @@ import { useEffect, useRef, useState, MouseEvent as ReactMouseEvent } from 'reac
 import type { PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import * as pdfjs from 'pdfjs-dist';
 import classes from './TextLayer.module.scss';
-import TextUnderlineButton from '../TextUnderlineButton/TextUnderlineButton';
-import buttonStyles from '../TextUnderlineButton/TextUnderlineButton.module.scss';
+import TextAreaTools from '../TextAreaTools/TextAreaTools';
 import { Drawing } from '../../model/types/viewerSchema';
 
 interface TextLayerProps {
@@ -141,16 +140,14 @@ export const TextLayer = ({
     const handleClickOutside = (e: MouseEvent) => {
       // Don't hide if clicking on any part of the toolbar or buttons
       const isClickingToolbar = !!(e.target as HTMLElement).closest(`.${classes.textSelectionToolbar}`);
-      const isClickingTextButton = !!(e.target as HTMLElement).closest(`.${buttonStyles.textUnderlineButton}`);
-      const isClickingCopyButton = !!(e.target as HTMLElement).closest(`.${classes.copyButton}`);
+      const isClickingTextButton = !!(e.target as HTMLElement).closest(`.${classes.copyButton}`);
       
       if (
         hasSelection &&
         textLayerRef.current &&
         !textLayerRef.current.contains(e.target as Node) &&
         !isClickingToolbar &&
-        !isClickingTextButton &&
-        !isClickingCopyButton
+        !isClickingTextButton
       ) {
         // Only clear if we're not clicking the copy button or toolbar
         const selection = window.getSelection();
@@ -193,14 +190,12 @@ export const TextLayer = ({
     const handleClickOutside = (e: MouseEvent) => {
       // Don't hide if clicking on any part of the toolbar or buttons
       const isClickingToolbar = !!(e.target as HTMLElement).closest(`.${classes.textSelectionToolbar}`);
-      const isClickingTextButton = !!(e.target as HTMLElement).closest(`.${buttonStyles.textUnderlineButton}`);
-      const isClickingCopyButton = !!(e.target as HTMLElement).closest(`.${classes.copyButton}`);
+      const isClickingTextButton = !!(e.target as HTMLElement).closest(`.${classes.copyButton}`);
       
       if (
         showCopyButton &&
         !isClickingToolbar &&
         !isClickingTextButton &&
-        !isClickingCopyButton &&
         textLayerRef.current &&
         !textLayerRef.current.contains(e.target as Node)
       ) {
@@ -884,7 +879,7 @@ export const TextLayer = ({
             setShowCopyButton(true);
             setHasSelection(true);
             
-            // Force a selectionchange event to trigger the TextUnderlineButton
+            // Force a selectionchange event to trigger the TextAreaTools
             const event = new Event('selectionchange', {
               bubbles: true,
               cancelable: true
@@ -918,7 +913,7 @@ export const TextLayer = ({
             </button>
           )}
           
-          <TextUnderlineButton 
+          <TextAreaTools 
             pageNumber={pageNumber}
             onDrawingCreated={onDrawingCreated}
             scale={scale}

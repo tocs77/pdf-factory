@@ -88,8 +88,32 @@ export interface TextUnderline extends BaseDrawing {
   text?: string; // The text that was underlined (optional)
 }
 
+export interface TextCrossedOut extends BaseDrawing {
+  type: 'textCrossedOut';
+  /**
+   * Array of line segments for crossing out text (strikethrough)
+   * Each segment represents a line of text to have a line drawn through its center
+   * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
+   */
+  lines: { start: { x: number, y: number }, end: { x: number, y: number } }[];
+  lineWidth: number;
+  text?: string; // The text that was crossed out (optional)
+}
+
+export interface TextHighlight extends BaseDrawing {
+  type: 'textHighlight';
+  /**
+   * Array of rectangle areas for highlighting text
+   * Each rectangle represents a line of text to be highlighted
+   * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
+   */
+  rects: { x: number, y: number, width: number, height: number }[];
+  opacity: number; // Opacity of the highlight, typically 0.5
+  text?: string; // The text that was highlighted (optional)
+}
+
 // Union type for all drawings
-export type Drawing = DrawingPath | Rectangle | Pin | Line | DrawArea | TextUnderline;
+export type Drawing = DrawingPath | Rectangle | Pin | Line | DrawArea | TextUnderline | TextCrossedOut | TextHighlight;
 
 export type DrawingMode = 'freehand' | 'rectangle' | 'pin' | 'text' | 'line' | 'drawArea' | 'zoomArea' | 'none';
 

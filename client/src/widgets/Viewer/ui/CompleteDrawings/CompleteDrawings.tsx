@@ -249,13 +249,80 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, drawing
               rotation
             );
             
-            // Draw the underline
+            // Draw a line from start to end for the underline
             ctx.beginPath();
             ctx.moveTo(startX, startY);
             ctx.lineTo(endX, endY);
             ctx.stroke();
           });
+          break;
+        }
+        
+        case 'textCrossedOut': {
+          ctx.beginPath();
+          ctx.strokeStyle = drawing.color;
+          ctx.lineWidth = drawing.lineWidth * scale;
+          ctx.setLineDash([]); // Solid line
           
+          // Draw each line segment
+          drawing.lines.forEach(line => {
+            // Transform start and end points with rotation
+            const { x: startX, y: startY } = transformCoordinates(
+              line.start.x, 
+              line.start.y, 
+              canvas.width, 
+              canvas.height,
+              scale,
+              rotation
+            );
+
+            const { x: endX, y: endY } = transformCoordinates(
+              line.end.x, 
+              line.end.y, 
+              canvas.width, 
+              canvas.height,
+              scale,
+              rotation
+            );
+            
+            // Draw a line from start to end for the crossed out text
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+          });
+          break;
+        }
+        
+        case 'textHighlight': {
+          // Set semi-transparent fill for highlighting
+          ctx.fillStyle = drawing.color + '80'; // Add 50% opacity
+          if (drawing.opacity) {
+            // If opacity is specified in the drawing, use that instead
+            const hexOpacity = Math.round(drawing.opacity * 255).toString(16).padStart(2, '0');
+            ctx.fillStyle = drawing.color + hexOpacity;
+          }
+          
+          // Draw each rectangle for highlighting
+          drawing.rects.forEach(rect => {
+            // Transform rectangle coordinates with rotation
+            const { x: rectX, y: rectY } = transformCoordinates(
+              rect.x, 
+              rect.y, 
+              canvas.width, 
+              canvas.height,
+              scale,
+              rotation
+            );
+            
+            // Transform width and height
+            // For rotated views, we need to adjust the width and height
+            let rectWidth = rect.width * scale;
+            let rectHeight = rect.height * scale;
+            
+            // Fill the rectangle for highlighting
+            ctx.fillRect(rectX, rectY, rectWidth, rectHeight);
+          });
           break;
         }
       }
