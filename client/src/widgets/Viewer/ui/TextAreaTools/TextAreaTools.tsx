@@ -596,12 +596,15 @@ export const TextAreaTools: React.FC<TextAreaToolsProps> = ({
       });
       
       // Calculate middle point between top and bottom
-      const middleY = minTop + (maxBottom - minTop) / 2;
+      const middleY = (minTop + (maxBottom - minTop) / 2);
+      
+      // FIXED: Transform middleY to PDF coordinates by accounting for page offset and scale
+      const middleYInPdfCoords = (middleY - pageRect.top) / scale;
       
       // Return a line segment that goes through the middle of the text
       return {
-        start: { x: startX, y: middleY },
-        end: { x: endX, y: middleY }
+        start: { x: startX, y: middleYInPdfCoords },
+        end: { x: endX, y: middleYInPdfCoords }
       };
     });
 
