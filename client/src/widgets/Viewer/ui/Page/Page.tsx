@@ -11,6 +11,7 @@ import { TextLayer } from '../TextLayer/TextLayer';
 import { LineDrawingLayer } from '../LineDrawingLayer/LineDrawingLayer';
 import { DrawAreaLayer } from '../DrawAreaLayer/DrawAreaLayer';
 import { ZoomAreaLayer } from '../ZoomAreaLayer/ZoomAreaLayer';
+import { TextAreaDrawingLayer } from '../TextAreaDrawingLayer/TextAreaDrawingLayer';
 import { Drawing } from '../../model/types/viewerSchema';
 
 // Page component for rendering a single PDF page
@@ -213,12 +214,12 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
 
           {/* Text Layer - only render when text tool is selected */}
           {drawingMode === 'text' && viewport && renderTask && (
-            <TextLayer 
-              page={page} 
-              viewport={viewport} 
-              scale={scale} 
-              rotation={rotation} 
-              renderTask={renderTask} 
+            <TextLayer
+              page={page}
+              viewport={viewport}
+              scale={scale}
+              rotation={rotation}
+              renderTask={renderTask}
               pageNumber={pageNumber}
               onDrawingCreated={onDrawingCreated}
               pdfCanvasRef={canvasRef}
@@ -228,12 +229,25 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
           {/* Drawing components - only render when respective tool is selected */}
           {inView && (
             <>
-              {drawingMode === 'freehand' && <DrawingComponent pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />}
-              {drawingMode === 'rectangle' && <DrawRect pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />}
-              {drawingMode === 'pin' && <PinDrawingComponent pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />}
-              {drawingMode === 'line' && <LineDrawingLayer pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />}
-              {drawingMode === 'drawArea' && <DrawAreaLayer pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />}
+              {drawingMode === 'freehand' && (
+                <DrawingComponent pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />
+              )}
+              {drawingMode === 'rectangle' && (
+                <DrawRect pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />
+              )}
+              {drawingMode === 'pin' && (
+                <PinDrawingComponent pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />
+              )}
+              {drawingMode === 'line' && (
+                <LineDrawingLayer pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />
+              )}
+              {drawingMode === 'drawArea' && (
+                <DrawAreaLayer pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />
+              )}
               {drawingMode === 'zoomArea' && <ZoomAreaLayer pageNumber={pageNumber} />}
+              {drawingMode === 'textArea' && (
+                <TextAreaDrawingLayer pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />
+              )}
             </>
           )}
 

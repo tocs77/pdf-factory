@@ -39,17 +39,17 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
     if (pageInputValue === currentPage.toString()) {
       return;
     }
-    
+
     // Clear any existing timer
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
-    
+
     // Set a new timer
     debounceTimerRef.current = setTimeout(() => {
       navigateToEnteredPage();
     }, DEBOUNCE_TIME);
-    
+
     // Cleanup on unmount or when pageInputValue changes again
     return () => {
       if (debounceTimerRef.current) {
@@ -130,12 +130,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
   return (
     <div className={classes.zoomControls}>
       <div className={classes.pageControls}>
-        <button 
-          className={classes.pageButton} 
-          onClick={goToPreviousPage} 
-          disabled={currentPage <= 1}
-          title="Previous page"
-        >
+        <button className={classes.pageButton} onClick={goToPreviousPage} disabled={currentPage <= 1} title='Previous page'>
           <svg
             xmlns='http://www.w3.org/2000/svg'
             width='16'
@@ -146,28 +141,23 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
             strokeWidth='2'
             strokeLinecap='round'
             strokeLinejoin='round'>
-            <polyline points="15 18 9 12 15 6"></polyline>
+            <polyline points='15 18 9 12 15 6'></polyline>
           </svg>
         </button>
         <div className={classes.pageCounter}>
           <input
-            type="text"
+            type='text'
             value={pageInputValue}
             onChange={handlePageInputChange}
             onKeyDown={handlePageInputKeyDown}
             onBlur={navigateToEnteredPage}
             className={classes.pageInput}
-            title="Enter page number and press Enter"
-            aria-label="Current page"
+            title='Enter page number and press Enter'
+            aria-label='Current page'
           />
           <span>/{totalPages}</span>
         </div>
-        <button 
-          className={classes.pageButton} 
-          onClick={goToNextPage} 
-          disabled={currentPage >= totalPages}
-          title="Next page"
-        >
+        <button className={classes.pageButton} onClick={goToNextPage} disabled={currentPage >= totalPages} title='Next page'>
           <svg
             xmlns='http://www.w3.org/2000/svg'
             width='16'
@@ -178,7 +168,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
             strokeWidth='2'
             strokeLinecap='round'
             strokeLinejoin='round'>
-            <polyline points="9 18 15 12 9 6"></polyline>
+            <polyline points='9 18 15 12 9 6'></polyline>
           </svg>
         </button>
       </div>
@@ -244,7 +234,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
       <button onClick={zoomIn} className={classes.zoomButton} title='Zoom in'>
         +
       </button>
-      
+
       <button
         onClick={() => changeDrawingMode('zoomArea')}
         className={`${classes.zoomButton} ${drawingMode === 'zoomArea' ? classes.active : ''}`}
@@ -266,7 +256,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
           <line x1='8' y1='11' x2='14' y2='11'></line>
         </svg>
       </button>
-      
+
       <button onClick={resetZoom} className={classes.zoomButton} title='Reset zoom'>
         Reset
       </button>
@@ -392,6 +382,28 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
               <path d='M21 14H3'></path>
             </svg>
           </button>
+
+          {/* Text Area Tool */}
+          <button
+            className={`${classes.toolButton} ${drawingMode === 'textArea' ? classes.active : ''}`}
+            onClick={() => changeDrawingMode('textArea')}
+            title={drawingMode === 'textArea' ? 'Disable text area tool' : 'Enable text area tool'}>
+            <svg
+              xmlns='http://www.w3.org/2000/svg'
+              width='16'
+              height='16'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='currentColor'
+              strokeWidth='2'
+              strokeLinecap='round'
+              strokeLinejoin='round'>
+              <rect x='3' y='3' width='18' height='18' rx='2' ry='2'></rect>
+              <line x1='8' y1='8' x2='16' y2='8'></line>
+              <line x1='8' y1='12' x2='16' y2='12'></line>
+              <line x1='8' y1='16' x2='12' y2='16'></line>
+            </svg>
+          </button>
         </div>
 
         {/* Separator */}
@@ -400,6 +412,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
           drawingMode === 'pin' ||
           drawingMode === 'line' ||
           drawingMode === 'drawArea' ||
+          drawingMode === 'textArea' ||
           textLayerEnabled) && <div className={classes.separator}></div>}
 
         {/* Drawing Options - Show when a drawing tool is selected OR text layer is enabled */}
@@ -408,6 +421,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
           drawingMode === 'pin' ||
           drawingMode === 'line' ||
           drawingMode === 'drawArea' ||
+          drawingMode === 'textArea' ||
           textLayerEnabled) && (
           <div className={classes.drawingOptions}>
             <div className={classes.colorPicker}>

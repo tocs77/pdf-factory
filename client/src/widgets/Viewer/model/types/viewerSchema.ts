@@ -112,7 +112,7 @@ export interface TextUnderline extends BaseDrawing {
    * Each segment represents a line of text to be underlined
    * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
    */
-  lines: { start: { x: number, y: number }, end: { x: number, y: number } }[];
+  lines: { start: { x: number; y: number }; end: { x: number; y: number } }[];
   /**
    * Style properties for the text underline
    */
@@ -127,7 +127,7 @@ export interface TextCrossedOut extends BaseDrawing {
    * Each segment represents a line of text to have a line drawn through its center
    * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
    */
-  lines: { start: { x: number, y: number }, end: { x: number, y: number } }[];
+  lines: { start: { x: number; y: number }; end: { x: number; y: number } }[];
   /**
    * Style properties for the text cross-out
    */
@@ -154,10 +154,32 @@ export interface TextHighlight extends BaseDrawing {
   text?: string; // The text that was highlighted (optional)
 }
 
-// Union type for all drawings
-export type Drawing = DrawingPath | Rectangle | Pin | Line | DrawArea | TextUnderline | TextCrossedOut | TextHighlight;
+export interface TextArea extends BaseDrawing {
+  type: 'textArea';
+  /**
+   * Start point (top-left) of the text area rectangle
+   * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
+   */
+  startPoint: { x: number; y: number };
+  /**
+   * End point (bottom-right) of the text area rectangle
+   * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
+   */
+  endPoint: { x: number; y: number };
+  /**
+   * Text content within the area
+   */
+  text: string;
+  /**
+   * Style properties for the text area
+   */
+  style: DrawingStyle;
+}
 
-export type DrawingMode = 'freehand' | 'rectangle' | 'pin' | 'text' | 'line' | 'drawArea' | 'zoomArea' | 'none';
+// Union type for all drawings
+export type Drawing = DrawingPath | Rectangle | Pin | Line | DrawArea | TextUnderline | TextCrossedOut | TextHighlight | TextArea;
+
+export type DrawingMode = 'freehand' | 'rectangle' | 'pin' | 'text' | 'line' | 'drawArea' | 'zoomArea' | 'textArea' | 'none';
 
 // Valid rotation angles: 0, 90, 180, 270 degrees
 export type RotationAngle = 0 | 90 | 180 | 270;
