@@ -3,6 +3,7 @@ import { ViewerContext } from '../../model/context/viewerContext';
 import { TextArea, Drawing } from '../../model/types/viewerSchema';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
+import { renderTextArea } from '../../utils/drawingRenderers';
 import classes from './TextAreaDrawingLayer.module.scss';
 
 interface TextAreaDrawingLayerProps {
@@ -142,12 +143,43 @@ export const TextAreaDrawingLayer: React.FC<TextAreaDrawingLayerProps> = ({ page
     if (!startPoint || !endPoint || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
     // Calculate the rectangle bounds for the image capture
     const left = Math.min(startPoint.x, endPoint.x);
     const top = Math.min(startPoint.y, endPoint.y);
     const rectWidth = Math.abs(endPoint.x - startPoint.x);
     const rectHeight = Math.abs(endPoint.y - startPoint.y);
+
+    // Create a temporary TextArea object for rendering
+    const tempTextArea: TextArea = {
+      type: 'textArea',
+      pageNumber,
+      startPoint: {
+        x: Math.min(startPoint.x, endPoint.x),
+        y: Math.min(startPoint.y, endPoint.y),
+      },
+      endPoint: {
+        x: Math.max(startPoint.x, endPoint.x),
+        y: Math.max(startPoint.y, endPoint.y),
+      },
+      text,
+      style: {
+        strokeColor: drawingColor,
+        strokeWidth: drawingLineWidth,
+      },
+    };
+
+    // Render the text area on the canvas
+    renderTextArea(
+      ctx,
+      tempTextArea,
+      canvas.width / window.devicePixelRatio,
+      canvas.height / window.devicePixelRatio,
+      1, // Use scale 1 for the rendering since we're directly on canvas coordinates
+      0, // Use rotation 0 for rendering since we're directly on canvas coordinates
+    );
 
     // Add padding to the bounding box
     const padding = 10;
@@ -158,12 +190,12 @@ export const TextAreaDrawingLayer: React.FC<TextAreaDrawingLayerProps> = ({ page
       height: Math.min(canvas.height / window.devicePixelRatio - top + padding, rectHeight + padding * 2),
     };
 
-    // Capture the image - only the PDF background, without the drawing layer
+    // Capture the image with the drawing layer included
     const image = captureDrawingImage(
       pdfCanvasRef?.current || null,
       canvas,
       boundingBox,
-      false, // Set to false to only capture the PDF background
+      true, // Set to true to capture both PDF background and the drawing layer
     );
 
     // Normalize coordinates to scale 1 and 0 degrees rotation
