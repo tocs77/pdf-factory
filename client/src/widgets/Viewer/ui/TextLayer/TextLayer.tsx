@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import * as pdfjs from 'pdfjs-dist';
 import classes from './TextLayer.module.scss';
@@ -40,11 +40,8 @@ export const TextLayer = ({
   const [hasSelection, setHasSelection] = useState(false);
   const [showCopyButton, setShowCopyButton] = useState(false);
 
-  // State to track toolbar position
+  // Remove dragging-related state
   const [toolbarPosition, setToolbarPosition] = useState({ top: 60, left: 10 });
-  // State for dragging functionality
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const toolbarRef = useRef<HTMLDivElement>(null);
 
   // Handle text selection
@@ -141,7 +138,7 @@ export const TextLayer = ({
       // Don't hide if clicking on any part of the toolbar or buttons
       const isClickingToolbar = !!(e.target as HTMLElement).closest(`.${classes.textSelectionToolbar}`);
       const isClickingTextButton = !!(e.target as HTMLElement).closest(`.${classes.copyButton}`);
-      
+
       if (
         hasSelection &&
         textLayerRef.current &&
@@ -191,7 +188,7 @@ export const TextLayer = ({
       // Don't hide if clicking on any part of the toolbar or buttons
       const isClickingToolbar = !!(e.target as HTMLElement).closest(`.${classes.textSelectionToolbar}`);
       const isClickingTextButton = !!(e.target as HTMLElement).closest(`.${classes.copyButton}`);
-      
+
       if (
         showCopyButton &&
         !isClickingToolbar &&
@@ -219,28 +216,28 @@ export const TextLayer = ({
   // Ensure text layer is properly positioned when rotation changes
   useEffect(() => {
     if (!textLayerRef.current || !viewport) return;
-    
+
     const textLayerDiv = textLayerRef.current;
-    
+
     // Always ensure the text layer has position: absolute
     textLayerDiv.style.position = 'absolute';
-    
+
     // Get dimensions from viewport - these already account for rotation
     const width = Math.floor(viewport.width);
     const height = Math.floor(viewport.height);
-    
+
     // Reset all transform properties
     textLayerDiv.style.transform = '';
     textLayerDiv.style.transformOrigin = '';
-    
+
     // Position at the top-left corner
     textLayerDiv.style.left = '0';
     textLayerDiv.style.top = '0';
-    
+
     // Set dimensions to match the viewport exactly
     textLayerDiv.style.width = `${width}px`;
     textLayerDiv.style.height = `${height}px`;
-    
+
     // No rotation transforms needed as PDF.js viewport already handles rotation
   }, [rotation, viewport]);
 
@@ -260,7 +257,7 @@ export const TextLayer = ({
 
       // Ensure text layer has the exact same dimensions as the canvas
       // Note: We don't need to set dimensions here as they're handled by the rotation-specific useEffect
-      
+
       // Ensure text layer is positioned exactly over the canvas
       // Note: We don't need to set position here as it's handled by the rotation-specific useEffect
 
@@ -362,23 +359,23 @@ export const TextLayer = ({
                 textDiv.style.fontSize = `${fontHeight.toFixed(3)}px`;
                 textDiv.style.fontFamily = 'sans-serif';
                 textDiv.style.lineHeight = '1.0'; // Ensure consistent line height
-                
+
                 // Add a subtle border to make text selectable even with transparent background
                 textDiv.style.border = '1px solid transparent';
-                
+
                 // Allow normal text selection (removing user-select: all)
                 // This enables selecting text by dragging the mouse
                 textDiv.style.userSelect = 'text';
                 textDiv.style.cursor = 'text';
-                
+
                 // Add padding to improve selection area without affecting layout
                 const paddingRight = fontHeight > 60 ? '6px' : fontHeight > 40 ? '4px' : fontHeight > 24 ? '3px' : '2px';
                 const paddingLeft = fontHeight > 60 ? '2px' : fontHeight > 40 ? '1px' : fontHeight > 24 ? '1px' : '0px';
-                
+
                 textDiv.style.paddingRight = paddingRight;
                 textDiv.style.paddingLeft = paddingLeft;
                 textDiv.style.boxSizing = 'content-box';
-                
+
                 // Calculate text width based on transform matrix
                 // This helps ensure the text block width matches the actual text on the page
                 // The width calculation is based on the font metrics in the transform matrix
@@ -391,7 +388,7 @@ export const TextLayer = ({
                   // Apply a dynamic scaling factor based on font size
                   // Larger fonts need more width adjustment
                   let scaleFactor: number;
-                  
+
                   // Progressive scaling based on font size
                   if (fontHeight > 60) {
                     scaleFactor = 1.35; // Very large fonts
@@ -410,13 +407,13 @@ export const TextLayer = ({
                   } else {
                     scaleFactor = 1.02; // Reduced from 1.1
                   }
-                  
+
                   // Calculate width based on character width and apply scaling
                   const charWidth = Math.abs(tx[0]) / (item.str?.length || 1);
-                  
+
                   // Add extra width to compensate for letter-spacing and ensure proper selection
                   let letterSpacingCompensation: number;
-                  
+
                   // Adjust compensation based on font size
                   if (fontHeight > 60) {
                     letterSpacingCompensation = 1.25; // Reduced from 1.35
@@ -427,9 +424,9 @@ export const TextLayer = ({
                   } else {
                     letterSpacingCompensation = 1.05; // Reduced from 1.15
                   }
-                  
+
                   textWidth = charWidth * (item.str?.length || 1) * fontHeight * scaleFactor * letterSpacingCompensation;
-                  
+
                   // Additional adjustment for specific characters
                   if (item.str && /[WMwm]/.test(item.str)) {
                     // Scale wide character adjustment based on font size
@@ -441,7 +438,7 @@ export const TextLayer = ({
                       textWidth *= 1.1; // 10% wider for normal fonts
                     }
                   }
-                  
+
                   // Additional adjustment for text containing spaces
                   if (item.str && item.str.includes(' ')) {
                     // Scale space adjustment based on font size
@@ -453,7 +450,7 @@ export const TextLayer = ({
                       textWidth *= 1.05; // 5% wider for normal fonts with spaces
                     }
                   }
-                  
+
                   // Extra adjustment for uppercase text which tends to be wider
                   if (item.str && /[A-Z]/.test(item.str)) {
                     if (fontHeight > 60) {
@@ -465,15 +462,15 @@ export const TextLayer = ({
                     }
                   }
                 }
-                
+
                 // Ensure minimum width for very short text
                 textWidth = Math.max(textWidth, fontHeight * 0.5);
-                
+
                 // Apply the calculated width with a slightly larger buffer
                 // Add extra buffer for larger fonts - reduced for 40px range
                 const buffer = fontHeight > 60 ? 4 : fontHeight > 40 ? 2 : fontHeight > 24 ? 2 : 1;
                 textDiv.style.width = `${(textWidth + buffer).toFixed(3)}px`;
-                
+
                 // Adjust letter spacing based on font size
                 // Larger fonts need more letter spacing adjustment for selection
                 let letterSpacing: string;
@@ -491,7 +488,7 @@ export const TextLayer = ({
                   letterSpacing = '0.02em'; // Keep as is for smaller fonts
                 }
                 textDiv.style.letterSpacing = letterSpacing;
-                
+
                 // Prevent text from being cut off
                 textDiv.style.overflow = 'visible';
 
@@ -503,7 +500,7 @@ export const TextLayer = ({
 
                 // Ensure text doesn't wrap
                 textDiv.style.whiteSpace = 'pre';
-                
+
                 // Prevent text from being scaled incorrectly
                 textDiv.style.textRendering = 'geometricPrecision';
 
@@ -560,22 +557,22 @@ export const TextLayer = ({
                   textDiv.style.fontFamily = 'sans-serif';
                   textDiv.style.lineHeight = '1.0';
                   textDiv.style.textRendering = 'geometricPrecision';
-                  
+
                   // Add a subtle border for selection with transparent background
                   textDiv.style.border = '1px solid transparent';
-                  
+
                   // Allow normal text selection
                   textDiv.style.userSelect = 'text';
                   textDiv.style.cursor = 'text';
-                  
+
                   // Add padding to improve selection area without affecting layout
                   const paddingRight = fontHeight > 60 ? '6px' : fontHeight > 40 ? '4px' : fontHeight > 24 ? '3px' : '2px';
                   const paddingLeft = fontHeight > 60 ? '2px' : fontHeight > 40 ? '1px' : fontHeight > 24 ? '1px' : '0px';
-                  
+
                   textDiv.style.paddingRight = paddingRight;
                   textDiv.style.paddingLeft = paddingLeft;
                   textDiv.style.boxSizing = 'content-box';
-                  
+
                   // Calculate text width for fallback items
                   let textWidth: number;
                   if (item.width && typeof item.width === 'number') {
@@ -583,7 +580,7 @@ export const TextLayer = ({
                   } else {
                     // Apply dynamic scaling based on font size
                     let scaleFactor: number;
-                    
+
                     // Progressive scaling based on font size
                     if (fontHeight > 60) {
                       scaleFactor = 1.35; // Very large fonts
@@ -602,12 +599,12 @@ export const TextLayer = ({
                     } else {
                       scaleFactor = 1.02; // Reduced from 1.1
                     }
-                    
+
                     const charWidth = Math.abs(tx[0]) / (item.str?.length || 1);
-                    
+
                     // Add extra width to compensate for letter-spacing in fallback items too
                     let letterSpacingCompensation: number;
-                    
+
                     // Adjust compensation based on font size
                     if (fontHeight > 60) {
                       letterSpacingCompensation = 1.25; // Reduced from 1.35
@@ -618,9 +615,9 @@ export const TextLayer = ({
                     } else {
                       letterSpacingCompensation = 1.05; // Reduced from 1.15
                     }
-                    
+
                     textWidth = charWidth * (item.str?.length || 1) * fontHeight * scaleFactor * letterSpacingCompensation;
-                    
+
                     // Additional adjustment for specific characters
                     if (item.str && /[WMwm]/.test(item.str)) {
                       // Scale wide character adjustment based on font size
@@ -632,7 +629,7 @@ export const TextLayer = ({
                         textWidth *= 1.1; // 10% wider for normal fonts
                       }
                     }
-                    
+
                     // Additional adjustment for text containing spaces
                     if (item.str && item.str.includes(' ')) {
                       // Scale space adjustment based on font size
@@ -644,7 +641,7 @@ export const TextLayer = ({
                         textWidth *= 1.05; // 5% wider for normal fonts with spaces
                       }
                     }
-                    
+
                     // Extra adjustment for uppercase text which tends to be wider
                     if (item.str && /[A-Z]/.test(item.str)) {
                       if (fontHeight > 60) {
@@ -656,16 +653,16 @@ export const TextLayer = ({
                       }
                     }
                   }
-                  
+
                   textWidth = Math.max(textWidth, fontHeight * 0.5);
                   // Add extra buffer for larger fonts - reduced for 40px range
                   const buffer = fontHeight > 60 ? 4 : fontHeight > 40 ? 2 : fontHeight > 24 ? 2 : 1;
                   textDiv.style.width = `${(textWidth + buffer).toFixed(3)}px`;
-                  
+
                   // Improve text selection behavior
                   (textDiv.style as any)['boxDecorationBreak'] = 'clone';
                   (textDiv.style as any)['-webkit-box-decoration-break'] = 'clone';
-                  
+
                   // Adjust letter spacing based on font size
                   let letterSpacing: string;
                   if (fontHeight > 60) {
@@ -760,124 +757,37 @@ export const TextLayer = ({
     }
   };
 
-  // Handler for starting drag operation
-  const handleDragStart = (e: ReactMouseEvent) => {
-    if (!toolbarRef.current) return;
-    
-    const rect = toolbarRef.current.getBoundingClientRect();
-    setDragOffset({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    });
-    setIsDragging(true);
-  };
-
-  // Handler for drag movement
+  // Set fixed position for toolbar that stays in view
   useEffect(() => {
-    if (!isDragging) return;
+    if (!hasSelection) return;
 
-    const handleDragMove = (e: MouseEvent) => {
-      e.preventDefault();
-      
-      // Calculate new position based on mouse coordinates and drag offset
-      const left = e.clientX - dragOffset.x;
-      const top = e.clientY - dragOffset.y;
-      
-      // Get viewport dimensions
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      
-      // Get toolbar dimensions
-      let toolbarWidth = 150;
-      let toolbarHeight = 80;
-      if (toolbarRef.current) {
-        const rect = toolbarRef.current.getBoundingClientRect();
-        toolbarWidth = rect.width;
-        toolbarHeight = rect.height;
-      }
-      
-      // Ensure toolbar stays within viewport bounds
-      const boundedLeft = Math.max(0, Math.min(left, viewportWidth - toolbarWidth));
-      const boundedTop = Math.max(0, Math.min(top, viewportHeight - toolbarHeight));
-      
-      setToolbarPosition({ 
-        left: boundedLeft, 
-        top: boundedTop 
+    // Set position in the viewport that's always visible
+    const viewportWidth = window.innerWidth;
+
+    setToolbarPosition({
+      top: 120,
+      left: Math.min(viewportWidth - 200, Math.max(10, 10)), // Ensure toolbar is visible in viewport
+    });
+
+    // Update position on resize
+    const handleResize = () => {
+      const newViewportWidth = window.innerWidth;
+      setToolbarPosition({
+        top: 120,
+        left: Math.min(newViewportWidth - 200, Math.max(10, 10)),
       });
     };
 
-    const handleDragEnd = () => {
-      setIsDragging(false);
-    };
-
-    // Add event listeners for dragging
-    document.addEventListener('mousemove', handleDragMove);
-    document.addEventListener('mouseup', handleDragEnd);
-
+    window.addEventListener('resize', handleResize);
     return () => {
-      document.removeEventListener('mousemove', handleDragMove);
-      document.removeEventListener('mouseup', handleDragEnd);
+      window.removeEventListener('resize', handleResize);
     };
-  }, [isDragging, dragOffset]);
-
-  // Update toolbar position based on visible area
-  useEffect(() => {
-    // Only auto-position if not currently being dragged by the user
-    if (!hasSelection || isDragging) return;
-
-    const updatePosition = () => {
-      // Get the page element containing this text layer
-      const pageElement = textLayerRef.current?.closest('[data-page-number]');
-      if (!pageElement) return;
-
-      // Calculate page position relative to viewport
-      const pageRect = pageElement.getBoundingClientRect();
-      
-      // Get the viewport width to ensure toolbar doesn't go off-screen to the right
-      const viewportWidth = window.innerWidth;
-      
-      // Create a placeholder element to measure toolbar width (if needed)
-      let toolbarWidth = 150; // Estimate for toolbar width
-      const toolbarElement = document.querySelector(`.${classes.textSelectionToolbar}`);
-      if (toolbarElement) {
-        toolbarWidth = toolbarElement.getBoundingClientRect().width;
-      }
-      
-      // Use a larger top offset to avoid overlapping with the viewer menu
-      // 60px should be enough to clear most menu bars
-      const topOffset = 60;
-      
-      // If page top is out of view (negative value), adjust toolbar position
-      const top = Math.max(topOffset, -pageRect.top + topOffset); // offset from top of visible area
-      
-      // Calculate left position, ensuring it stays within viewport
-      let left = Math.max(10, -pageRect.left + 10); // 10px from left of visible area
-      
-      // Ensure toolbar doesn't go off-screen to the right
-      if (left + toolbarWidth > viewportWidth) {
-        left = viewportWidth - toolbarWidth - 10; // 10px margin from right edge
-      }
-
-      setToolbarPosition({ top, left });
-    };
-
-    // Initial positioning
-    updatePosition();
-
-    // Update position on scroll and resize
-    window.addEventListener('scroll', updatePosition, { passive: true });
-    window.addEventListener('resize', updatePosition, { passive: true });
-
-    return () => {
-      window.removeEventListener('scroll', updatePosition);
-      window.removeEventListener('resize', updatePosition);
-    };
-  }, [hasSelection, isDragging]);
+  }, [hasSelection]);
 
   return (
     <>
-      <div 
-        ref={textLayerRef} 
+      <div
+        ref={textLayerRef}
         className={classes.textLayer}
         onMouseUp={() => {
           // Force selection change check after mouse up
@@ -885,49 +795,39 @@ export const TextLayer = ({
           if (selection && selection.toString().trim()) {
             setShowCopyButton(true);
             setHasSelection(true);
-            
+
             // Force a selectionchange event to trigger the TextAreaTools
             const event = new Event('selectionchange', {
               bubbles: true,
-              cancelable: true
+              cancelable: true,
             });
             document.dispatchEvent(event);
           }
         }}
       />
-      
-      {/* Text selection toolbar with both buttons */}
+
+      {/* Text selection toolbar with simplified fixed position */}
       {hasSelection && (
-        <div 
+        <div
           ref={toolbarRef}
           className={classes.textSelectionToolbar}
           style={{
             top: `${toolbarPosition.top}px`,
             left: `${toolbarPosition.left}px`,
-            cursor: isDragging ? 'grabbing' : 'grab'
-          }}
-          onMouseDown={handleDragStart}
-        >
-          <div className={classes.toolbarHandle}>
-            <div className={classes.dragHandle}></div>
-          </div>
+          }}>
           {showCopyButton && (
-            <button
-              className={classes.copyButton}
-              onClick={copySelectedText}
-              title="Copy to clipboard">
+            <button className={classes.copyButton} onClick={copySelectedText} title='Copy to clipboard'>
               Copy
             </button>
           )}
-          
-          <TextAreaTools 
+
+          <TextAreaTools
             pageNumber={pageNumber}
             onDrawingCreated={(drawing) => {
               onDrawingCreated(drawing);
-              // Make sure to keep the copy button and toolbar visible even after
-              // the text tools have been hidden
-              setHasSelection(true);
-              setShowCopyButton(true);
+              // Make sure to clear selection after creating drawing
+              setHasSelection(false);
+              setShowCopyButton(false);
             }}
             scale={scale}
             pdfCanvasRef={pdfCanvasRef}
@@ -941,4 +841,4 @@ export const TextLayer = ({
       )}
     </>
   );
-}; 
+};
