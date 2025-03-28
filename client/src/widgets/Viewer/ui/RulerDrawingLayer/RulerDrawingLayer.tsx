@@ -21,6 +21,12 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;
 
+  // Constants for snap detection
+  const SNAP_DETECTION_RADIUS = 25; // Radius in pixels to search for snap points
+  const SNAP_DISTANCE_THRESHOLD = 15; // Distance threshold for snapping to a point
+  const SNAP_MIN_DISTANCE = 10; // Minimum distance between detected points
+  const MAX_VISIBLE_SNAP_POINTS = 3; // Maximum number of snap points to display
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
@@ -33,6 +39,7 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
   const [rulerExists, setRulerExists] = useState(false);
   const [pointsOfInterest, setPointsOfInterest] = useState<PointOfInterest[]>([]);
   const [highlightedPointIndex, setHighlightedPointIndex] = useState<number | null>(null);
+  const [snapTarget, setSnapTarget] = useState<{ index: number; distance: number } | null>(null);
 
   // Create a function to initialize the canvas with correct dimensions and context
   const initializeCanvas = () => {
@@ -81,29 +88,46 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     ctx.lineWidth = drawingLineWidth;
     ctx.stroke();
 
-    // Draw points of interest
-    if (!isDraggingStart && !isDraggingEnd && !isDrawing) {
-      // Only draw points of interest when not actively dragging (for better performance)
-      pointsOfInterest.forEach((point, index) => {
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, index === highlightedPointIndex ? 8 : 5, 0, 2 * Math.PI);
-        ctx.fillStyle = index === highlightedPointIndex ? 'rgba(255, 255, 0, 0.6)' : 'rgba(0, 255, 255, 0.4)';
-        ctx.fill();
-        ctx.strokeStyle = index === highlightedPointIndex ? 'rgba(255, 200, 0, 0.8)' : 'rgba(0, 200, 200, 0.6)';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-      });
-    } else if (highlightedPointIndex !== null && pointsOfInterest[highlightedPointIndex]) {
-      // During dragging, only show the highlighted point
-      const point = pointsOfInterest[highlightedPointIndex];
+    // Limit visible points to MAX_VISIBLE_SNAP_POINTS
+    const visiblePoints = pointsOfInterest
+      .sort((a, b) => {
+        // Prioritize snap targets and highlighted points
+        const aIsSnap = snapTarget && snapTarget.index === pointsOfInterest.indexOf(a);
+        const bIsSnap = snapTarget && snapTarget.index === pointsOfInterest.indexOf(b);
+        const aIsHighlighted = highlightedPointIndex === pointsOfInterest.indexOf(a);
+        const bIsHighlighted = highlightedPointIndex === pointsOfInterest.indexOf(b);
+
+        if (aIsSnap && !bIsSnap) return -1;
+        if (!aIsSnap && bIsSnap) return 1;
+        if (aIsHighlighted && !bIsHighlighted) return -1;
+        if (!aIsHighlighted && bIsHighlighted) return 1;
+
+        // Then sort by confidence
+        return b.confidence - a.confidence;
+      })
+      .slice(0, MAX_VISIBLE_SNAP_POINTS);
+
+    visiblePoints.forEach((point) => {
+      const index = pointsOfInterest.indexOf(point);
       ctx.beginPath();
-      ctx.arc(point.x, point.y, 8, 0, 2 * Math.PI);
-      ctx.fillStyle = 'rgba(255, 255, 0, 0.6)';
+      ctx.arc(point.x, point.y, index === highlightedPointIndex ? 8 : 5, 0, 2 * Math.PI);
+
+      // Use green for snap targets, yellow for highlighted points, and cyan for others
+      if (snapTarget && snapTarget.index === index) {
+        ctx.fillStyle = 'rgba(0, 200, 0, 0.7)';
+        ctx.strokeStyle = 'rgba(0, 150, 0, 0.9)';
+      } else if (index === highlightedPointIndex) {
+        ctx.fillStyle = 'rgba(255, 255, 0, 0.7)';
+        ctx.strokeStyle = 'rgba(255, 200, 0, 0.9)';
+      } else {
+        ctx.fillStyle = 'rgba(0, 255, 255, 0.5)';
+        ctx.strokeStyle = 'rgba(0, 200, 200, 0.7)';
+      }
+
       ctx.fill();
-      ctx.strokeStyle = 'rgba(255, 200, 0, 0.8)';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 2;
       ctx.stroke();
-    }
+    });
 
     // Calculate distance (in pixels at the current zoom level)
     const pixelDistance = Math.sqrt(Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2));
@@ -126,7 +150,7 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
   };
 
   // Find points of interest in the PDF near a given coordinate
-  const findPointsOfInterest = (x: number, y: number, radius: number = 25) => {
+  const findPointsOfInterest = (x: number, y: number) => {
     if (!pdfCanvasRef?.current) return [];
 
     const ctx = pdfCanvasRef.current.getContext('2d', { willReadFrequently: true });
@@ -138,10 +162,15 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
       const roundedY = Math.round(y);
 
       // Get the image data around the cursor
-      const imageData = ctx.getImageData(Math.max(0, roundedX - radius), Math.max(0, roundedY - radius), radius * 2, radius * 2);
+      const imageData = ctx.getImageData(
+        Math.max(0, roundedX - SNAP_DETECTION_RADIUS),
+        Math.max(0, roundedY - SNAP_DETECTION_RADIUS),
+        SNAP_DETECTION_RADIUS * 2,
+        SNAP_DETECTION_RADIUS * 2,
+      );
 
       // Process the image data to find edges, corners, line endpoints
-      const points = analyzeImageData(imageData, roundedX - radius, roundedY - radius);
+      const points = analyzeImageData(imageData, roundedX - SNAP_DETECTION_RADIUS, roundedY - SNAP_DETECTION_RADIUS);
 
       // Return found points
       return points;
@@ -155,8 +184,8 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
   const analyzeImageData = (imageData: ImageData, offsetX: number, offsetY: number): PointOfInterest[] => {
     const { data, width, height } = imageData;
     const points: PointOfInterest[] = [];
-    const threshold = 50; // Threshold for edge detection
-    const scanStep = 3; // Scan every Nth pixel to improve performance
+    const threshold = 40; // Lower threshold to detect more points
+    const scanStep = 2; // Scan more frequently for better detection
 
     // Simple edge detection for demonstration
     for (let y = scanStep; y < height - scanStep; y += scanStep) {
@@ -198,44 +227,56 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
 
     // Filter out redundant points (points that are very close to each other)
     const filteredPoints: PointOfInterest[] = [];
-    const minDistance = 10; // Minimum distance between points
 
     for (const point of points) {
-      if (!filteredPoints.some((p) => Math.sqrt(Math.pow(p.x - point.x, 2) + Math.pow(p.y - point.y, 2)) < minDistance)) {
+      if (!filteredPoints.some((p) => Math.sqrt(Math.pow(p.x - point.x, 2) + Math.pow(p.y - point.y, 2)) < SNAP_MIN_DISTANCE)) {
         filteredPoints.push(point);
       }
     }
 
-    // Sort by confidence (highest first) and limit to 5 most likely points
+    // Add at least one debug point if nothing found
+    if (filteredPoints.length === 0) {
+      filteredPoints.push({
+        x: offsetX + width / 2,
+        y: offsetY + height / 2,
+        type: 'corner',
+        confidence: 100,
+      });
+    }
+
+    // Sort by confidence (highest first) and limit to most likely points
     return filteredPoints.sort((a, b) => b.confidence - a.confidence).slice(0, 5);
   };
 
   // Update points of interest when cursor position changes
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
-
-    const updatePointsWithDelay = (x: number, y: number) => {
-      // Clear any existing timeouts
-      clearTimeout(timeout);
-
-      // Set a timeout to update the points of interest after dragging has slowed/stopped
-      timeout = setTimeout(() => {
-        const points = findPointsOfInterest(x, y);
-        setPointsOfInterest(points);
-      }, 200); // Increase delay to improve performance
-    };
-
     if (isDraggingStart && startPoint) {
-      updatePointsWithDelay(startPoint.x, startPoint.y);
+      const points = findPointsOfInterest(startPoint.x, startPoint.y);
+      setPointsOfInterest(points);
+
+      // Check if there are points to snap to
+      if (points.length > 0) {
+        checkNearbyPointsOfInterest(startPoint.x, startPoint.y);
+      }
     } else if (isDraggingEnd && endPoint) {
-      updatePointsWithDelay(endPoint.x, endPoint.y);
+      const points = findPointsOfInterest(endPoint.x, endPoint.y);
+      setPointsOfInterest(points);
+
+      // Check if there are points to snap to
+      if (points.length > 0) {
+        checkNearbyPointsOfInterest(endPoint.x, endPoint.y);
+      }
     } else if (isDrawing && endPoint) {
-      updatePointsWithDelay(endPoint.x, endPoint.y);
+      const points = findPointsOfInterest(endPoint.x, endPoint.y);
+      setPointsOfInterest(points);
+
+      // Check if there are points to snap to
+      if (points.length > 0) {
+        checkNearbyPointsOfInterest(endPoint.x, endPoint.y);
+      }
     } else {
       setPointsOfInterest([]);
     }
-
-    return () => clearTimeout(timeout);
   }, [isDraggingStart, isDraggingEnd, isDrawing, startPoint, endPoint]);
 
   // Set up drawing canvas whenever scale, rotation, or page changes
@@ -284,6 +325,7 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     setRulerExists(false);
     setPointsOfInterest([]);
     setHighlightedPointIndex(null);
+    setSnapTarget(null);
   };
 
   // Get raw coordinates from mouse event
@@ -335,7 +377,6 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     if (drawingMode !== 'ruler') return;
 
     const { x, y } = getRawCoordinates(e.clientX, e.clientY);
-    console.log('isDraggingStart', isDraggingStart);
 
     if (isDraggingStart && endPoint) {
       setStartPoint({ x, y });
@@ -343,7 +384,6 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
       // Check if cursor is near any point of interest
       checkNearbyPointsOfInterest(x, y);
     } else if (isDraggingEnd && startPoint) {
-      console.log('handleMouseMove', e);
       setEndPoint({ x, y });
 
       // Check if cursor is near any point of interest
@@ -358,20 +398,35 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
 
   // Check if cursor is near any point of interest and highlight it
   const checkNearbyPointsOfInterest = (x: number, y: number) => {
-    const snapDistance = 15; // Distance threshold for highlighting a point
-
     let closestPointIndex = null;
-    let minDistance = snapDistance;
+    let minDistance = SNAP_DISTANCE_THRESHOLD;
+    let snapPointIndex = null;
+    let snapPointDistance = SNAP_MIN_DISTANCE;
 
     pointsOfInterest.forEach((point, index) => {
       const distance = Math.sqrt(Math.pow(point.x - x, 2) + Math.pow(point.y - y, 2));
+
+      // Find the closest point within the highlight threshold
       if (distance < minDistance) {
         minDistance = distance;
         closestPointIndex = index;
       }
+
+      // Find the closest point within the snap threshold
+      if (distance < snapPointDistance) {
+        snapPointDistance = distance;
+        snapPointIndex = index;
+      }
     });
 
     setHighlightedPointIndex(closestPointIndex);
+
+    // Set snap target if we have a point within snap distance
+    if (snapPointIndex !== null) {
+      setSnapTarget({ index: snapPointIndex, distance: snapPointDistance });
+    } else {
+      setSnapTarget(null);
+    }
   };
 
   // Handle mouse up event
@@ -389,8 +444,18 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
       }
     }
 
-    // Apply snapping if a point is highlighted
-    if (highlightedPointIndex !== null) {
+    // Apply snapping if we have a snap target
+    if (snapTarget !== null && pointsOfInterest[snapTarget.index]) {
+      const snapPoint = pointsOfInterest[snapTarget.index];
+
+      if (isDraggingStart) {
+        setStartPoint({ x: snapPoint.x, y: snapPoint.y });
+      } else if (isDraggingEnd || isDrawing) {
+        setEndPoint({ x: snapPoint.x, y: snapPoint.y });
+      }
+    }
+    // Otherwise apply highlighting if a point is highlighted but not within snap distance
+    else if (highlightedPointIndex !== null && !snapTarget) {
       const point = pointsOfInterest[highlightedPointIndex];
 
       if (isDraggingStart) {
@@ -398,10 +463,10 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
       } else if (isDraggingEnd || isDrawing) {
         setEndPoint({ x: point.x, y: point.y });
       }
-
-      setHighlightedPointIndex(null);
     }
 
+    setHighlightedPointIndex(null);
+    setSnapTarget(null);
     setIsDrawing(false);
     setIsDraggingStart(false);
     setIsDraggingEnd(false);
