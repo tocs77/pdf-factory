@@ -182,6 +182,156 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
     setHasRendered(false);
   }, [scale]);
 
+  const handleDrawingCreated = (drawing: Omit<Drawing, 'id'>) => {
+    // Calculate bounding box for the drawing based on its type
+    const boundingBox = calculateBoundingBox(drawing);
+
+    // Add bounding box to the drawing
+    const drawingWithBoundingBox = {
+      ...drawing,
+      boundingBox,
+    };
+
+    // Call the parent's onDrawingCreated with the enhanced drawing
+    if (onDrawingCreated) {
+      // Use type assertion to handle the Drawing union type
+      onDrawingCreated(drawingWithBoundingBox as any);
+    }
+  };
+
+  // Function to calculate bounding box based on drawing type
+  const calculateBoundingBox = (drawing: Omit<Drawing, 'id'>): { top: number; left: number; right: number; bottom: number } => {
+    switch (drawing.type) {
+      case 'rectangle':
+      case 'drawArea':
+      case 'textArea': {
+        // For rectangle-based drawings
+        const rectDrawing = drawing as any;
+        return {
+          top: Math.min(rectDrawing.startPoint.y, rectDrawing.endPoint.y),
+          left: Math.min(rectDrawing.startPoint.x, rectDrawing.endPoint.x),
+          right: Math.max(rectDrawing.startPoint.x, rectDrawing.endPoint.x),
+          bottom: Math.max(rectDrawing.startPoint.y, rectDrawing.endPoint.y),
+        };
+      }
+
+      case 'pin': {
+        // For pins, create a small area around the pin position
+        const pinDrawing = drawing as any;
+        return {
+          top: pinDrawing.position.y - 10,
+          left: pinDrawing.position.x - 10,
+          right: pinDrawing.position.x + 10,
+          bottom: pinDrawing.position.y + 10,
+        };
+      }
+
+      case 'line': {
+        // For line drawings, calculate min/max of all line points
+        let minX = Infinity,
+          minY = Infinity,
+          maxX = -Infinity,
+          maxY = -Infinity;
+
+        const lineDrawing = drawing as any;
+        lineDrawing.lines.forEach((line: any) => {
+          minX = Math.min(minX, line.startPoint.x, line.endPoint.x);
+          minY = Math.min(minY, line.startPoint.y, line.endPoint.y);
+          maxX = Math.max(maxX, line.startPoint.x, line.endPoint.x);
+          maxY = Math.max(maxY, line.startPoint.y, line.endPoint.y);
+        });
+
+        return {
+          top: minY,
+          left: minX,
+          right: maxX,
+          bottom: maxY,
+        };
+      }
+
+      case 'freehand': {
+        // For freehand drawings, calculate min/max of all path points
+        let minPathX = Infinity,
+          minPathY = Infinity,
+          maxPathX = -Infinity,
+          maxPathY = -Infinity;
+
+        const freehandDrawing = drawing as any;
+        freehandDrawing.paths.forEach((path: any) => {
+          path.forEach((point: any) => {
+            minPathX = Math.min(minPathX, point.x);
+            minPathY = Math.min(minPathY, point.y);
+            maxPathX = Math.max(maxPathX, point.x);
+            maxPathY = Math.max(maxPathY, point.y);
+          });
+        });
+
+        return {
+          top: minPathY,
+          left: minPathX,
+          right: maxPathX,
+          bottom: maxPathY,
+        };
+      }
+
+      case 'textUnderline':
+      case 'textCrossedOut': {
+        // For text underlines and cross-outs, calculate min/max of all lines
+        let minLineX = Infinity,
+          minLineY = Infinity,
+          maxLineX = -Infinity,
+          maxLineY = -Infinity;
+
+        const lineTextDrawing = drawing as any;
+        lineTextDrawing.lines.forEach((line: any) => {
+          minLineX = Math.min(minLineX, line.start.x, line.end.x);
+          minLineY = Math.min(minLineY, line.start.y, line.end.y);
+          maxLineX = Math.max(maxLineX, line.start.x, line.end.x);
+          maxLineY = Math.max(maxLineY, line.start.y, line.end.y);
+        });
+
+        return {
+          top: minLineY,
+          left: minLineX,
+          right: maxLineX,
+          bottom: maxLineY,
+        };
+      }
+
+      case 'textHighlight': {
+        // For text highlights, calculate min/max of all rectangles
+        let minRectX = Infinity,
+          minRectY = Infinity,
+          maxRectX = -Infinity,
+          maxRectY = -Infinity;
+
+        const highlightDrawing = drawing as any;
+        highlightDrawing.rects.forEach((rect: any) => {
+          minRectX = Math.min(minRectX, rect.x);
+          minRectY = Math.min(minRectY, rect.y);
+          maxRectX = Math.max(maxRectX, rect.x + rect.width);
+          maxRectY = Math.max(maxRectY, rect.y + rect.height);
+        });
+
+        return {
+          top: minRectY,
+          left: minRectX,
+          right: maxRectX,
+          bottom: maxRectY,
+        };
+      }
+
+      default:
+        // Default fallback - create a reasonable default bounding box
+        return {
+          top: 0,
+          left: 0,
+          right: 100,
+          bottom: 100,
+        };
+    }
+  };
+
   return (
     <div ref={containerRef} className={classNames(classes.pageContainer, {}, [className])} id={id} data-page-number={pageNumber}>
       <div
@@ -222,7 +372,7 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
               rotation={rotation}
               renderTask={renderTask}
               pageNumber={pageNumber}
-              onDrawingCreated={onDrawingCreated}
+              onDrawingCreated={handleDrawingCreated}
               pdfCanvasRef={canvasRef}
             />
           )}
@@ -231,23 +381,23 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
           {inView && (
             <>
               {drawingMode === 'freehand' && (
-                <DrawingComponent pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />
+                <DrawingComponent pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
               )}
               {drawingMode === 'rectangle' && (
-                <DrawRect pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />
+                <DrawRect pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
               )}
               {drawingMode === 'pin' && (
-                <PinDrawingComponent pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />
+                <PinDrawingComponent pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
               )}
               {drawingMode === 'line' && (
-                <LineDrawingLayer pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />
+                <LineDrawingLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
               )}
               {drawingMode === 'drawArea' && (
-                <DrawAreaLayer pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />
+                <DrawAreaLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
               )}
               {drawingMode === 'zoomArea' && <ZoomAreaLayer pageNumber={pageNumber} />}
               {drawingMode === 'textArea' && (
-                <TextAreaDrawingLayer pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />
+                <TextAreaDrawingLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
               )}
               {drawingMode === 'ruler' && <RulerDrawingLayer pageNumber={pageNumber} pdfCanvasRef={canvasRef} />}
             </>

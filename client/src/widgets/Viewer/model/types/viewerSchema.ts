@@ -3,6 +3,13 @@ export interface BaseDrawing {
   id?: string;
   pageNumber: number;
   image?: string; // Store base64 image of the drawing area
+  // Bounding box coordinates for the drawing - normalized to scale=1
+  boundingBox?: {
+    top: number;
+    left: number;
+    right: number;
+    bottom: number;
+  };
 }
 
 // Common style properties for drawings
