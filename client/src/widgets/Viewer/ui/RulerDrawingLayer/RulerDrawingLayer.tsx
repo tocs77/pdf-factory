@@ -102,6 +102,14 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
         if (aIsHighlighted && !bIsHighlighted) return -1;
         if (!aIsHighlighted && bIsHighlighted) return 1;
 
+        // Prioritize corners and intersections over line-ends
+        if (a.type !== 'line-end' && b.type === 'line-end') return -1;
+        if (a.type === 'line-end' && b.type !== 'line-end') return 1;
+
+        // For the same type, prioritize corners over intersections
+        if (a.type === 'corner' && b.type === 'intersection') return -1;
+        if (a.type === 'intersection' && b.type === 'corner') return 1;
+
         // Then sort by confidence
         return b.confidence - a.confidence;
       })
@@ -184,43 +192,135 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
   const analyzeImageData = (imageData: ImageData, offsetX: number, offsetY: number): PointOfInterest[] => {
     const { data, width, height } = imageData;
     const points: PointOfInterest[] = [];
-    const threshold = 40; // Lower threshold to detect more points
-    const scanStep = 2; // Scan more frequently for better detection
+    const threshold = 40; // Threshold for edge detection
+    const scanStep = 2; // Scan frequency for better detection
 
-    // Simple edge detection for demonstration
+    // Advanced detection for corners, intersections and line endpoints
     for (let y = scanStep; y < height - scanStep; y += scanStep) {
       for (let x = scanStep; x < width - scanStep; x += scanStep) {
-        // Check neighboring pixels
+        // Check neighboring pixels in 8 directions
+        const centerIdx = (y * width + x) * 4;
         const topIdx = ((y - scanStep) * width + x) * 4;
         const bottomIdx = ((y + scanStep) * width + x) * 4;
         const leftIdx = (y * width + (x - scanStep)) * 4;
         const rightIdx = (y * width + (x + scanStep)) * 4;
+        const topLeftIdx = ((y - scanStep) * width + (x - scanStep)) * 4;
+        const topRightIdx = ((y - scanStep) * width + (x + scanStep)) * 4;
+        const bottomLeftIdx = ((y + scanStep) * width + (x - scanStep)) * 4;
+        const bottomRightIdx = ((y + scanStep) * width + (x + scanStep)) * 4;
 
+        // Get grayscale values for each pixel
+        const centerGray = (data[centerIdx] + data[centerIdx + 1] + data[centerIdx + 2]) / 3;
         const topGray = (data[topIdx] + data[topIdx + 1] + data[topIdx + 2]) / 3;
         const bottomGray = (data[bottomIdx] + data[bottomIdx + 1] + data[bottomIdx + 2]) / 3;
         const leftGray = (data[leftIdx] + data[leftIdx + 1] + data[leftIdx + 2]) / 3;
         const rightGray = (data[rightIdx] + data[rightIdx + 1] + data[rightIdx + 2]) / 3;
+        const topLeftGray = (data[topLeftIdx] + data[topLeftIdx + 1] + data[topLeftIdx + 2]) / 3;
+        const topRightGray = (data[topRightIdx] + data[topRightIdx + 1] + data[topRightIdx + 2]) / 3;
+        const bottomLeftGray = (data[bottomLeftIdx] + data[bottomLeftIdx + 1] + data[bottomLeftIdx + 2]) / 3;
+        const bottomRightGray = (data[bottomRightIdx] + data[bottomRightIdx + 1] + data[bottomRightIdx + 2]) / 3;
 
-        // Check for horizontal or vertical edges
+        // Calculate gradients in different directions
         const horizontalDiff = Math.abs(leftGray - rightGray);
         const verticalDiff = Math.abs(topGray - bottomGray);
+        const diag1Diff = Math.abs(topLeftGray - bottomRightGray);
+        const diag2Diff = Math.abs(topRightGray - bottomLeftGray);
 
-        if (horizontalDiff > threshold && verticalDiff > threshold) {
-          // This is potentially a corner or intersection
+        // Get differences between surrounding pixels to detect patterns
+        const horizontalGradients = [
+          Math.abs(topLeftGray - topGray),
+          Math.abs(topGray - topRightGray),
+          Math.abs(leftGray - centerGray),
+          Math.abs(centerGray - rightGray),
+          Math.abs(bottomLeftGray - bottomGray),
+          Math.abs(bottomGray - bottomRightGray),
+        ];
+
+        const verticalGradients = [
+          Math.abs(topLeftGray - leftGray),
+          Math.abs(leftGray - bottomLeftGray),
+          Math.abs(topGray - centerGray),
+          Math.abs(centerGray - bottomGray),
+          Math.abs(topRightGray - rightGray),
+          Math.abs(rightGray - bottomRightGray),
+        ];
+
+        // Calculate edge pattern to distinguish between points on lines vs endpoints/corners
+        const isOnHorizontalLine = horizontalGradients.every((gradient) => gradient < threshold / 2) && verticalDiff > threshold;
+        const isOnVerticalLine = verticalGradients.every((gradient) => gradient < threshold / 2) && horizontalDiff > threshold;
+
+        // Define surrounding pixel pattern
+        const surroundingPixels = [
+          topGray,
+          rightGray,
+          bottomGray,
+          leftGray,
+          topLeftGray,
+          topRightGray,
+          bottomLeftGray,
+          bottomRightGray,
+        ];
+
+        // Count pixels that significantly differ from center (edge pixels)
+        const edgeCount = surroundingPixels.filter((gray) => Math.abs(gray - centerGray) > threshold).length;
+
+        // Detect corners - sharp changes in multiple directions simultaneously
+        if (
+          (horizontalDiff > threshold && verticalDiff > threshold && !isOnHorizontalLine && !isOnVerticalLine) ||
+          (diag1Diff > threshold && diag2Diff > threshold)
+        ) {
           points.push({
             x: offsetX + x,
             y: offsetY + y,
             type: 'corner',
-            confidence: (horizontalDiff + verticalDiff) / 2,
+            confidence: (horizontalDiff + verticalDiff + diag1Diff + diag2Diff) / 4,
           });
-        } else if (horizontalDiff > threshold || verticalDiff > threshold) {
-          // This is potentially a line end
+        }
+        // Detect intersections - multiple edge directions meeting
+        else if (
+          edgeCount >= 3 &&
+          ((horizontalDiff > threshold && verticalDiff > threshold / 2) ||
+            (verticalDiff > threshold && horizontalDiff > threshold / 2)) &&
+          !isOnHorizontalLine &&
+          !isOnVerticalLine
+        ) {
           points.push({
             x: offsetX + x,
             y: offsetY + y,
-            type: 'line-end',
-            confidence: Math.max(horizontalDiff, verticalDiff),
+            type: 'intersection',
+            confidence: ((horizontalDiff + verticalDiff) / 2) * (edgeCount / 8),
           });
+        }
+        // Detect line endpoints - look for abrupt ending pattern
+        else if (
+          edgeCount <= 2 &&
+          // At least one direction needs significant change
+          (horizontalDiff > threshold || verticalDiff > threshold || diag1Diff > threshold || diag2Diff > threshold) &&
+          // Discard points that are likely on straight lines
+          !isOnHorizontalLine &&
+          !isOnVerticalLine
+        ) {
+          // Additional endpoint verification - check for endpoint pattern
+          // True endpoints have high intensity change in limited directions
+          const isEndpoint =
+            // Check for patterns that indicate endpoints rather than points along a line
+            (horizontalDiff > threshold * 1.2 &&
+              surroundingPixels.filter((p) => Math.abs(p - centerGray) < threshold / 2).length >= 5) ||
+            (verticalDiff > threshold * 1.2 &&
+              surroundingPixels.filter((p) => Math.abs(p - centerGray) < threshold / 2).length >= 5) ||
+            (diag1Diff > threshold * 1.2 &&
+              surroundingPixels.filter((p) => Math.abs(p - centerGray) < threshold / 2).length >= 5) ||
+            (diag2Diff > threshold * 1.2 &&
+              surroundingPixels.filter((p) => Math.abs(p - centerGray) < threshold / 2).length >= 5);
+
+          if (isEndpoint) {
+            points.push({
+              x: offsetX + x,
+              y: offsetY + y,
+              type: 'line-end',
+              confidence: Math.max(horizontalDiff, verticalDiff, diag1Diff, diag2Diff),
+            });
+          }
         }
       }
     }
