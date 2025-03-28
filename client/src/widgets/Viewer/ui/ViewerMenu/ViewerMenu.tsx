@@ -14,7 +14,8 @@ const DEBOUNCE_TIME = 1000;
 
 export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages = 0, onPageChange }) => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, drawingMode, showThumbnails, pageRotations, textLayerEnabled } = state;
+  const { scale, drawingColor, drawingLineWidth, drawingMode, showThumbnails, pageRotations, textLayerEnabled, rulerEnabled } =
+    state;
   const [pageInputValue, setPageInputValue] = useState<string>(currentPage.toString());
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -126,6 +127,10 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
   };
 
   const currentRotation = pageRotations[currentPage] || 0;
+
+  const toggleRuler = () => {
+    dispatch({ type: 'toggleRuler' });
+  };
 
   return (
     <div className={classes.zoomControls}>
@@ -254,6 +259,30 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
           <line x1='21' y1='21' x2='16.65' y2='16.65'></line>
           <line x1='11' y1='8' x2='11' y2='14'></line>
           <line x1='8' y1='11' x2='14' y2='11'></line>
+        </svg>
+      </button>
+
+      <button
+        onClick={toggleRuler}
+        className={`${classes.zoomButton} ${rulerEnabled ? classes.active : ''}`}
+        style={{ padding: '4px' }}
+        title='Ruler tool'>
+        <svg
+          xmlns='http://www.w3.org/2000/svg'
+          width='16'
+          height='16'
+          viewBox='0 0 24 24'
+          fill='none'
+          stroke='currentColor'
+          strokeWidth='1.75'
+          strokeLinecap='round'
+          strokeLinejoin='round'>
+          <path d='M2 8h20v8H2z' fill='rgba(255,255,255,0.15)'></path>
+          <rect x='2' y='8' width='20' height='8'></rect>
+          <line x1='6' y1='8' x2='6' y2='12'></line>
+          <line x1='10' y1='8' x2='10' y2='16'></line>
+          <line x1='14' y1='8' x2='14' y2='12'></line>
+          <line x1='18' y1='8' x2='18' y2='16'></line>
         </svg>
       </button>
 

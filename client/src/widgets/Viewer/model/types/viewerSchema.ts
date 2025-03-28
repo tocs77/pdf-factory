@@ -179,7 +179,17 @@ export interface TextArea extends BaseDrawing {
 // Union type for all drawings
 export type Drawing = DrawingPath | Rectangle | Pin | Line | DrawArea | TextUnderline | TextCrossedOut | TextHighlight | TextArea;
 
-export type DrawingMode = 'freehand' | 'rectangle' | 'pin' | 'text' | 'line' | 'drawArea' | 'zoomArea' | 'textArea' | 'none';
+export type DrawingMode =
+  | 'freehand'
+  | 'rectangle'
+  | 'pin'
+  | 'text'
+  | 'line'
+  | 'drawArea'
+  | 'zoomArea'
+  | 'textArea'
+  | 'ruler'
+  | 'none';
 
 // Valid rotation angles: 0, 90, 180, 270 degrees
 export type RotationAngle = 0 | 90 | 180 | 270;
@@ -194,6 +204,8 @@ export interface ViewerSchema {
   pageRotations: Record<number, RotationAngle>;
   // Whether the text layer is enabled
   textLayerEnabled?: boolean;
+  // Whether the ruler tool is enabled
+  rulerEnabled?: boolean;
 }
 
 export type Action =
@@ -203,6 +215,7 @@ export type Action =
   | { type: 'setDrawingMode'; payload: DrawingMode }
   | { type: 'toggleThumbnails' }
   | { type: 'toggleTextLayer' } // Toggle text layer visibility
+  | { type: 'toggleRuler' } // Toggle ruler tool
   | { type: 'rotatePageClockwise'; payload: number } // Page number to rotate
   | { type: 'rotatePageCounterClockwise'; payload: number } // Page number to rotate
   | { type: 'setPageRotation'; payload: { pageNumber: number; angle: number } };

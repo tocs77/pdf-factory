@@ -19,6 +19,7 @@ export const initialViewerState: ViewerSchema = {
   showThumbnails: false,
   pageRotations: {},
   textLayerEnabled: true,
+  rulerEnabled: false,
 };
 
 // Create the context with default values
@@ -66,6 +67,12 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
       return {
         ...state,
         textLayerEnabled: !state.textLayerEnabled,
+      };
+    case 'toggleRuler':
+      return {
+        ...state,
+        rulerEnabled: !state.rulerEnabled,
+        drawingMode: !state.rulerEnabled ? 'ruler' : 'none',
       };
     case 'rotatePageClockwise':
       return {

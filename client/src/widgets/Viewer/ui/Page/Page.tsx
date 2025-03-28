@@ -12,6 +12,7 @@ import { LineDrawingLayer } from '../LineDrawingLayer/LineDrawingLayer';
 import { DrawAreaLayer } from '../DrawAreaLayer/DrawAreaLayer';
 import { ZoomAreaLayer } from '../ZoomAreaLayer/ZoomAreaLayer';
 import { TextAreaDrawingLayer } from '../TextAreaDrawingLayer/TextAreaDrawingLayer';
+import { RulerDrawingLayer } from '../RulerDrawingLayer/RulerDrawingLayer';
 import { Drawing } from '../../model/types/viewerSchema';
 
 // Page component for rendering a single PDF page
@@ -248,6 +249,7 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
               {drawingMode === 'textArea' && (
                 <TextAreaDrawingLayer pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />
               )}
+              {drawingMode === 'ruler' && <RulerDrawingLayer pageNumber={pageNumber} />}
             </>
           )}
 
