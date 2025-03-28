@@ -249,7 +249,7 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
               {drawingMode === 'textArea' && (
                 <TextAreaDrawingLayer pageNumber={pageNumber} onDrawingCreated={onDrawingCreated} pdfCanvasRef={canvasRef} />
               )}
-              {drawingMode === 'ruler' && <RulerDrawingLayer pageNumber={pageNumber} />}
+              {drawingMode === 'ruler' && <RulerDrawingLayer pageNumber={pageNumber} pdfCanvasRef={canvasRef} />}
             </>
           )}
 

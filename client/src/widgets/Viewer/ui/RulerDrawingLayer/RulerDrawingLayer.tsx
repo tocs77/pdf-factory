@@ -4,11 +4,19 @@ import styles from './RulerDrawingLayer.module.scss';
 
 interface RulerDrawingLayerProps {
   pageNumber: number;
+  pdfCanvasRef?: React.RefObject<HTMLCanvasElement>;
 }
 
-export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber }) => {
+interface PointOfInterest {
+  x: number;
+  y: number;
+  type: 'line-end' | 'corner' | 'intersection';
+  confidence: number;
+}
+
+export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber, pdfCanvasRef }) => {
   const { state } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations, rulerEnabled } = state;
+  const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations } = state;
 
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;
@@ -23,6 +31,8 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
   const [isDraggingEnd, setIsDraggingEnd] = useState(false);
   const [isFirstPointPlaced, setIsFirstPointPlaced] = useState(false);
   const [rulerExists, setRulerExists] = useState(false);
+  const [pointsOfInterest, setPointsOfInterest] = useState<PointOfInterest[]>([]);
+  const [highlightedPointIndex, setHighlightedPointIndex] = useState<number | null>(null);
 
   // Create a function to initialize the canvas with correct dimensions and context
   const initializeCanvas = () => {
@@ -40,8 +50,8 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
       return null;
     }
 
-    // Get context
-    const ctx = canvas.getContext('2d');
+    // Get context with willReadFrequently set to true for better performance
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) {
       console.error('Could not get canvas context');
       return null;
@@ -57,7 +67,7 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
   const drawRuler = () => {
     if (!canvasRef.current || !startPoint || !endPoint) return;
 
-    const ctx = canvasRef.current.getContext('2d');
+    const ctx = canvasRef.current.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
     // Clear canvas
@@ -70,6 +80,30 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     ctx.strokeStyle = drawingColor;
     ctx.lineWidth = drawingLineWidth;
     ctx.stroke();
+
+    // Draw points of interest
+    if (!isDraggingStart && !isDraggingEnd && !isDrawing) {
+      // Only draw points of interest when not actively dragging (for better performance)
+      pointsOfInterest.forEach((point, index) => {
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, index === highlightedPointIndex ? 8 : 5, 0, 2 * Math.PI);
+        ctx.fillStyle = index === highlightedPointIndex ? 'rgba(255, 255, 0, 0.6)' : 'rgba(0, 255, 255, 0.4)';
+        ctx.fill();
+        ctx.strokeStyle = index === highlightedPointIndex ? 'rgba(255, 200, 0, 0.8)' : 'rgba(0, 200, 200, 0.6)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      });
+    } else if (highlightedPointIndex !== null && pointsOfInterest[highlightedPointIndex]) {
+      // During dragging, only show the highlighted point
+      const point = pointsOfInterest[highlightedPointIndex];
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, 8, 0, 2 * Math.PI);
+      ctx.fillStyle = 'rgba(255, 255, 0, 0.6)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 200, 0, 0.8)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
 
     // Calculate distance (in pixels at the current zoom level)
     const pixelDistance = Math.sqrt(Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2));
@@ -91,6 +125,119 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     setAngle(angleInDegrees);
   };
 
+  // Find points of interest in the PDF near a given coordinate
+  const findPointsOfInterest = (x: number, y: number, radius: number = 25) => {
+    if (!pdfCanvasRef?.current) return [];
+
+    const ctx = pdfCanvasRef.current.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return [];
+
+    try {
+      // Round coordinates to reduce unnecessary recomputation
+      const roundedX = Math.round(x);
+      const roundedY = Math.round(y);
+
+      // Get the image data around the cursor
+      const imageData = ctx.getImageData(Math.max(0, roundedX - radius), Math.max(0, roundedY - radius), radius * 2, radius * 2);
+
+      // Process the image data to find edges, corners, line endpoints
+      const points = analyzeImageData(imageData, roundedX - radius, roundedY - radius);
+
+      // Return found points
+      return points;
+    } catch (error) {
+      console.error('Error analyzing PDF canvas:', error);
+      return [];
+    }
+  };
+
+  // Analyze image data to find potential snap points
+  const analyzeImageData = (imageData: ImageData, offsetX: number, offsetY: number): PointOfInterest[] => {
+    const { data, width, height } = imageData;
+    const points: PointOfInterest[] = [];
+    const threshold = 50; // Threshold for edge detection
+    const scanStep = 3; // Scan every Nth pixel to improve performance
+
+    // Simple edge detection for demonstration
+    for (let y = scanStep; y < height - scanStep; y += scanStep) {
+      for (let x = scanStep; x < width - scanStep; x += scanStep) {
+        // Check neighboring pixels
+        const topIdx = ((y - scanStep) * width + x) * 4;
+        const bottomIdx = ((y + scanStep) * width + x) * 4;
+        const leftIdx = (y * width + (x - scanStep)) * 4;
+        const rightIdx = (y * width + (x + scanStep)) * 4;
+
+        const topGray = (data[topIdx] + data[topIdx + 1] + data[topIdx + 2]) / 3;
+        const bottomGray = (data[bottomIdx] + data[bottomIdx + 1] + data[bottomIdx + 2]) / 3;
+        const leftGray = (data[leftIdx] + data[leftIdx + 1] + data[leftIdx + 2]) / 3;
+        const rightGray = (data[rightIdx] + data[rightIdx + 1] + data[rightIdx + 2]) / 3;
+
+        // Check for horizontal or vertical edges
+        const horizontalDiff = Math.abs(leftGray - rightGray);
+        const verticalDiff = Math.abs(topGray - bottomGray);
+
+        if (horizontalDiff > threshold && verticalDiff > threshold) {
+          // This is potentially a corner or intersection
+          points.push({
+            x: offsetX + x,
+            y: offsetY + y,
+            type: 'corner',
+            confidence: (horizontalDiff + verticalDiff) / 2,
+          });
+        } else if (horizontalDiff > threshold || verticalDiff > threshold) {
+          // This is potentially a line end
+          points.push({
+            x: offsetX + x,
+            y: offsetY + y,
+            type: 'line-end',
+            confidence: Math.max(horizontalDiff, verticalDiff),
+          });
+        }
+      }
+    }
+
+    // Filter out redundant points (points that are very close to each other)
+    const filteredPoints: PointOfInterest[] = [];
+    const minDistance = 10; // Minimum distance between points
+
+    for (const point of points) {
+      if (!filteredPoints.some((p) => Math.sqrt(Math.pow(p.x - point.x, 2) + Math.pow(p.y - point.y, 2)) < minDistance)) {
+        filteredPoints.push(point);
+      }
+    }
+
+    // Sort by confidence (highest first) and limit to 5 most likely points
+    return filteredPoints.sort((a, b) => b.confidence - a.confidence).slice(0, 5);
+  };
+
+  // Update points of interest when cursor position changes
+  useEffect(() => {
+    let timeout: NodeJS.Timeout;
+
+    const updatePointsWithDelay = (x: number, y: number) => {
+      // Clear any existing timeouts
+      clearTimeout(timeout);
+
+      // Set a timeout to update the points of interest after dragging has slowed/stopped
+      timeout = setTimeout(() => {
+        const points = findPointsOfInterest(x, y);
+        setPointsOfInterest(points);
+      }, 200); // Increase delay to improve performance
+    };
+
+    if (isDraggingStart && startPoint) {
+      updatePointsWithDelay(startPoint.x, startPoint.y);
+    } else if (isDraggingEnd && endPoint) {
+      updatePointsWithDelay(endPoint.x, endPoint.y);
+    } else if (isDrawing && endPoint) {
+      updatePointsWithDelay(endPoint.x, endPoint.y);
+    } else {
+      setPointsOfInterest([]);
+    }
+
+    return () => clearTimeout(timeout);
+  }, [isDraggingStart, isDraggingEnd, isDrawing, startPoint, endPoint]);
+
   // Set up drawing canvas whenever scale, rotation, or page changes
   useEffect(() => {
     const ctx = initializeCanvas();
@@ -99,20 +246,30 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     if (startPoint && endPoint) {
       drawRuler();
     }
-  }, [scale, pageNumber, rotation, startPoint, endPoint, drawingColor, drawingLineWidth]);
+  }, [
+    scale,
+    pageNumber,
+    rotation,
+    startPoint,
+    endPoint,
+    drawingColor,
+    drawingLineWidth,
+    pointsOfInterest,
+    highlightedPointIndex,
+  ]);
 
   // Hide the canvas when ruler tool is not enabled
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    if (drawingMode === 'ruler' && rulerEnabled) {
+    if (drawingMode === 'ruler') {
       canvasRef.current.style.display = 'block';
     } else {
       canvasRef.current.style.display = 'none';
       // Reset ruler state when disabling
       resetRuler();
     }
-  }, [drawingMode, rulerEnabled]);
+  }, [drawingMode]);
 
   // Reset ruler state
   const resetRuler = () => {
@@ -125,6 +282,8 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     setIsDraggingEnd(false);
     setIsFirstPointPlaced(false);
     setRulerExists(false);
+    setPointsOfInterest([]);
+    setHighlightedPointIndex(null);
   };
 
   // Get raw coordinates from mouse event
@@ -140,7 +299,10 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
 
   // Handle mouse down event on canvas
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (drawingMode !== 'ruler' || !rulerEnabled) return;
+    // Prevent default browser drag behavior
+    e.preventDefault();
+
+    if (drawingMode !== 'ruler') return;
 
     const { x, y } = getRawCoordinates(e.clientX, e.clientY);
 
@@ -159,21 +321,57 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     setIsDrawing(true);
     setStartPoint({ x, y });
     setEndPoint({ x, y });
+
+    // Find points of interest around the start point
+    const points = findPointsOfInterest(x, y);
+    setPointsOfInterest(points);
   };
 
   // Handle mouse move event on canvas
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (drawingMode !== 'ruler' || !rulerEnabled) return;
+    // Prevent default browser behavior
+    e.preventDefault();
+
+    if (drawingMode !== 'ruler') return;
 
     const { x, y } = getRawCoordinates(e.clientX, e.clientY);
+    console.log('isDraggingStart', isDraggingStart);
 
     if (isDraggingStart && endPoint) {
       setStartPoint({ x, y });
+
+      // Check if cursor is near any point of interest
+      checkNearbyPointsOfInterest(x, y);
     } else if (isDraggingEnd && startPoint) {
+      console.log('handleMouseMove', e);
       setEndPoint({ x, y });
+
+      // Check if cursor is near any point of interest
+      checkNearbyPointsOfInterest(x, y);
     } else if (isDrawing && startPoint) {
       setEndPoint({ x, y });
+
+      // Check if cursor is near any point of interest
+      checkNearbyPointsOfInterest(x, y);
     }
+  };
+
+  // Check if cursor is near any point of interest and highlight it
+  const checkNearbyPointsOfInterest = (x: number, y: number) => {
+    const snapDistance = 15; // Distance threshold for highlighting a point
+
+    let closestPointIndex = null;
+    let minDistance = snapDistance;
+
+    pointsOfInterest.forEach((point, index) => {
+      const distance = Math.sqrt(Math.pow(point.x - x, 2) + Math.pow(point.y - y, 2));
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestPointIndex = index;
+      }
+    });
+
+    setHighlightedPointIndex(closestPointIndex);
   };
 
   // Handle mouse up event
@@ -191,9 +389,31 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
       }
     }
 
+    // Apply snapping if a point is highlighted
+    if (highlightedPointIndex !== null) {
+      const point = pointsOfInterest[highlightedPointIndex];
+
+      if (isDraggingStart) {
+        setStartPoint({ x: point.x, y: point.y });
+      } else if (isDraggingEnd || isDrawing) {
+        setEndPoint({ x: point.x, y: point.y });
+      }
+
+      setHighlightedPointIndex(null);
+    }
+
     setIsDrawing(false);
     setIsDraggingStart(false);
     setIsDraggingEnd(false);
+    setPointsOfInterest([]);
+  };
+
+  // Handle mouse leave - only call handleMouseUp if we're not dragging markers
+  const handleMouseLeave = () => {
+    // Only trigger mouseUp if we're doing initial drawing, not when dragging markers
+    if (isDrawing && !isDraggingStart && !isDraggingEnd) {
+      handleMouseUp();
+    }
   };
 
   // Handle double click to reset ruler
@@ -203,34 +423,95 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
 
   // Start drag handlers for the markers
   const handleStartMarkerMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     setIsDraggingStart(true);
+
+    // Delay point detection for smoother initial drag
+    setTimeout(() => {
+      if (startPoint) {
+        const points = findPointsOfInterest(startPoint.x, startPoint.y);
+        setPointsOfInterest(points);
+      }
+    }, 100);
   };
 
   const handleEndMarkerMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     setIsDraggingEnd(true);
+
+    // Delay point detection for smoother initial drag
+    setTimeout(() => {
+      if (endPoint) {
+        const points = findPointsOfInterest(endPoint.x, endPoint.y);
+        setPointsOfInterest(points);
+      }
+    }, 100);
   };
 
   // Handle document-level mouse events for marker dragging
   useEffect(() => {
     if (!isDraggingStart && !isDraggingEnd) return;
 
+    // Use requestAnimationFrame for smoother dragging
+    let animationFrameId: number;
+    let lastCoords = { x: 0, y: 0 };
+
     const handleDocumentMouseMove = (e: MouseEvent) => {
       if (!canvasRef.current) return;
 
-      const coords = getRawCoordinates(e.clientX, e.clientY);
+      lastCoords = getRawCoordinates(e.clientX, e.clientY);
+
+      // Use requestAnimationFrame to optimize updates
+      if (!animationFrameId) {
+        animationFrameId = requestAnimationFrame(updatePosition);
+      }
+    };
+
+    const updatePosition = () => {
+      animationFrameId = 0;
 
       if (isDraggingStart) {
-        setStartPoint(coords);
+        setStartPoint(lastCoords);
+        // Only check for nearby points if we have points of interest
+        if (pointsOfInterest.length > 0) {
+          checkNearbyPointsOfInterest(lastCoords.x, lastCoords.y);
+        }
       } else if (isDraggingEnd) {
-        setEndPoint(coords);
+        setEndPoint(lastCoords);
+        // Only check for nearby points if we have points of interest
+        if (pointsOfInterest.length > 0) {
+          checkNearbyPointsOfInterest(lastCoords.x, lastCoords.y);
+        }
       }
     };
 
     const handleDocumentMouseUp = () => {
+      // Cancel any pending animation frame
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+
+      // Apply snapping if a point is highlighted
+      if (highlightedPointIndex !== null) {
+        const point = pointsOfInterest[highlightedPointIndex];
+
+        if (isDraggingStart) {
+          setStartPoint({ x: point.x, y: point.y });
+        } else if (isDraggingEnd) {
+          setEndPoint({ x: point.x, y: point.y });
+        }
+
+        setHighlightedPointIndex(null);
+      }
+
       setIsDraggingStart(false);
       setIsDraggingEnd(false);
+      // Don't clear points of interest immediately - keep them visible briefly
+      setTimeout(() => {
+        setPointsOfInterest([]);
+      }, 300);
     };
 
     document.addEventListener('mousemove', handleDocumentMouseMove);
@@ -239,8 +520,11 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     return () => {
       document.removeEventListener('mousemove', handleDocumentMouseMove);
       document.removeEventListener('mouseup', handleDocumentMouseUp);
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
     };
-  }, [isDraggingStart, isDraggingEnd]);
+  }, [isDraggingStart, isDraggingEnd, pointsOfInterest, highlightedPointIndex]);
 
   // Create positions for the markers and label
   const startMarkerStyle = startPoint
@@ -295,11 +579,16 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
         onDoubleClick={handleDoubleClick}
+        draggable='false'
       />
-      {startPoint && <div className={styles.rulerMarker} style={startMarkerStyle} onMouseDown={handleStartMarkerMouseDown} />}
-      {endPoint && <div className={styles.rulerMarker} style={endMarkerStyle} onMouseDown={handleEndMarkerMouseDown} />}
+      {startPoint && (
+        <div className={styles.rulerMarker} style={startMarkerStyle} onMouseDown={handleStartMarkerMouseDown} draggable='false' />
+      )}
+      {endPoint && (
+        <div className={styles.rulerMarker} style={endMarkerStyle} onMouseDown={handleEndMarkerMouseDown} draggable='false' />
+      )}
       {distance !== null && angle !== null && startPoint && endPoint && (
         <div className={styles.rulerDistance} style={distanceLabelStyle}>
           {`${Math.round(distance)} px`}
