@@ -23,7 +23,7 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber, o
   const rotation = pageRotations[pageNumber] || 0;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  
+
   // States for tracking the multi-stage drawing process
   const [drawingStage, setDrawingStage] = useState<'initial' | 'positioning' | 'completed'>('initial');
   const [pinPosition, setPinPosition] = useState<{ x: number; y: number } | null>(null);
@@ -102,7 +102,7 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber, o
         bendPoint: currentMousePosition,
         text: '',
         color: drawingColor,
-        pageNumber
+        pageNumber,
       };
 
       // Draw the pin with the current mouse position as the bend point
@@ -147,28 +147,16 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber, o
     if (drawingStage === 'initial') {
       setPinPosition(coords);
       setDrawingStage('positioning');
-    } 
+    }
     // If this is the second click, save the bend position and create pin
     else if (drawingStage === 'positioning' && pinPosition) {
       // Set the bend position to current mouse position
       setBendPosition(coords);
 
       // Normalize the pin and bend points to scale 1 and 0 degrees rotation
-      const normalizedPinPoint = normalizeCoordinatesToZeroRotation(
-        pinPosition, 
-        canvas.width, 
-        canvas.height, 
-        scale, 
-        rotation
-      );
+      const normalizedPinPoint = normalizeCoordinatesToZeroRotation(pinPosition, canvas.width, canvas.height, scale, rotation);
 
-      const normalizedBendPoint = normalizeCoordinatesToZeroRotation(
-        coords, 
-        canvas.width, 
-        canvas.height, 
-        scale, 
-        rotation
-      );
+      const normalizedBendPoint = normalizeCoordinatesToZeroRotation(coords, canvas.width, canvas.height, scale, rotation);
 
       // Prompt for pin text
       const text = prompt('Enter pin text:');
@@ -187,15 +175,11 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber, o
         left: Math.max(0, Math.min(pinPosition.x, coords.x) - padding),
         top: Math.max(0, Math.min(pinPosition.y, coords.y) - padding),
         width: Math.min(canvas.width, Math.abs(coords.x - pinPosition.x) + padding * 2),
-        height: Math.min(canvas.height, Math.abs(coords.y - pinPosition.y) + padding * 2)
+        height: Math.min(canvas.height, Math.abs(coords.y - pinPosition.y) + padding * 2),
       };
 
       // Capture the image
-      const image = captureDrawingImage(
-        pdfCanvasRef?.current || null,
-        canvas,
-        boundingBox
-      );
+      const image = captureDrawingImage(pdfCanvasRef?.current || null, canvas, boundingBox);
 
       // Create a new pin object with normalized coordinates
       const newPin: Drawing = {
@@ -205,7 +189,7 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber, o
         text,
         color: drawingColor,
         pageNumber,
-        image
+        image,
       };
 
       // Call the callback with the new drawing
@@ -216,7 +200,7 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber, o
       setBendPosition(null);
       setCurrentMousePosition(null);
       setDrawingStage('initial');
-      
+
       // Clear the canvas as the pin will be rendered by CompleteDrawings
       const ctx = canvas.getContext('2d');
       if (ctx) {
@@ -235,16 +219,15 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber, o
   };
 
   return (
-    <canvas 
-      ref={canvasRef} 
-      className={styles.pinCanvas} 
+    <canvas
+      ref={canvasRef}
+      className={styles.pinCanvas}
       onClick={handleClick}
       onMouseMove={handleMouseMove}
       onKeyDown={handleKeyDown}
       tabIndex={0} // Make canvas focusable
-      data-testid='pin-drawing-canvas' 
+      data-testid='pin-drawing-canvas'
     />
   );
 };
-
 export default PinDrawingComponent;

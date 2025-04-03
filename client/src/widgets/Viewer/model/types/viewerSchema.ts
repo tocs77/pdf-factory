@@ -183,8 +183,27 @@ export interface TextArea extends BaseDrawing {
   style: DrawingStyle;
 }
 
+interface DrawingMisc extends BaseDrawing {
+  type: 'misc';
+  pathes: DrawingPath[];
+  rectangles: Rectangle[];
+  pins: Pin[];
+  lines: Line[];
+  textAreas: TextArea[];
+}
+
 // Union type for all drawings
-export type Drawing = DrawingPath | Rectangle | Pin | Line | DrawArea | TextUnderline | TextCrossedOut | TextHighlight | TextArea;
+export type Drawing =
+  | DrawingPath
+  | Rectangle
+  | Pin
+  | Line
+  | DrawArea
+  | TextUnderline
+  | TextCrossedOut
+  | TextHighlight
+  | TextArea
+  | DrawingMisc;
 
 export type DrawingMode =
   | 'freehand'

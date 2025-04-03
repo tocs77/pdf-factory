@@ -237,5 +237,4 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber, onDrawingCreated, pdfCa
     />
   );
 };
-
 export default DrawRect;
