@@ -1,6 +1,7 @@
 import { TextHighlight, TextUnderline, TextCrossedOut } from '../model/types/viewerSchema';
 import { renderTextHighlight, renderTextUnderline, renderTextCrossedOut } from './drawingRenderers';
 import { RefObject } from 'react';
+export { renderTextLayer } from './renderTextLayer';
 
 /**
  * Function to determine if a color is light (for text contrast)
