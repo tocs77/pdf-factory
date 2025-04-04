@@ -6,7 +6,8 @@
 }
 
 .textToolButton {
-  background-color: #0078d4; /* Default color, will be overridden by inline style */
+  background-color: #0078d4;
+  /* Default color, will be overridden by inline style */
   color: white;
   border: none;
   border-radius: 4px;
@@ -18,22 +19,26 @@
   justify-content: flex-start;
   transition: all 0.2s ease;
   width: 100%;
-  
+
   &:hover {
     filter: brightness(110%);
   }
-  
+
   &:active {
     transform: translateY(1px);
     filter: brightness(90%);
   }
-  
+
   svg {
     margin-right: 5px;
     min-width: 16px;
   }
-  
+
   span {
     white-space: nowrap;
+    display: inline-block;
+    color: inherit;
+    opacity: 1;
+    visibility: visible;
   }
-} 
+}

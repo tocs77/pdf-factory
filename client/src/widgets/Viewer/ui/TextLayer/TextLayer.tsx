@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useContext } from 'react';
 import type { PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import classes from './TextLayer.module.scss';
 import TextAreaTools from '../TextAreaTools/TextAreaTools';
-import { Drawing } from '../../model/types/viewerSchema';
+import { Drawing, TextHighlight, TextUnderline, TextCrossedOut } from '../../model/types/viewerSchema';
+import { ViewerContext } from '../../model/context/viewerContext';
 import { renderTextLayer } from '../../utils/renderTextLayer';
+import { getLineSegments, getHighlightRects, captureTextAnnotationImage } from '../../utils/textToolUtils';
 
 interface TextLayerProps {
   page: PDFPageProxy;
@@ -27,181 +29,237 @@ export const TextLayer = ({
   pdfCanvasRef,
 }: TextLayerProps) => {
   const textLayerRef = useRef<HTMLDivElement>(null);
-  const [isSelecting, setIsSelecting] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
-  const [showCopyButton, setShowCopyButton] = useState(false);
 
-  // Remove dragging-related state
-  const [toolbarPosition, setToolbarPosition] = useState({ top: 60, left: 10 });
+  // Get drawing color and line width from the ViewerContext
+  const { state } = useContext(ViewerContext);
+  const { drawingColor, drawingLineWidth } = state;
+
+  // Helper function to hide tools after applying
+  const hideToolsAfterApplying = () => {
+    setHasSelection(false);
+  };
+
+  // Create text underline drawing
+  const createTextUnderline = () => {
+    // Get line segments for the underline
+    const selection = window.getSelection();
+    const lines = getLineSegments(selection, pageNumber, scale, textLayerRef.current || undefined);
+    if (lines.length === 0) return;
+
+    // Also get highlight rectangles to determine the correct text bounds
+    const textRects = getHighlightRects(selection, pageNumber, scale, textLayerRef.current || undefined);
+    if (textRects.length === 0) return;
+
+    // Create drawing object
+    const underline: TextUnderline = {
+      type: 'textUnderline',
+      pageNumber,
+      lines,
+      style: {
+        strokeColor: drawingColor,
+        strokeWidth: drawingLineWidth / scale,
+      },
+      boundingBox: {
+        left: Math.min(...lines.flatMap((line) => [line.start.x, line.end.x])),
+        top: Math.min(...lines.flatMap((line) => [line.start.y, line.end.y])),
+        right: Math.max(...lines.flatMap((line) => [line.start.x, line.end.x])),
+        bottom: Math.max(...lines.flatMap((line) => [line.start.y, line.end.y])),
+      },
+    };
+
+    // Capture image using both the underline data for rendering
+    // and text rectangles for determining proper capture area
+    const image = pdfCanvasRef
+      ? captureTextAnnotationImage('underline', underline, pageNumber, scale, pdfCanvasRef, textRects)
+      : null;
+    if (image) {
+      underline.image = image;
+    }
+
+    // Create the drawing
+    onDrawingCreated(underline);
+
+    // Hide tools after applying
+    hideToolsAfterApplying();
+  };
+
+  // Create text crossed out drawing (strikethrough)
+  const createTextCrossedOut = () => {
+    // Get line segments for the cross-out
+    const selection = window.getSelection();
+    const lineSegments = getLineSegments(selection, pageNumber, scale, textLayerRef.current || undefined);
+    if (lineSegments.length === 0) return;
+
+    // Also get highlight rectangles to determine the correct text bounds
+    const textRects = getHighlightRects(selection, pageNumber, scale, textLayerRef.current || undefined);
+    if (textRects.length === 0) return;
+
+    // Create a map of lines by y-position (rounded to nearest integer) for grouping
+    const textRectsByY = new Map();
+
+    // Group text rectangles by their y-position (approximately)
+    textRects.forEach((rect) => {
+      // Use the middle of the rectangle for y position grouping
+      const yKey = Math.floor(rect.y + rect.height / 2);
+      if (!textRectsByY.has(yKey)) {
+        textRectsByY.set(yKey, []);
+      }
+      textRectsByY.get(yKey).push(rect);
+    });
+
+    // Process the line segments to create crossed-out lines in the center of text
+    const crossedOutLines = lineSegments.map((line) => {
+      // Try to find matching text rectangles for this line based on y position
+      const lineY = Math.floor(line.start.y); // Bottom of the text line
+
+      // Find the nearest group of text rectangles
+      let nearestY = lineY;
+      let minDistance = Infinity;
+
+      for (const [y] of textRectsByY.entries()) {
+        const distance = Math.abs(y - lineY);
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestY = y;
+        }
+      }
+
+      // Get the text rectangles for this line
+      const rectsForLine = textRectsByY.get(nearestY) || [];
+
+      if (rectsForLine.length > 0) {
+        // Calculate average height of text for this line
+        const avgHeight =
+          rectsForLine.reduce((sum: number, rect: { height: number }) => sum + rect.height, 0) / rectsForLine.length;
+
+        // Find the top-most position for this line
+        const topY = Math.min(...rectsForLine.map((rect: { y: number }) => rect.y));
+
+        // Calculate middle of text (approximately 50% from top for most fonts)
+        const middleY = topY + avgHeight * 0.5;
+
+        // Create a new line with adjusted y position for center of text
+        return {
+          start: { x: line.start.x, y: middleY },
+          end: { x: line.end.x, y: middleY },
+        };
+      }
+
+      // If no matching text rectangles found, make an educated guess
+      // Move the line up by approximately 50% of the typical line height
+      const estimatedLineHeight = 14 / scale; // Typical line height
+      const estimatedMiddleY = line.start.y - estimatedLineHeight * 0.5;
+
+      return {
+        start: { x: line.start.x, y: estimatedMiddleY },
+        end: { x: line.end.x, y: estimatedMiddleY },
+      };
+    });
+
+    // Create drawing object
+    const crossedOut: TextCrossedOut = {
+      type: 'textCrossedOut',
+      pageNumber,
+      lines: crossedOutLines,
+      style: {
+        strokeColor: drawingColor,
+        strokeWidth: drawingLineWidth / scale,
+      },
+      boundingBox: {
+        left: Math.min(...crossedOutLines.flatMap((line) => [line.start.x, line.end.x])),
+        top: Math.min(...crossedOutLines.flatMap((line) => [line.start.y, line.end.y])),
+        right: Math.max(...crossedOutLines.flatMap((line) => [line.start.x, line.end.x])),
+        bottom: Math.max(...crossedOutLines.flatMap((line) => [line.start.y, line.end.y])),
+      },
+    };
+
+    // Capture image using both the cross-out data for rendering
+    // and text rectangles for determining proper capture area
+    const image = pdfCanvasRef
+      ? captureTextAnnotationImage('crossedout', crossedOut, pageNumber, scale, pdfCanvasRef, textRects)
+      : null;
+    if (image) {
+      crossedOut.image = image;
+    }
+
+    // Create the drawing
+    onDrawingCreated(crossedOut);
+
+    // Hide tools after applying
+    hideToolsAfterApplying();
+  };
+
+  // Create text highlight drawing
+  const createTextHighlight = () => {
+    // Get rectangles for highlighting
+    const selection = window.getSelection();
+    const highlightRects = getHighlightRects(selection, pageNumber, scale, textLayerRef.current || undefined);
+
+    if (highlightRects.length === 0) return;
+
+    // Create drawing object
+    const highlight: TextHighlight = {
+      type: 'textHighlight',
+      pageNumber,
+      rects: highlightRects,
+      style: {
+        strokeColor: drawingColor,
+        strokeWidth: 1 / scale, // Thin border
+      },
+      opacity: 0.3, // 30% opacity for highlighting
+      boundingBox: {
+        left: Math.min(...highlightRects.flatMap((rect) => [rect.x, rect.x + rect.width])),
+        top: Math.min(...highlightRects.flatMap((rect) => [rect.y, rect.y + rect.height])),
+        right: Math.max(...highlightRects.flatMap((rect) => [rect.x, rect.x + rect.width])),
+        bottom: Math.max(...highlightRects.flatMap((rect) => [rect.y, rect.y + rect.height])),
+      },
+    };
+
+    // Capture image
+    const image = pdfCanvasRef ? captureTextAnnotationImage('highlight', highlight, pageNumber, scale, pdfCanvasRef) : null;
+    if (image) {
+      highlight.image = image;
+    }
+
+    // Create the drawing
+    onDrawingCreated(highlight);
+
+    // Hide tools after applying
+    hideToolsAfterApplying();
+  };
 
   // Handle text selection
   useEffect(() => {
-    if (!textLayerRef.current) {
-      return;
-    }
-
-    const textLayer = textLayerRef.current;
-
-    // Add text layer styles class
-    textLayer.classList.add(classes.textLayer);
-
-    const handleSelectionStart = (e: MouseEvent) => {
-      if (textLayer.contains(e.target as Node)) {
-        setIsSelecting(true);
-        textLayer.classList.add(classes.selecting);
-      }
-    };
-
-    const handleSelectionEnd = () => {
-      setIsSelecting(false);
-
-      // Remove selecting class
-      textLayer.classList.remove(classes.selecting);
-
-      const selection = window.getSelection();
-      if (!selection) return;
-
-      // Check if selection is within our text layer or if we were in selection mode
-      let isInTextLayer = false;
-      if (selection.anchorNode && textLayer.contains(selection.anchorNode)) {
-        isInTextLayer = true;
-      }
-
-      if (isInTextLayer || isSelecting) {
-        setHasSelection(true);
-
-        // Add hasSelection class to keep text visible
-        textLayer.classList.add(classes.hasSelection);
-      } else {
-        setHasSelection(false);
-
-        // Remove hasSelection class when no text is selected
-        textLayer.classList.remove(classes.hasSelection);
-      }
-    };
-
-    // Track selection changes
     const handleSelectionChange = () => {
       const selection = window.getSelection();
-      if (selection?.toString().trim()) {
-        // Check if selection intersects with our text layer
-        let intersectsTextLayer = false;
+      if (selection && textLayerRef.current) {
+        const hasText = selection.toString().trim() !== '';
 
-        if (textLayerRef.current) {
-          // Check all ranges in the selection
-          for (let i = 0; i < selection.rangeCount; i++) {
-            const range = selection.getRangeAt(i);
-            const textLayerRect = textLayerRef.current.getBoundingClientRect();
-            const rangeRect = range.getBoundingClientRect();
-
-            // Check if the range intersects with the text layer
-            if (
-              !(
-                rangeRect.right < textLayerRect.left ||
-                rangeRect.left > textLayerRect.right ||
-                rangeRect.bottom < textLayerRect.top ||
-                rangeRect.top > textLayerRect.bottom
-              )
-            ) {
-              intersectsTextLayer = true;
-              break;
-            }
-          }
-        }
-
-        if (intersectsTextLayer || isSelecting) {
-          // Keep the text layer visible during selection
-          if (textLayerRef.current) {
-            textLayerRef.current.classList.add(classes.selecting);
-          }
-        }
-      } else if (!isSelecting && textLayerRef.current) {
-        // If not actively selecting and no text is selected, remove the selecting class
-        if (!hasSelection) {
-          textLayerRef.current.classList.remove(classes.selecting);
-        }
+        // Set flags based on selection state
+        setHasSelection(hasText);
       }
     };
 
-    // Clear selection when clicking outside
-    const handleClickOutside = (e: MouseEvent) => {
-      // Don't hide if clicking on any part of the toolbar or buttons
-      const isClickingToolbar = !!(e.target as HTMLElement).closest(`.${classes.textSelectionToolbar}`);
-      const isClickingTextButton = !!(e.target as HTMLElement).closest(`.${classes.copyButton}`);
-
-      if (
-        hasSelection &&
-        textLayerRef.current &&
-        !textLayerRef.current.contains(e.target as Node) &&
-        !isClickingToolbar &&
-        !isClickingTextButton
-      ) {
-        // Only clear if we're not clicking the copy button or toolbar
-        const selection = window.getSelection();
-        if (selection) {
-          // Check if we should clear the selection
-          const shouldClear =
-            !isSelecting && (!selection.toString().trim() || !textLayerRef.current.contains(selection.anchorNode as Node));
-
-          if (shouldClear) {
-            setHasSelection(false);
-            setShowCopyButton(false);
-
-            // Remove hasSelection class
-            if (textLayerRef.current) {
-              textLayerRef.current.classList.remove(classes.hasSelection);
-              textLayerRef.current.classList.remove(classes.selecting);
-            }
-          }
-        }
-      }
-    };
-
-    document.addEventListener('mousedown', handleSelectionStart);
-    document.addEventListener('mouseup', handleSelectionEnd);
+    // Add event listener for text selection
     document.addEventListener('selectionchange', handleSelectionChange);
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keyup', handleSelectionEnd);
 
+    // Clean up event listener on unmount
     return () => {
-      document.removeEventListener('mousedown', handleSelectionStart);
-      document.removeEventListener('mouseup', handleSelectionEnd);
       document.removeEventListener('selectionchange', handleSelectionChange);
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keyup', handleSelectionEnd);
     };
-  }, [isSelecting, hasSelection]);
+  }, []);
 
-  // Hide copy button when clicking elsewhere
+  // Initial rendering of text layer
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      // Don't hide if clicking on any part of the toolbar or buttons
-      const isClickingToolbar = !!(e.target as HTMLElement).closest(`.${classes.textSelectionToolbar}`);
-      const isClickingTextButton = !!(e.target as HTMLElement).closest(`.${classes.copyButton}`);
-
-      if (
-        showCopyButton &&
-        !isClickingToolbar &&
-        !isClickingTextButton &&
-        textLayerRef.current &&
-        !textLayerRef.current.contains(e.target as Node)
-      ) {
-        // Use setTimeout to check if the selection is still valid after the click
-        setTimeout(() => {
-          const selection = window.getSelection();
-          if (!selection || selection.toString().trim() === '') {
-            setShowCopyButton(false);
-            setHasSelection(false);
-          }
-        }, 10);
+    const handleRenderTextLayer = async () => {
+      if (textLayerRef.current && viewport && renderTask && page) {
+        await renderTextLayer(textLayerRef.current, page, viewport, renderTask);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showCopyButton]);
+    handleRenderTextLayer();
+  }, [page, viewport, renderTask]);
 
   // Ensure text layer is properly positioned when rotation changes
   useEffect(() => {
@@ -231,99 +289,35 @@ export const TextLayer = ({
     // No rotation transforms needed as PDF.js viewport already handles rotation
   }, [rotation, viewport]);
 
-  // Render text layer content
-  useEffect(() => {
-    const handleRenderTextLayer = async () => {
-      if (!textLayerRef.current || !viewport || !renderTask || !page) {
-        return;
-      }
-
-      try {
-        await renderTextLayer(textLayerRef.current, page, viewport, renderTask);
-      } catch (error) {
-        console.error('Error rendering text layer:', error);
-      }
-    };
-
-    handleRenderTextLayer();
-  }, [page, viewport, scale, rotation, renderTask]);
-
-  // Set fixed position for toolbar that stays in view
-  useEffect(() => {
-    if (!hasSelection) return;
-
-    // Set position in the viewport that's always visible
-    const viewportWidth = window.innerWidth;
-
-    setToolbarPosition({
-      top: 120,
-      left: Math.min(viewportWidth - 200, Math.max(10, 10)), // Ensure toolbar is visible in viewport
-    });
-
-    // Update position on resize
-    const handleResize = () => {
-      const newViewportWidth = window.innerWidth;
-      setToolbarPosition({
-        top: 120,
-        left: Math.min(newViewportWidth - 200, Math.max(10, 10)),
-      });
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [hasSelection]);
-
   return (
-    <>
-      <div
-        ref={textLayerRef}
-        className={classes.textLayer}
-        onMouseUp={() => {
-          // Force selection change check after mouse up
-          const selection = window.getSelection();
-          if (selection && selection.toString().trim()) {
-            setShowCopyButton(true);
-            setHasSelection(true);
-
-            // Force a selectionchange event to trigger the TextAreaTools
-            const event = new Event('selectionchange', {
-              bubbles: true,
-              cancelable: true,
-            });
-            document.dispatchEvent(event);
-          }
-        }}
-      />
-
-      {/* Text selection toolbar with simplified fixed position */}
+    <div className={classes.textLayer} ref={textLayerRef} data-page-number={pageNumber}>
+      {/* Add text tools menu when text is selected */}
       {hasSelection && (
         <div
           className={classes.textSelectionToolbar}
           style={{
-            top: `${toolbarPosition.top}px`,
-            left: `${toolbarPosition.left}px`,
+            position: 'fixed',
+            top: '120px',
+            right: '20px',
+            zIndex: 1000,
+            width: '160px', // Slightly narrower to better fit content
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+            borderRadius: '4px',
+            backgroundColor: 'white',
+            padding: '10px',
           }}>
           <TextAreaTools
             pageNumber={pageNumber}
-            onDrawingCreated={(drawing) => {
-              onDrawingCreated(drawing);
-              // Make sure to clear selection after creating drawing
-              setHasSelection(false);
-              setShowCopyButton(false);
-            }}
-            scale={scale}
-            pdfCanvasRef={pdfCanvasRef}
+            onUnderlineClick={createTextUnderline}
+            onCrossOutClick={createTextCrossedOut}
+            onHighlightClick={createTextHighlight}
             onHideTools={() => {
-              // Hide copy button and reset selection state
-              setShowCopyButton(false);
               setHasSelection(false);
             }}
             textLayerElement={textLayerRef.current}
           />
         </div>
       )}
-    </>
+    </div>
   );
 };
