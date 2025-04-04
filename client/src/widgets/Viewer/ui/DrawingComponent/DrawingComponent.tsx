@@ -293,6 +293,8 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({
 
   // Drawing handlers
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0) return; // Only react to left mouse button
+
     // Initialize or reinitialize the canvas
     const ctx = initializeCanvas();
     if (!ctx) return;

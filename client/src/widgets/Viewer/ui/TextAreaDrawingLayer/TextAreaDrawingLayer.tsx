@@ -131,6 +131,8 @@ export const TextAreaDrawingLayer: React.FC<TextAreaDrawingLayerProps> = ({
 
   // Handle starting a new drawing
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0) return; // Only react to left mouse button
+
     const point = getCanvasCoordinates(e.clientX, e.clientY);
     setIsDrawing(true);
     setStartPoint(point);

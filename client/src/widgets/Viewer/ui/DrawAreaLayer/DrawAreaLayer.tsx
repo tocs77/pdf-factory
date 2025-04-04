@@ -288,6 +288,12 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
       },
       pageNumber,
       image,
+      boundingBox: {
+        left: normalizedStartPoint.x,
+        top: normalizedStartPoint.y,
+        right: normalizedEndPoint.x,
+        bottom: normalizedEndPoint.y,
+      },
     };
 
     // Call the callback with the new drawing

@@ -539,6 +539,12 @@ export const TextAreaTools: React.FC<TextAreaToolsProps> = ({
         strokeColor: drawingColor,
         strokeWidth: drawingLineWidth / scale,
       },
+      boundingBox: {
+        left: Math.min(...lines.flatMap((line) => [line.start.x, line.end.x])),
+        top: Math.min(...lines.flatMap((line) => [line.start.y, line.end.y])),
+        right: Math.max(...lines.flatMap((line) => [line.start.x, line.end.x])),
+        bottom: Math.max(...lines.flatMap((line) => [line.start.y, line.end.y])),
+      },
     };
 
     // Capture image using both the underline data for rendering
@@ -580,6 +586,12 @@ export const TextAreaTools: React.FC<TextAreaToolsProps> = ({
         strokeColor: drawingColor,
         strokeWidth: drawingLineWidth / scale,
       },
+      boundingBox: {
+        left: Math.min(...crossedOutLines.flatMap((line) => [line.start.x, line.end.x])),
+        top: Math.min(...crossedOutLines.flatMap((line) => [line.start.y, line.end.y])),
+        right: Math.max(...crossedOutLines.flatMap((line) => [line.start.x, line.end.x])),
+        bottom: Math.max(...crossedOutLines.flatMap((line) => [line.start.y, line.end.y])),
+      },
     };
 
     // Capture image using both the cross-out data for rendering
@@ -613,6 +625,12 @@ export const TextAreaTools: React.FC<TextAreaToolsProps> = ({
         strokeWidth: 1 / scale, // Thin border
       },
       opacity: 0.3, // 30% opacity for highlighting
+      boundingBox: {
+        left: Math.min(...highlightRects.flatMap((rect) => [rect.x, rect.x + rect.width])),
+        top: Math.min(...highlightRects.flatMap((rect) => [rect.y, rect.y + rect.height])),
+        right: Math.max(...highlightRects.flatMap((rect) => [rect.x, rect.x + rect.width])),
+        bottom: Math.max(...highlightRects.flatMap((rect) => [rect.y, rect.y + rect.height])),
+      },
     };
 
     // Capture image

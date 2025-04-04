@@ -90,6 +90,8 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber, onDrawingCreated, pdfCa
 
   // Drawing handlers
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0) return; // Only react to left mouse button
+
     const canvas = canvasRef.current;
     if (!canvas) {
       return;

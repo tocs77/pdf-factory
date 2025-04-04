@@ -374,6 +374,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({
 
   // Drawing handlers
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0) return; // Only react to left mouse button
     if (drawingMode !== 'line') return;
 
     // Initialize or reinitialize the canvas
