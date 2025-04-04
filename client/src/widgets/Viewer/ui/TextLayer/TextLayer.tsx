@@ -581,22 +581,31 @@ export const TextLayer = ({
                     let scaleFactor: number;
 
                     // Progressive scaling based on font size
-                    if (fontHeight > 60) {
-                      scaleFactor = 1.35; // Very large fonts
-                    } else if (fontHeight > 40) {
-                      scaleFactor = 1.25; // Reduced from 1.4 for 40-60px range
-                    } else if (fontHeight > 24) {
-                      scaleFactor = 1.2; // Reduced from 1.35
-                    } else if (fontHeight > 20) {
-                      scaleFactor = 1.15; // Reduced from 1.3
-                    } else if (fontHeight > 16) {
-                      scaleFactor = 1.12; // Reduced from 1.25
-                    } else if (fontHeight > 12) {
-                      scaleFactor = 1.1; // Reduced from 1.2
-                    } else if (fontHeight > 9) {
-                      scaleFactor = 1.05; // Reduced from 1.15
-                    } else {
-                      scaleFactor = 1.02; // Reduced from 1.1
+                    switch (true) {
+                      case fontHeight > 60:
+                        scaleFactor = 1.35; // Very large fonts
+                        break;
+                      case fontHeight > 40:
+                        scaleFactor = 1.25; // Reduced from 1.4 for 40-60px range
+                        break;
+                      case fontHeight > 24:
+                        scaleFactor = 1.2; // Reduced from 1.35
+                        break;
+                      case fontHeight > 20:
+                        scaleFactor = 1.15; // Reduced from 1.3
+                        break;
+                      case fontHeight > 16:
+                        scaleFactor = 1.12; // Reduced from 1.25
+                        break;
+                      case fontHeight > 12:
+                        scaleFactor = 1.1; // Reduced from 1.2
+                        break;
+                      case fontHeight > 9:
+                        scaleFactor = 1.05; // Reduced from 1.15
+                        break;
+                      default:
+                        scaleFactor = 1.02; // Reduced from 1.1
+                        break;
                     }
 
                     const charWidth = Math.abs(tx[0]) / (item.str?.length || 1);
@@ -809,6 +818,7 @@ export const TextLayer = ({
               setShowCopyButton(false);
               setHasSelection(false);
             }}
+            textLayerElement={textLayerRef.current}
           />
         </div>
       )}
