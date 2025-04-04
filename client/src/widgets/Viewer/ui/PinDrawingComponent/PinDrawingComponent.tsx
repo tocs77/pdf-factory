@@ -10,12 +10,18 @@ interface PinDrawingComponentProps {
   pageNumber: number;
   onDrawingCreated: (drawing: Drawing) => void;
   pdfCanvasRef?: React.RefObject<HTMLCanvasElement>; // Reference to the PDF canvas
+  draftMode?: boolean;
 }
 
 /**
  * Component for handling pin drawing with arrow and bend point
  */
-const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber, onDrawingCreated, pdfCanvasRef }) => {
+const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({
+  pageNumber,
+  onDrawingCreated,
+  pdfCanvasRef,
+  draftMode = false,
+}) => {
   const { state } = useContext(ViewerContext);
   const { scale, drawingColor, pageRotations, drawingMode } = state;
 
@@ -103,6 +109,12 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber, o
         text: '',
         color: drawingColor,
         pageNumber,
+        boundingBox: {
+          left: pinPosition.x,
+          top: pinPosition.y,
+          right: currentMousePosition.x,
+          bottom: currentMousePosition.y,
+        },
       };
 
       // Draw the pin with the current mouse position as the bend point
@@ -178,8 +190,33 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber, o
         height: Math.min(canvas.height, Math.abs(coords.y - pinPosition.y) + padding * 2),
       };
 
-      // Capture the image
-      const image = captureDrawingImage(pdfCanvasRef?.current || null, canvas, boundingBox);
+      const boundPointTopLeft = normalizeCoordinatesToZeroRotation(
+        { x: boundingBox.left, y: boundingBox.top },
+        canvas.width,
+        canvas.height,
+        scale,
+        rotation,
+      );
+      const boundPointBottomRight = normalizeCoordinatesToZeroRotation(
+        { x: boundingBox.left + boundingBox.width, y: boundingBox.top + boundingBox.height },
+        canvas.width,
+        canvas.height,
+        scale,
+        rotation,
+      );
+
+      const normalizedBoundingBox = {
+        left: boundPointTopLeft.x,
+        top: boundPointTopLeft.y,
+        right: boundPointBottomRight.x,
+        bottom: boundPointBottomRight.y,
+      };
+
+      // Capture the image only if not in draft mode
+      let image;
+      if (!draftMode) {
+        image = captureDrawingImage(pdfCanvasRef?.current || null, canvas, boundingBox);
+      }
 
       // Create a new pin object with normalized coordinates
       const newPin: Drawing = {
@@ -190,6 +227,7 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({ pageNumber, o
         color: drawingColor,
         pageNumber,
         image,
+        boundingBox: normalizedBoundingBox,
       };
 
       // Call the callback with the new drawing

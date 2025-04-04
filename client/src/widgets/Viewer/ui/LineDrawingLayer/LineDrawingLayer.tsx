@@ -9,12 +9,18 @@ interface LineDrawingLayerProps {
   pageNumber: number;
   onDrawingCreated: (drawing: Drawing) => void;
   pdfCanvasRef?: React.RefObject<HTMLCanvasElement>; // Reference to the PDF canvas
+  draftMode?: boolean;
 }
 
 /**
  * Component for handling straight line drawing
  */
-export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, onDrawingCreated, pdfCanvasRef }) => {
+export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({
+  pageNumber,
+  onDrawingCreated,
+  pdfCanvasRef,
+  draftMode = false,
+}) => {
   const { state } = useContext(ViewerContext);
   const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations } = state;
 
@@ -34,7 +40,6 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     strokeColor: drawingColor,
     strokeWidth: drawingLineWidth,
   }); // Style for the current line
-  const [isMultiLineMode, setIsMultiLineMode] = useState(false);
 
   // Update current style when drawingColor changes
   useEffect(() => {
@@ -161,20 +166,6 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     };
   }, [drawingMode, isDrawing, startPoint, endPoint, allLines, lineStyles, currentStyle]);
 
-  // Listen for ESC key to cancel drawing
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && (isDrawing || isMultiLineMode)) {
-        cancelDrawing();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isDrawing, isMultiLineMode]);
-
   // Cancel current drawing
   const cancelDrawing = () => {
     setIsDrawing(false);
@@ -182,7 +173,6 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     setEndPoint(null);
     setAllLines([]);
     setLineStyles([]);
-    setIsMultiLineMode(false);
 
     // Clear the canvas
     const ctx = canvasRef.current?.getContext('2d');
@@ -278,7 +268,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
 
   // Finish drawing and save all lines as one drawing
   const finishDrawing = () => {
-    if ((!isMultiLineMode && !isDrawing) || (allLines.length === 0 && (!startPoint || !endPoint))) {
+    if (!isDrawing || (allLines.length === 0 && (!startPoint || !endPoint))) {
       cancelDrawing();
       return;
     }
@@ -347,8 +337,11 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
       endPoint: normalizeCoordinatesToZeroRotation(line.endPoint, canvas.width, canvas.height, scale, rotation),
     }));
 
-    // Capture the image
-    const image = captureDrawingImage(pdfCanvasRef?.current || null, canvas, boundingBox);
+    // Capture the image only if not in draft mode
+    let image;
+    if (!draftMode) {
+      image = captureDrawingImage(pdfCanvasRef?.current || null, canvas, boundingBox);
+    }
 
     // Create a new line object with normalized coordinates and per-line styles
     const newLine: Drawing = {
@@ -364,6 +357,12 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
       })),
       pageNumber,
       image,
+      boundingBox: {
+        left: Math.min(...normalizedLines.flatMap((line) => [line.startPoint.x, line.endPoint.x])),
+        top: Math.min(...normalizedLines.flatMap((line) => [line.startPoint.y, line.endPoint.y])),
+        right: Math.max(...normalizedLines.flatMap((line) => [line.startPoint.x, line.endPoint.x])),
+        bottom: Math.max(...normalizedLines.flatMap((line) => [line.startPoint.y, line.endPoint.y])),
+      },
     };
 
     // Call the callback with the new drawing
@@ -387,10 +386,6 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
     setIsDrawing(true);
     setStartPoint(coords);
     setEndPoint(coords); // Initially, end point is same as start point
-
-    if (!isMultiLineMode) {
-      setIsMultiLineMode(true);
-    }
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -434,10 +429,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
       setLineStyles((prev) => [...prev, { ...currentStyle }]);
     }
 
-    // Reset for next line but stay in multi-line mode
-    setIsDrawing(false);
-    setStartPoint(null);
-    setEndPoint(null);
+    finishDrawing();
   };
 
   return (
@@ -451,7 +443,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({ pageNumber, 
         onMouseLeave={endDrawing}
         data-testid='line-drawing-canvas'
       />
-      {isMultiLineMode && (
+      {!draftMode && (
         <div className={styles.controlsContainer}>
           <div className={styles.finishButtonContainer}>
             <button className={styles.finishButton} onClick={finishDrawing}>

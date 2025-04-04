@@ -2,18 +2,14 @@ import { useEffect, useRef, useState, useContext } from 'react';
 import type { PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import classes from './Page.module.scss';
 import { classNames } from '@/shared/utils';
-import { DrawingComponent } from '../DrawingComponent/DrawingComponent';
-import DrawRect from '../DrawRect/DrawRect';
-import PinDrawingComponent from '../PinDrawingComponent/PinDrawingComponent';
 import CompleteDrawings from '../CompleteDrawings/CompleteDrawings';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { TextLayer } from '../TextLayer/TextLayer';
-import { LineDrawingLayer } from '../LineDrawingLayer/LineDrawingLayer';
 import { DrawAreaLayer } from '../DrawAreaLayer/DrawAreaLayer';
 import { ZoomAreaLayer } from '../ZoomAreaLayer/ZoomAreaLayer';
-import { TextAreaDrawingLayer } from '../TextAreaDrawingLayer/TextAreaDrawingLayer';
 import { RulerDrawingLayer } from '../RulerDrawingLayer/RulerDrawingLayer';
 import { Drawing } from '../../model/types/viewerSchema';
+import { DraftLayer } from '../DraftLayer/DraftLayer';
 
 // Page component for rendering a single PDF page
 interface PageProps {
@@ -27,7 +23,7 @@ interface PageProps {
 
 export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreated }: PageProps) => {
   const { state } = useContext(ViewerContext);
-  const { drawingMode, pageRotations, scale } = state;
+  const { drawingMode, pageRotations, scale, isDraftDrawing } = state;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -380,25 +376,14 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
           {/* Drawing components - only render when respective tool is selected */}
           {inView && (
             <>
-              {drawingMode === 'freehand' && (
-                <DrawingComponent pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
-              )}
-              {drawingMode === 'rectangle' && (
-                <DrawRect pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
-              )}
-              {drawingMode === 'pin' && (
-                <PinDrawingComponent pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
-              )}
-              {drawingMode === 'line' && (
-                <LineDrawingLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
+              {isDraftDrawing && (
+                <DraftLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
               )}
               {drawingMode === 'drawArea' && (
                 <DrawAreaLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
               )}
               {drawingMode === 'zoomArea' && <ZoomAreaLayer pageNumber={pageNumber} />}
-              {drawingMode === 'textArea' && (
-                <TextAreaDrawingLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
-              )}
+
               {drawingMode === 'ruler' && <RulerDrawingLayer pageNumber={pageNumber} pdfCanvasRef={canvasRef} />}
             </>
           )}

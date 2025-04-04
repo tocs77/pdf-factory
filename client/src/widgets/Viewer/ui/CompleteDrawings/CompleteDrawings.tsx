@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useContext } from 'react';
+import { useEffect, useRef, useContext, forwardRef } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { renderPin } from '../../utils/pinRenderer';
 import { transformCoordinates } from '../../utils/rotationUtils';
@@ -24,8 +24,11 @@ interface CompleteDrawingsProps {
  * Component to display completed drawings and rectangles
  * This component is always visible, even when text layer is enabled
  */
-const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, drawings }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({ pageNumber, drawings }, ref) => {
+  // Use the forwarded ref if provided, otherwise use a local ref
+  const internalRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = ref || internalRef;
+
   const { state } = useContext(ViewerContext);
   const { scale, pageRotations } = state;
 
@@ -37,7 +40,8 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, drawing
 
   // Render drawings on canvas
   useEffect(() => {
-    const canvas = canvasRef.current;
+    // Ensure canvasRef is not null and is a RefObject
+    const canvas = typeof canvasRef === 'function' ? null : canvasRef?.current;
     if (!canvas) return;
 
     // Set canvas dimensions based on parent container
@@ -130,11 +134,55 @@ const CompleteDrawings: React.FC<CompleteDrawingsProps> = ({ pageNumber, drawing
         case 'textArea':
           renderTextArea(ctx, drawing, canvas.width, canvas.height, scale, rotation);
           break;
+
+        case 'misc': {
+          // Render all components of the misc drawing
+          drawing.pathes.forEach((path) => {
+            renderFreehandPath(ctx, path, canvas.width, canvas.height, scale, rotation);
+          });
+
+          drawing.rectangles.forEach((rect) => {
+            renderRectangle(ctx, rect, canvas.width, canvas.height, scale, rotation);
+          });
+
+          drawing.pins.forEach((pin) => {
+            const { x, y } = transformCoordinates(pin.position.x, pin.position.y, canvas.width, canvas.height, scale, rotation);
+
+            if (pin.bendPoint) {
+              const transformedBend = transformCoordinates(
+                pin.bendPoint.x,
+                pin.bendPoint.y,
+                canvas.width,
+                canvas.height,
+                scale,
+                rotation,
+              );
+
+              const tempPin = {
+                ...pin,
+                bendPoint: { x: transformedBend.x, y: transformedBend.y },
+              };
+
+              renderPin(ctx, tempPin, x, y);
+            } else {
+              renderPin(ctx, pin, x, y);
+            }
+          });
+
+          drawing.lines.forEach((line) => {
+            renderLine(ctx, line, canvas.width, canvas.height, scale, rotation);
+          });
+
+          drawing.textAreas.forEach((textArea) => {
+            renderTextArea(ctx, textArea, canvas.width, canvas.height, scale, rotation);
+          });
+          break;
+        }
       }
     });
-  }, [pageDrawings, scale, pageNumber, rotation]);
+  }, [pageDrawings, scale, pageNumber, rotation, canvasRef]);
 
   return <canvas ref={canvasRef} className={styles.drawingsCanvas} data-testid='complete-drawings-canvas' />;
-};
+});
 
 export default CompleteDrawings;

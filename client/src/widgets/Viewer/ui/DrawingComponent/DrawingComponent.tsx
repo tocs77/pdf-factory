@@ -9,12 +9,18 @@ interface DrawingComponentProps {
   pageNumber: number;
   onDrawingCreated: (drawing: Drawing) => void;
   pdfCanvasRef?: React.RefObject<HTMLCanvasElement>; // Reference to the PDF canvas
+  draftMode?: boolean;
 }
 
 /**
  * Component for handling freehand drawing
  */
-export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, onDrawingCreated, pdfCanvasRef }) => {
+export const DrawingComponent: React.FC<DrawingComponentProps> = ({
+  pageNumber,
+  onDrawingCreated,
+  pdfCanvasRef,
+  draftMode = false,
+}) => {
   const { state } = useContext(ViewerContext);
   const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations } = state;
 
@@ -30,7 +36,6 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
     strokeColor: drawingColor,
     strokeWidth: drawingLineWidth,
   }); // Style for the current path
-  const [isMultiStrokeMode, setIsMultiStrokeMode] = useState(false);
 
   // Update current style when drawingColor changes
   useEffect(() => {
@@ -152,27 +157,12 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
     };
   }, []);
 
-  // Listen for ESC key to cancel drawing
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && (isDrawing || isMultiStrokeMode)) {
-        cancelDrawing();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isDrawing, isMultiStrokeMode]);
-
   // Cancel current drawing
   const cancelDrawing = () => {
     setIsDrawing(false);
     setCurrentPath([]);
     setAllPaths([]);
     setPathStyles([]);
-    setIsMultiStrokeMode(false);
 
     // Clear the canvas
     const ctx = canvasRef.current?.getContext('2d');
@@ -197,7 +187,7 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
 
   // Finish drawing and save all paths as one drawing
   const finishDrawing = () => {
-    if ((!isMultiStrokeMode && !isDrawing) || (allPaths.length === 0 && currentPath.length < 2)) {
+    if (!isDrawing || (allPaths.length === 0 && currentPath.length < 2)) {
       cancelDrawing();
       return;
     }
@@ -249,15 +239,24 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
     maxX = Math.min(canvas.width, maxX + padding);
     maxY = Math.min(canvas.height, maxY + padding);
 
-    // Capture drawing as image
-    const boundingBox = {
-      left: minX,
-      top: minY,
-      width: maxX - minX,
-      height: maxY - minY,
-    };
+    // Capture drawing as image only if not in draft mode
+    let image;
+    if (!draftMode) {
+      const boundingBox = {
+        left: minX,
+        top: minY,
+        width: maxX - minX,
+        height: maxY - minY,
+      };
 
-    const image = captureDrawingImage(pdfCanvasRef?.current || null, canvas, boundingBox);
+      image = captureDrawingImage(pdfCanvasRef?.current || null, canvas, boundingBox);
+    }
+    const normalizedBoundingBox = {
+      left: Math.min(...normalizedPaths.flatMap((path) => path.map((point) => point.x))),
+      top: Math.min(...normalizedPaths.flatMap((path) => path.map((point) => point.y))),
+      right: Math.max(...normalizedPaths.flatMap((path) => path.map((point) => point.x))),
+      bottom: Math.max(...normalizedPaths.flatMap((path) => path.map((point) => point.y))),
+    };
 
     // Create a new drawing object with styles for each path
     const newDrawing: Drawing = {
@@ -273,6 +272,7 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
       })),
       pageNumber,
       image,
+      boundingBox: normalizedBoundingBox,
     };
 
     // Call the callback with the new drawing
@@ -283,7 +283,6 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
     setCurrentPath([]);
     setAllPaths([]);
     setPathStyles([]);
-    setIsMultiStrokeMode(false);
 
     // Clear the canvas since the drawing will be rendered by the CompleteDrawings component
     const ctx = canvas.getContext('2d');
@@ -303,10 +302,6 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
 
     setIsDrawing(true);
     setCurrentPath([{ x, y }]);
-
-    if (!isMultiStrokeMode) {
-      setIsMultiStrokeMode(true);
-    }
 
     // Start drawing
     ctx.beginPath();
@@ -345,15 +340,12 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
       return;
     }
 
-    // If the path is valid, add it to allPaths
     if (currentPath.length >= 2) {
       setAllPaths((prevPaths) => [...prevPaths, [...currentPath]]);
       setPathStyles((prevStyles) => [...prevStyles, { ...currentStyle }]);
     }
 
-    // Clear current path but stay in multi-stroke mode
-    setIsDrawing(false);
-    setCurrentPath([]);
+    finishDrawing();
   };
 
   return (
@@ -367,7 +359,7 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({ pageNumber, 
         onMouseLeave={endDrawing}
         data-testid='freehand-drawing-canvas'
       />
-      {isMultiStrokeMode && (
+      {!draftMode && (
         <div className={styles.controlsContainer}>
           <div className={styles.finishButtonContainer}>
             <button className={styles.finishButton} onClick={finishDrawing}>

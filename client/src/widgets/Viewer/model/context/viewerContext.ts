@@ -20,6 +20,7 @@ export const initialViewerState: ViewerSchema = {
   pageRotations: {},
   textLayerEnabled: true,
   rulerEnabled: false,
+  isDraftDrawing: false,
 };
 
 // Create the context with default values
@@ -52,12 +53,18 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
         ...state,
         drawingLineWidth: action.payload,
       };
-    case 'setDrawingMode':
-      console.log('setDrawingMode', action.payload);
+    case 'setDrawingMode': {
+      const isDraftDrawing = ['freehand', 'rectangle', 'pin', 'line', 'textArea'].includes(action.payload)
+        ? true
+        : state.isDraftDrawing;
+      console.log(isDraftDrawing, action.payload, ['freehand', 'rectangle', 'pin', 'line', 'textArea'].includes(action.payload));
       return {
         ...state,
         drawingMode: action.payload,
+        isDraftDrawing: isDraftDrawing,
       };
+    }
+
     case 'toggleThumbnails':
       return {
         ...state,
@@ -98,6 +105,14 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
           [action.payload.pageNumber]: action.payload.angle as RotationAngle,
         },
       };
+    case 'setIsDraftDrawing': {
+      const drawingMode = action.payload ? state.drawingMode : 'none';
+      return {
+        ...state,
+        isDraftDrawing: action.payload,
+        drawingMode: drawingMode,
+      };
+    }
     default:
       return state;
   }

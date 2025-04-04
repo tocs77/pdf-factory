@@ -9,12 +9,13 @@ interface DrawRectProps {
   pageNumber: number;
   onDrawingCreated: (drawing: Drawing) => void;
   pdfCanvasRef?: React.RefObject<HTMLCanvasElement>; // Reference to the PDF canvas
+  draftMode?: boolean;
 }
 
 /**
  * Component for handling rectangle drawing
  */
-const DrawRect: React.FC<DrawRectProps> = ({ pageNumber, onDrawingCreated, pdfCanvasRef }) => {
+const DrawRect: React.FC<DrawRectProps> = ({ pageNumber, onDrawingCreated, pdfCanvasRef, draftMode = false }) => {
   const { state } = useContext(ViewerContext);
   const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations } = state;
 
@@ -171,8 +172,11 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber, onDrawingCreated, pdfCa
       height: Math.min(canvas.height - top + CAPTURE_PADDING, rectHeight + CAPTURE_PADDING * 2),
     };
 
-    // Capture the image with the rectangle drawn on it
-    const image = captureDrawingImage(pdfCanvasRef?.current || null, canvas, boundingBox);
+    // Capture the image with the rectangle drawn on it only if not in draft mode
+    let image;
+    if (!draftMode) {
+      image = captureDrawingImage(pdfCanvasRef?.current || null, canvas, boundingBox);
+    }
 
     // Normalize coordinates to scale 1 and 0 degrees rotation
     const normalizedStartPoint = normalizeCoordinatesToZeroRotation(
@@ -208,6 +212,12 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber, onDrawingCreated, pdfCa
       },
       pageNumber,
       image,
+      boundingBox: {
+        left: normalizedStartPoint.x,
+        top: normalizedStartPoint.y,
+        right: normalizedEndPoint.x,
+        bottom: normalizedEndPoint.y,
+      },
     };
 
     // Call the callback with the new drawing

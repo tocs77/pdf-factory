@@ -4,7 +4,7 @@ export interface BaseDrawing {
   pageNumber: number;
   image?: string; // Store base64 image of the drawing area
   // Bounding box coordinates for the drawing - normalized to scale=1
-  boundingBox?: {
+  boundingBox: {
     top: number;
     left: number;
     right: number;
@@ -183,7 +183,7 @@ export interface TextArea extends BaseDrawing {
   style: DrawingStyle;
 }
 
-interface DrawingMisc extends BaseDrawing {
+export interface DrawingMisc extends BaseDrawing {
   type: 'misc';
   pathes: DrawingPath[];
   rectangles: Rectangle[];
@@ -232,6 +232,7 @@ export interface ViewerSchema {
   textLayerEnabled?: boolean;
   // Whether the ruler tool is enabled
   rulerEnabled?: boolean;
+  isDraftDrawing: boolean;
 }
 
 export type Action =
@@ -244,4 +245,5 @@ export type Action =
   | { type: 'toggleRuler' } // Toggle ruler tool
   | { type: 'rotatePageClockwise'; payload: number } // Page number to rotate
   | { type: 'rotatePageCounterClockwise'; payload: number } // Page number to rotate
-  | { type: 'setPageRotation'; payload: { pageNumber: number; angle: number } };
+  | { type: 'setPageRotation'; payload: { pageNumber: number; angle: number } }
+  | { type: 'setIsDraftDrawing'; payload: boolean };

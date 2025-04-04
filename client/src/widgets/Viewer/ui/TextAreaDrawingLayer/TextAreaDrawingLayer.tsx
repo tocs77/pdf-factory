@@ -10,6 +10,7 @@ interface TextAreaDrawingLayerProps {
   pageNumber: number;
   onDrawingCreated: (drawing: Drawing) => void;
   pdfCanvasRef?: React.RefObject<HTMLCanvasElement>;
+  draftMode?: boolean;
 }
 
 interface Point {
@@ -24,7 +25,12 @@ interface Rectangle {
   height: number;
 }
 
-export const TextAreaDrawingLayer: React.FC<TextAreaDrawingLayerProps> = ({ pageNumber, onDrawingCreated, pdfCanvasRef }) => {
+export const TextAreaDrawingLayer: React.FC<TextAreaDrawingLayerProps> = ({
+  pageNumber,
+  onDrawingCreated,
+  pdfCanvasRef,
+  draftMode = false,
+}) => {
   const { state } = useContext(ViewerContext);
   const { drawingColor, drawingLineWidth, scale } = state;
   const rotation = state.pageRotations[pageNumber] || 0;
@@ -210,6 +216,12 @@ export const TextAreaDrawingLayer: React.FC<TextAreaDrawingLayerProps> = ({ page
         strokeColor: drawingColor,
         strokeWidth: drawingLineWidth,
       },
+      boundingBox: {
+        left: rect.left,
+        top: rect.top,
+        right: rect.left + rect.width,
+        bottom: rect.top + rect.height,
+      },
     };
 
     // Render the text area on canvas
@@ -232,12 +244,15 @@ export const TextAreaDrawingLayer: React.FC<TextAreaDrawingLayerProps> = ({ page
     };
 
     // Capture image
-    const image = captureDrawingImage(
-      pdfCanvasRef?.current || null,
-      canvas,
-      boundingBox,
-      true, // Capture both PDF background and drawing
-    );
+    let image;
+    if (!draftMode) {
+      image = captureDrawingImage(
+        pdfCanvasRef?.current || null,
+        canvas,
+        boundingBox,
+        true, // Capture both PDF background and drawing
+      );
+    }
 
     // Normalize coordinates to scale 1 and 0 degrees rotation
     const canvasWidth = canvas.width / window.devicePixelRatio;
@@ -269,6 +284,12 @@ export const TextAreaDrawingLayer: React.FC<TextAreaDrawingLayerProps> = ({ page
       style: {
         strokeColor: drawingColor,
         strokeWidth: drawingLineWidth / scale, // Store at scale 1
+      },
+      boundingBox: {
+        left: normalizedStartPoint.x,
+        top: normalizedStartPoint.y,
+        right: normalizedEndPoint.x,
+        bottom: normalizedEndPoint.y,
       },
       image,
     };
