@@ -42,7 +42,6 @@ export const TextLayer = ({
 
   // Remove dragging-related state
   const [toolbarPosition, setToolbarPosition] = useState({ top: 60, left: 10 });
-  const toolbarRef = useRef<HTMLDivElement>(null);
 
   // Handle text selection
   useEffect(() => {
@@ -738,25 +737,6 @@ export const TextLayer = ({
     };
   }, [page, viewport, scale, rotation, renderTask]);
 
-  // Copy selected text
-  const copySelectedText = () => {
-    const selection = window.getSelection();
-    if (selection?.toString().trim()) {
-      navigator.clipboard.writeText(selection.toString());
-
-      // Show feedback
-      const button = document.querySelector(`.${classes.copyButton}`);
-      if (button) {
-        button.textContent = 'Copied!';
-        setTimeout(() => {
-          if (button) {
-            button.textContent = 'Copy';
-          }
-        }, 2000);
-      }
-    }
-  };
-
   // Set fixed position for toolbar that stays in view
   useEffect(() => {
     if (!hasSelection) return;
@@ -809,18 +789,11 @@ export const TextLayer = ({
       {/* Text selection toolbar with simplified fixed position */}
       {hasSelection && (
         <div
-          ref={toolbarRef}
           className={classes.textSelectionToolbar}
           style={{
             top: `${toolbarPosition.top}px`,
             left: `${toolbarPosition.left}px`,
           }}>
-          {showCopyButton && (
-            <button className={classes.copyButton} onClick={copySelectedText} title='Copy to clipboard'>
-              Copy
-            </button>
-          )}
-
           <TextAreaTools
             pageNumber={pageNumber}
             onDrawingCreated={(drawing) => {
