@@ -571,10 +571,68 @@ export const TextAreaTools: React.FC<TextAreaToolsProps> = ({
     const textRects = getHighlightRects();
     if (textRects.length === 0) return;
 
-    // Process the line segments to create crossed-out lines
+    // Create a map of lines by y-position (rounded to nearest integer) for grouping
+    const textRectsByY = new Map();
+
+    // Group text rectangles by their y-position (approximately)
+    textRects.forEach((rect) => {
+      // Use the middle of the rectangle for y position grouping
+      const yKey = Math.floor(rect.y + rect.height / 2);
+      if (!textRectsByY.has(yKey)) {
+        textRectsByY.set(yKey, []);
+      }
+      textRectsByY.get(yKey).push(rect);
+    });
+
+    // Process the line segments to create crossed-out lines in the center of text
     const crossedOutLines = lineSegments.map((line) => {
-      // For crossed-out, use the same start and end points as the underline
-      return line;
+      // Try to find matching text rectangles for this line based on y position
+      const lineY = Math.floor(line.start.y); // Bottom of the text line
+
+      // Find the nearest group of text rectangles
+      let nearestY = lineY;
+      let minDistance = Infinity;
+
+      for (const [y] of textRectsByY.entries()) {
+        const distance = Math.abs(y - lineY);
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestY = y;
+        }
+      }
+
+      // Get the text rectangles for this line
+      const rectsForLine = textRectsByY.get(nearestY) || [];
+
+      if (rectsForLine.length > 0) {
+        // Calculate average height of text for this line
+        const avgHeight =
+          rectsForLine.reduce((sum: number, rect: { height: number }) => sum + rect.height, 0) / rectsForLine.length;
+
+        // Find the top-most position for this line
+        const topY = Math.min(...rectsForLine.map((rect: { y: number }) => rect.y));
+
+        // Calculate middle of text (approximately 50% from top for most fonts)
+        // Adjusted to be more centered (moved down from previous 40%)
+        const middleY = topY + avgHeight * 0.5;
+
+        // Create a new line with adjusted y position for center of text
+        return {
+          start: { x: line.start.x, y: middleY },
+          end: { x: line.end.x, y: middleY },
+        };
+      }
+
+      // If no matching text rectangles found, make an educated guess
+      // Move the line up by approximately 60% of the typical line height
+      const estimatedLineHeight = 14 / scale; // Typical line height
+      // Adjust the fallback position to be more centered
+      const estimatedMiddleY = line.start.y - estimatedLineHeight * 0.5;
+
+      return {
+        start: { x: line.start.x, y: estimatedMiddleY },
+        end: { x: line.end.x, y: estimatedMiddleY },
+      };
     });
 
     // Create drawing object
