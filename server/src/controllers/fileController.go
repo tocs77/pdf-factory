@@ -72,6 +72,7 @@ func UploadFile(c *fiber.Ctx) error {
 	database.DB.Create(&models.File{
 		Filename: file.Filename,
 		Hash:     fileHash,
+		Size:     file.Size,
 	})
 
 	return c.JSON(fiber.Map{

@@ -35,7 +35,6 @@ export const DraftLayer = (props: DraftLayerProps) => {
   });
 
   const handleDrawingAdded = (drawing: Drawing) => {
-    console.log('handleDrawingAdded', drawing);
     switch (drawing.type) {
       case 'freehand':
         setDraftDrawing((prev) => ({ ...prev, pathes: [...prev.pathes, drawing] }));

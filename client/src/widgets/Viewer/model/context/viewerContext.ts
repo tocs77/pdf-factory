@@ -57,7 +57,6 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
       const isDraftDrawing = ['freehand', 'rectangle', 'pin', 'line', 'textArea'].includes(action.payload)
         ? true
         : state.isDraftDrawing;
-      console.log(isDraftDrawing, action.payload, ['freehand', 'rectangle', 'pin', 'line', 'textArea'].includes(action.payload));
       return {
         ...state,
         drawingMode: action.payload,

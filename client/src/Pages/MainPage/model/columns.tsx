@@ -1,8 +1,11 @@
 import { ColumnDef } from '@tanstack/react-table';
 
 import { FileDto } from '@/entities/File';
+import { makeFileSizeString } from '@/shared/utils';
+
 import { FaTrash } from 'react-icons/fa';
 import classes from '../ui/MainPage.module.scss';
+
 export const makeColumns = (deleteFile: (id: string) => void): ColumnDef<FileDto>[] => [
   {
     id: 'name',
@@ -10,14 +13,16 @@ export const makeColumns = (deleteFile: (id: string) => void): ColumnDef<FileDto
     header: 'Наименование',
   },
   {
-    id: 'created',
-    accessorFn: (p) => p.createdAt,
-    header: 'Дата создания',
+    id: 'size',
+    accessorFn: (p) => makeFileSizeString(p.size),
+    header: 'Размер',
+    maxSize: 150,
   },
   {
-    id: 'updated',
-    accessorFn: (p) => p.updatedAt,
-    header: 'Дата обновления',
+    id: 'created',
+    accessorFn: (p) => new Date(p.createdAt).toLocaleDateString(),
+    header: 'Дата создания',
+    maxSize: 150,
   },
   {
     id: 'delete',
