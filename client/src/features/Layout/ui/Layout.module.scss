@@ -8,10 +8,36 @@
     width: 100%;
     background-color: #f0f0f0;
   }
+
   .header {
     height: var(--header-height);
     width: 100%;
     background-color: #f0f0f0;
     font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    padding: 0 2rem;
+  }
+
+  .homeLink {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: #333;
+    font-weight: 500;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: #0078d4;
+    }
+
+    svg {
+      margin-right: 0.25rem;
+    }
+
+    span {
+      display: inline-block;
+    }
   }
 }
