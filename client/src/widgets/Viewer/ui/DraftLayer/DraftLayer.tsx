@@ -222,15 +222,20 @@ export const DraftLayer = (props: DraftLayerProps) => {
     <>
       {/* Add Finish and Cancel buttons like in DrawingComponent */}
       {isDraftDrawing && (
-        <div className={styles.controlsContainer}>
-          <div className={styles.finishButtonContainer}>
-            <button className={styles.finishButton} onClick={handleFinish}>
-              Finish
-            </button>
-            <button className={`${styles.finishButton} ${styles.cancelButton}`} onClick={handleCancel}>
-              Cancel
-            </button>
-          </div>
+        <div className={styles.finishButtonContainer}>
+          <button className={styles.finishButton} onClick={handleFinish}>
+            <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor'>
+              <polyline points='20 6 9 17 4 12'></polyline>
+            </svg>
+            <span>Finish</span>
+          </button>
+          <button className={`${styles.finishButton} ${styles.cancelButton}`} onClick={handleCancel}>
+            <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor'>
+              <line x1='18' y1='6' x2='6' y2='18'></line>
+              <line x1='6' y1='6' x2='18' y2='18'></line>
+            </svg>
+            <span>Cancel</span>
+          </button>
         </div>
       )}
       {drawingMode === 'freehand' && (
