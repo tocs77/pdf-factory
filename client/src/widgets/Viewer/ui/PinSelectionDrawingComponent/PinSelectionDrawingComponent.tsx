@@ -24,7 +24,7 @@ const PinSelectionDrawingComponent: React.FC<PinSelectionDrawingComponentProps> 
   pdfCanvasRef,
 }) => {
   const { state } = useContext(ViewerContext);
-  const { scale, drawingMode, pageRotations } = state;
+  const { scale, drawingMode, pageRotations, drawingColor } = state;
   const rotation = pageRotations[pageNumber] || 0;
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -118,6 +118,7 @@ const PinSelectionDrawingComponent: React.FC<PinSelectionDrawingComponentProps> 
       position: normalizedPosition,
       pageNumber,
       image: capturedImage,
+      color: drawingColor,
       // Bounding box refers to the *pin* location, not the capture area necessarily
       // For simplicity, create a small box around the pin
       boundingBox: {

@@ -304,7 +304,8 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
           drawingMode === 'textArea' ||
           drawingMode === 'textHighlight' ||
           drawingMode === 'textUnderline' ||
-          drawingMode === 'textCrossedOut') && (
+          drawingMode === 'textCrossedOut' ||
+          drawingMode === 'PinSelection') && (
           <div className={classes.drawingOptions}>
             <div className={classes.colorPicker}>
               <span>Color:</span>
@@ -376,7 +377,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
         )}
 
         {/* Separator - only show if drawing options are visible */}
-        {drawingMode !== 'none' && drawingMode !== 'zoomArea' && drawingMode !== 'ruler' && (
+        {drawingMode !== 'none' && drawingMode !== 'zoomArea' && drawingMode !== 'ruler' && drawingMode !== 'PinSelection' && (
           <div className={classes.separator}></div>
         )}
 

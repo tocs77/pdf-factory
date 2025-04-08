@@ -204,6 +204,10 @@ export interface PinSelection extends BaseDrawing {
    * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
    */
   position: { x: number; y: number };
+  /**
+   * Color of the pin (optional)
+   */
+  color?: string;
 }
 
 export interface DrawingMisc extends BaseDrawing {

@@ -417,7 +417,7 @@ export const renderPinSelection = (
 ): void => {
   const pinSize = 20 * scale; // Size of the pin head
   const stemHeight = 10 * scale; // Height of the stem below the circle
-  const pinColor = '#FF0000'; // Red color for the pin
+  const pinColor = drawing.color || '#FF0000'; // Use drawing color or fallback to Red
 
   // Transform the pin's normalized position to canvas coordinates
   const { x, y } = transformCoordinates(drawing.position.x, drawing.position.y, canvasWidth, canvasHeight, scale, rotation);
