@@ -294,6 +294,14 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
         Reset
       </button>
 
+      {/* Compare Mode Toggle Button */}
+      <button
+        onClick={() => dispatch({ type: 'toggleCompareMode' })}
+        className={`${classes.zoomButton} ${state.compareModeEnabled ? classes.active : ''}`}
+        title={state.compareModeEnabled ? 'Disable Compare Mode' : 'Enable Compare Mode'}>
+        Compare
+      </button>
+
       <div className={classes.toolPanel}>
         {/* Drawing Options - Show when a drawing tool is selected OR text layer is enabled */}
         {(drawingMode === 'freehand' ||

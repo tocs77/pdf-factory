@@ -21,6 +21,7 @@ export const initialViewerState: ViewerSchema = {
   textLayerEnabled: true,
   rulerEnabled: false,
   isDraftDrawing: false,
+  compareModeEnabled: false,
 };
 
 // Create the context with default values
@@ -112,6 +113,12 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
         drawingMode: drawingMode,
       };
     }
+    case 'toggleCompareMode':
+      return {
+        ...state,
+        compareModeEnabled: !state.compareModeEnabled,
+        drawingMode: !state.compareModeEnabled ? 'none' : state.drawingMode,
+      };
     default:
       return state;
   }

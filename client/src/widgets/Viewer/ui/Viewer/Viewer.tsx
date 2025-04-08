@@ -3,6 +3,7 @@ import * as pdfjs from 'pdfjs-dist';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import { Thumbnail } from '../Thumbnail/Thumbnail';
 import { Page } from '../Page/Page';
+import ComparePage from '../ComparePage/ComparePage';
 import { ViewerMenu } from '../ViewerMenu/ViewerMenu';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { ViewerProvider } from '../../model/context/ViewerProvider';
@@ -27,7 +28,7 @@ interface PdfViewerProps {
 const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) => {
   const { url, drawings, drawingCreated } = props;
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, showThumbnails } = state;
+  const { scale, showThumbnails, compareModeEnabled } = state;
 
   const [pdfRef, setPdfRef] = useState<PDFDocumentProxy | null>(null);
   const [pages, setPages] = useState<PDFPageProxy[]>([]);
@@ -392,6 +393,10 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     });
   };
 
+  // Define placeholder comparison colors
+  const compareColor1 = '#FF0000'; // Red
+  const compareColor2 = '#0000FF'; // Blue
+
   // Show loading message or error
   if (isLoading || error) {
     return (
@@ -429,26 +434,43 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
         <div
           className={classNames(classes.pdfContainer, {
-            [classes.draggable]: state.drawingMode === 'none',
+            [classes.draggable]: state.drawingMode === 'none' && !compareModeEnabled,
             [classes.dragging]: isDragging,
           })}
           ref={pdfContainerRef}>
-          {state.drawingMode === 'none' && !isDragging && (
+          {state.drawingMode === 'none' && !compareModeEnabled && !isDragging && (
             <div className={classes.dragIndicator}>
               <span>Click and drag to scroll</span>
             </div>
           )}
           <div className={classes.pdfContentWrapper}>
-            {pages.map((page, index) => (
-              <Page
-                key={index + 1}
-                page={page}
-                pageNumber={index + 1}
-                id={`page-${index + 1}`}
-                drawings={drawings}
-                onDrawingCreated={drawingCreated}
-              />
-            ))}
+            {pages.map((page, index) => {
+              const pageNumber = index + 1;
+              const pageId = `page-${pageNumber}`;
+              const comparePageId = `compare-page-${pageNumber}`;
+
+              // Determine color for compare mode (simple alternating example)
+              const comparisonColor = pageNumber % 2 ? compareColor1 : compareColor2;
+
+              return compareModeEnabled ? (
+                <ComparePage
+                  key={comparePageId}
+                  id={comparePageId}
+                  page={page}
+                  pageNumber={pageNumber}
+                  comparisonColor={comparisonColor}
+                />
+              ) : (
+                <Page
+                  key={pageId}
+                  id={pageId}
+                  page={page}
+                  pageNumber={pageNumber}
+                  drawings={drawings}
+                  onDrawingCreated={drawingCreated}
+                />
+              );
+            })}
           </div>
         </div>
       </div>

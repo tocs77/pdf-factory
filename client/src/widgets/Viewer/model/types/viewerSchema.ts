@@ -266,6 +266,7 @@ export interface ViewerSchema {
   // Whether the ruler tool is enabled
   rulerEnabled?: boolean;
   isDraftDrawing: boolean;
+  compareModeEnabled: boolean;
 }
 
 export type Action =
@@ -276,6 +277,7 @@ export type Action =
   | { type: 'toggleThumbnails' }
   | { type: 'toggleTextLayer' } // Toggle text layer visibility
   | { type: 'toggleRuler' } // Toggle ruler tool
+  | { type: 'toggleCompareMode' }
   | { type: 'rotatePageClockwise'; payload: number } // Page number to rotate
   | { type: 'rotatePageCounterClockwise'; payload: number } // Page number to rotate
   | { type: 'setPageRotation'; payload: { pageNumber: number; angle: number } }

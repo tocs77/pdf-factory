@@ -1,0 +1,31 @@
+.pageContainer {
+  position: relative;
+  /* Needed for absolute positioning of children */
+  margin-bottom: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  /* Prevents content from overflowing */
+}
+
+.page {
+  position: relative;
+  /* Changed from absolute to allow content sizing */
+  display: inline-block;
+  /* Ensures container fits content */
+}
+
+.canvasWrapper {
+  position: relative;
+  /* Ensure children are positioned relative to this */
+  display: block;
+  /* Default display */
+}
+
+.pageCanvas {
+  display: block;
+  /* Remove extra space below canvas */
+  background-color: transparent;
+  /* Allow underlying content to show through */
+  /* Ensure canvas is not scaled by CSS */
+  max-width: none;
+}
