@@ -61,7 +61,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
         console.warn(`Drawing with ID ${id} not found`);
         return;
       }
-
+      console.log('Drawing found:', drawing);
       // Get the page number from the drawing
       const pageNumber = drawing.pageNumber;
 

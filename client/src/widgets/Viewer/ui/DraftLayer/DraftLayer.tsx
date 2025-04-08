@@ -95,7 +95,6 @@ export const DraftLayer = (props: DraftLayerProps) => {
   };
 
   const createDraftDrawing = () => {
-    console.log('createDraftDrawing');
     const drawingsCanvas = completeDrawingsCanvasRef.current;
     const pdfCanvas = pdfCanvasRef?.current;
     if (!drawingsCanvas || !pdfCanvas) {
@@ -123,6 +122,8 @@ export const DraftLayer = (props: DraftLayerProps) => {
       maxX: 0,
       maxY: 0,
     };
+
+    console.log('combinedNormalizedBounds', draftDrawing.rectangles);
 
     // Iterate through all drawings and combine their bounding boxes
     draftDrawing.pathes.forEach((drawing) => updateBoundsFromBox(combinedNormalizedBounds, drawing.boundingBox));
