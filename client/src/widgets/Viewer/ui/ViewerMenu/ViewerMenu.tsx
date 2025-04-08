@@ -298,7 +298,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
         {/* Drawing Options - Show when a drawing tool is selected OR text layer is enabled */}
         {(drawingMode === 'freehand' ||
           drawingMode === 'rectangle' ||
-          drawingMode === 'pin' ||
+          drawingMode === 'extensionLine' ||
           drawingMode === 'line' ||
           drawingMode === 'drawArea' ||
           drawingMode === 'textArea' ||
@@ -483,11 +483,11 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
               </svg>
             </button>
 
-            {/* Pin Tool */}
+            {/* Extension Line Tool */}
             <button
-              className={`${classes.toolButton} ${drawingMode === 'pin' ? classes.active : ''}`}
-              onClick={() => changeDrawingMode('pin')}
-              title={drawingMode === 'pin' ? 'Disable pin tool' : 'Enable pin tool'}>
+              className={`${classes.toolButton} ${drawingMode === 'extensionLine' ? classes.active : ''}`}
+              onClick={() => changeDrawingMode('extensionLine')}
+              title={drawingMode === 'extensionLine' ? 'Disable extension line tool' : 'Enable extension line tool'}>
               <svg
                 xmlns='http://www.w3.org/2000/svg'
                 width='16'
@@ -498,8 +498,9 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
                 strokeWidth='2'
                 strokeLinecap='round'
                 strokeLinejoin='round'>
-                <path d='M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z'></path>
-                <circle cx='12' cy='10' r='3'></circle>
+                {/* Arrow bent in the middle */}
+                <polyline points='5,19 17,17 19,5' />
+                <polyline points='16 3 19 5 16 7' />
               </svg>
             </button>
 

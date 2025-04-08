@@ -1,6 +1,5 @@
 import { useEffect, useRef, useContext, forwardRef } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
-import { renderPin } from '../../utils/pinRenderer';
 import { transformCoordinates } from '../../utils/rotationUtils';
 import {
   renderFreehandPath,
@@ -12,6 +11,7 @@ import {
   renderTextHighlight,
   renderTextArea,
 } from '../../utils/drawingRenderers';
+import { renderExtensionLine } from '../../utils/extensionLineRenderer';
 import { Drawing } from '../../model/types/viewerSchema';
 import styles from './CompleteDrawings.module.scss';
 
@@ -74,7 +74,7 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
           renderRectangle(ctx, drawing, canvas.width, canvas.height, scale, rotation);
           break;
 
-        case 'pin': {
+        case 'extensionLine': {
           // Transform pin position with rotation
           const { x, y } = transformCoordinates(
             drawing.position.x,
@@ -103,10 +103,10 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
             };
 
             // Use the pin renderer utility with transformed coordinates
-            renderPin(ctx, tempPin, x, y);
+            renderExtensionLine(ctx, tempPin, x, y);
           } else {
             // Use the pin renderer utility with just the position
-            renderPin(ctx, drawing, x, y);
+            renderExtensionLine(ctx, drawing, x, y);
           }
           break;
         }
@@ -145,13 +145,20 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
             renderRectangle(ctx, rect, canvas.width, canvas.height, scale, rotation);
           });
 
-          drawing.pins.forEach((pin) => {
-            const { x, y } = transformCoordinates(pin.position.x, pin.position.y, canvas.width, canvas.height, scale, rotation);
+          drawing.extensionLines.forEach((extensionLine) => {
+            const { x, y } = transformCoordinates(
+              extensionLine.position.x,
+              extensionLine.position.y,
+              canvas.width,
+              canvas.height,
+              scale,
+              rotation,
+            );
 
-            if (pin.bendPoint) {
+            if (extensionLine.bendPoint) {
               const transformedBend = transformCoordinates(
-                pin.bendPoint.x,
-                pin.bendPoint.y,
+                extensionLine.bendPoint.x,
+                extensionLine.bendPoint.y,
                 canvas.width,
                 canvas.height,
                 scale,
@@ -159,13 +166,13 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
               );
 
               const tempPin = {
-                ...pin,
+                ...extensionLine,
                 bendPoint: { x: transformedBend.x, y: transformedBend.y },
               };
 
-              renderPin(ctx, tempPin, x, y);
+              renderExtensionLine(ctx, tempPin, x, y);
             } else {
-              renderPin(ctx, pin, x, y);
+              renderExtensionLine(ctx, extensionLine, x, y);
             }
           });
 

@@ -1,5 +1,5 @@
 import { createContext, Dispatch } from 'react';
-import { Action, RotationAngle, ViewerSchema } from '../types/viewerSchema';
+import { Action, DrawingMode, RotationAngle, ViewerSchema } from '../types/viewerSchema';
 
 // Define the context type including state and dispatch
 interface ViewerContextType {
@@ -29,6 +29,8 @@ export const ViewerContext = createContext<ViewerContextType>({
   dispatch: () => null,
 });
 
+const drawingTools: DrawingMode[] = ['freehand', 'rectangle', 'extensionLine', 'line', 'textArea'];
+
 // Reducer function to handle state updates
 export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema => {
   switch (action.type) {
@@ -54,9 +56,7 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
         drawingLineWidth: action.payload,
       };
     case 'setDrawingMode': {
-      const isDraftDrawing = ['freehand', 'rectangle', 'pin', 'line', 'textArea'].includes(action.payload)
-        ? true
-        : state.isDraftDrawing;
+      const isDraftDrawing = drawingTools.includes(action.payload) ? true : state.isDraftDrawing;
       return {
         ...state,
         drawingMode: action.payload,

@@ -5,11 +5,11 @@ import { LineDrawingLayer } from '../LineDrawingLayer/LineDrawingLayer';
 import TextAreaDrawingLayer from '../TextAreaDrawingLayer/TextAreaDrawingLayer';
 import { DrawingComponent } from '../DrawingComponent/DrawingComponent';
 import DrawRect from '../DrawRect/DrawRect';
-import PinDrawingComponent from '../PinDrawingComponent/PinDrawingComponent';
 import CompleteDrawings from '../CompleteDrawings/CompleteDrawings';
 import styles from '../DrawingComponent/DrawingComponent.module.scss'; // Import styles
 import { transformCoordinates } from '../../utils/rotationUtils';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
+import { ExtensionLineDrawingComponent } from '../ExtensionLineDrawingComponent/ExtensionLineDrawingComponent';
 
 interface DraftLayerProps {
   pageNumber: number;
@@ -27,7 +27,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
     type: 'misc',
     pathes: [],
     rectangles: [],
-    pins: [],
+    extensionLines: [],
     lines: [],
     textAreas: [],
     pageNumber: pageNumber,
@@ -42,8 +42,8 @@ export const DraftLayer = (props: DraftLayerProps) => {
       case 'rectangle':
         setDraftDrawing((prev) => ({ ...prev, rectangles: [...prev.rectangles, drawing] }));
         break;
-      case 'pin':
-        setDraftDrawing((prev) => ({ ...prev, pins: [...prev.pins, drawing] }));
+      case 'extensionLine':
+        setDraftDrawing((prev) => ({ ...prev, extensionLines: [...prev.extensionLines, drawing] }));
         break;
       case 'line':
         setDraftDrawing((prev) => ({ ...prev, lines: [...prev.lines, drawing] }));
@@ -72,11 +72,9 @@ export const DraftLayer = (props: DraftLayerProps) => {
     const hasDrawing =
       draftDrawing.pathes.length > 0 ||
       draftDrawing.rectangles.length > 0 ||
-      draftDrawing.pins.length > 0 ||
+      draftDrawing.extensionLines.length > 0 ||
       draftDrawing.lines.length > 0 ||
       draftDrawing.textAreas.length > 0;
-
-    console.log('hasDrawing', hasDrawing, draftDrawing);
 
     if (hasDrawing) {
       createDraftDrawing();
@@ -88,7 +86,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
       type: 'misc',
       pathes: [],
       rectangles: [],
-      pins: [],
+      extensionLines: [],
       lines: [],
       textAreas: [],
       pageNumber: pageNumber,
@@ -108,7 +106,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
         pageNumber: pageNumber,
         pathes: draftDrawing.pathes,
         rectangles: draftDrawing.rectangles,
-        pins: draftDrawing.pins,
+        extensionLines: draftDrawing.extensionLines,
         lines: draftDrawing.lines,
         textAreas: draftDrawing.textAreas,
         image: '',
@@ -129,7 +127,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
     // Iterate through all drawings and combine their bounding boxes
     draftDrawing.pathes.forEach((drawing) => updateBoundsFromBox(combinedNormalizedBounds, drawing.boundingBox));
     draftDrawing.rectangles.forEach((drawing) => updateBoundsFromBox(combinedNormalizedBounds, drawing.boundingBox));
-    draftDrawing.pins.forEach((drawing) => updateBoundsFromBox(combinedNormalizedBounds, drawing.boundingBox));
+    draftDrawing.extensionLines.forEach((drawing) => updateBoundsFromBox(combinedNormalizedBounds, drawing.boundingBox));
     draftDrawing.lines.forEach((drawing) => updateBoundsFromBox(combinedNormalizedBounds, drawing.boundingBox));
     draftDrawing.textAreas.forEach((drawing) => updateBoundsFromBox(combinedNormalizedBounds, drawing.boundingBox));
 
@@ -194,7 +192,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
       pageNumber: pageNumber,
       pathes: draftDrawing.pathes,
       rectangles: draftDrawing.rectangles,
-      pins: draftDrawing.pins,
+      extensionLines: draftDrawing.extensionLines,
       lines: draftDrawing.lines,
       textAreas: draftDrawing.textAreas,
       image: image,
@@ -210,7 +208,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
       type: 'misc',
       pathes: [],
       rectangles: [],
-      pins: [],
+      extensionLines: [],
       lines: [],
       textAreas: [],
       pageNumber: pageNumber,
@@ -244,8 +242,8 @@ export const DraftLayer = (props: DraftLayerProps) => {
       {drawingMode === 'rectangle' && (
         <DrawRect pageNumber={pageNumber} onDrawingCreated={handleDrawingAdded} pdfCanvasRef={pdfCanvasRef} draftMode />
       )}
-      {drawingMode === 'pin' && (
-        <PinDrawingComponent
+      {drawingMode === 'extensionLine' && (
+        <ExtensionLineDrawingComponent
           pageNumber={pageNumber}
           onDrawingCreated={handleDrawingAdded}
           pdfCanvasRef={pdfCanvasRef}

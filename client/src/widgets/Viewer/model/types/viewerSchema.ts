@@ -54,10 +54,10 @@ export interface Rectangle extends BaseDrawing {
   style: DrawingStyle;
 }
 
-export interface Pin extends BaseDrawing {
-  type: 'pin';
+export interface ExtensionLine extends BaseDrawing {
+  type: 'extensionLine';
   /**
-   * Position of the pin target (arrow end point) on the page
+   * Position of the extension line target (arrow end point) on the page
    * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
    */
   position: { x: number; y: number };
@@ -67,11 +67,11 @@ export interface Pin extends BaseDrawing {
    */
   bendPoint?: { x: number; y: number };
   /**
-   * Text content of the pin
+   * Text content of the extension line
    */
   text: string;
   /**
-   * Color of the pin
+   * Color of the extension line
    */
   color: string;
 }
@@ -187,7 +187,7 @@ export interface DrawingMisc extends BaseDrawing {
   type: 'misc';
   pathes: DrawingPath[];
   rectangles: Rectangle[];
-  pins: Pin[];
+  extensionLines: ExtensionLine[];
   lines: Line[];
   textAreas: TextArea[];
 }
@@ -196,7 +196,7 @@ export interface DrawingMisc extends BaseDrawing {
 export type Drawing =
   | DrawingPath
   | Rectangle
-  | Pin
+  | ExtensionLine
   | Line
   | DrawArea
   | TextUnderline
@@ -208,7 +208,7 @@ export type Drawing =
 export type DrawingMode =
   | 'freehand'
   | 'rectangle'
-  | 'pin'
+  | 'extensionLine'
   | 'textHighlight'
   | 'textUnderline'
   | 'textCrossedOut'

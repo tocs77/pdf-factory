@@ -211,14 +211,14 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
         };
       }
 
-      case 'pin': {
+      case 'extensionLine': {
         // For pins, create a small area around the pin position
-        const pinDrawing = drawing as any;
+        const extensionLineDrawing = drawing as any;
         return {
-          top: pinDrawing.position.y - 10,
-          left: pinDrawing.position.x - 10,
-          right: pinDrawing.position.x + 10,
-          bottom: pinDrawing.position.y + 10,
+          top: extensionLineDrawing.position.y - 10,
+          left: extensionLineDrawing.position.x - 10,
+          right: extensionLineDrawing.position.x + 10,
+          bottom: extensionLineDrawing.position.y + 10,
         };
       }
 

@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useContext, useState } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
-import { renderPin } from '../../utils/pinRenderer';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
 import { Drawing } from '../../model/types/viewerSchema';
-import styles from './PinDrawingComponent.module.scss';
+import classes from './ExtensionLineDrawingComponent.module.scss';
+import { renderExtensionLine } from '../../utils/extensionLineRenderer';
 
-interface PinDrawingComponentProps {
+interface ExtensionLineDrawingComponentProps {
   pageNumber: number;
   onDrawingCreated: (drawing: Drawing) => void;
   pdfCanvasRef?: React.RefObject<HTMLCanvasElement>; // Reference to the PDF canvas
@@ -16,7 +16,7 @@ interface PinDrawingComponentProps {
 /**
  * Component for handling pin drawing with arrow and bend point
  */
-const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({
+export const ExtensionLineDrawingComponent: React.FC<ExtensionLineDrawingComponentProps> = ({
   pageNumber,
   onDrawingCreated,
   pdfCanvasRef,
@@ -32,8 +32,8 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({
 
   // States for tracking the multi-stage drawing process
   const [drawingStage, setDrawingStage] = useState<'initial' | 'positioning' | 'completed'>('initial');
-  const [pinPosition, setPinPosition] = useState<{ x: number; y: number } | null>(null);
-  const [bendPosition, setBendPosition] = useState<{ x: number; y: number } | null>(null);
+  const [pinPointPosition, setPinPointPosition] = useState<{ x: number; y: number } | null>(null);
+  const [bendPointPosition, setBendPointPosition] = useState<{ x: number; y: number } | null>(null);
   const [currentMousePosition, setCurrentMousePosition] = useState<{ x: number; y: number } | null>(null);
 
   // Set up drawing canvas
@@ -64,8 +64,8 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({
 
   // Reset drawing state when switching pages or drawing modes
   useEffect(() => {
-    setPinPosition(null);
-    setBendPosition(null);
+    setPinPointPosition(null);
+    setBendPointPosition(null);
     setCurrentMousePosition(null);
     setDrawingStage('initial');
   }, [pageNumber, drawingMode]);
@@ -88,9 +88,9 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({
     };
   }, []);
 
-  // Draw the pin and arrow preview
+  // Draw the extension line and arrow preview
   useEffect(() => {
-    if (!canvasRef.current || !pinPosition) return;
+    if (!canvasRef.current || !pinPointPosition) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -101,26 +101,26 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({
 
     if (drawingStage === 'positioning' && currentMousePosition) {
       // If we're in the positioning stage, draw a preview of the arrow
-      const previewPin = {
+      const previewExtensionLine = {
         id: '',
-        type: 'pin' as const,
-        position: pinPosition,
+        type: 'extensionLine' as const,
+        position: pinPointPosition,
         bendPoint: currentMousePosition,
         text: '',
         color: drawingColor,
         pageNumber,
         boundingBox: {
-          left: pinPosition.x,
-          top: pinPosition.y,
+          left: pinPointPosition.x,
+          top: pinPointPosition.y,
           right: currentMousePosition.x,
           bottom: currentMousePosition.y,
         },
       };
 
       // Draw the pin with the current mouse position as the bend point
-      renderPin(ctx, previewPin, pinPosition.x, pinPosition.y);
+      renderExtensionLine(ctx, previewExtensionLine, pinPointPosition.x, pinPointPosition.y);
     }
-  }, [pinPosition, bendPosition, currentMousePosition, drawingStage, drawingColor, pageNumber]);
+  }, [pinPointPosition, bendPointPosition, currentMousePosition, drawingStage, drawingColor, pageNumber]);
 
   // Get raw coordinates relative to canvas
   const getRawCoordinates = (clientX: number, clientY: number): { x: number; y: number } => {
@@ -146,8 +146,8 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({
 
   // Handle clicks for pin placement
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    // Only process clicks when in pin drawing mode
-    if (drawingMode !== 'pin') return;
+    // Only process clicks when in extension line drawing mode
+    if (drawingMode !== 'extensionLine') return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -155,39 +155,45 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({
     // Get click coordinates relative to canvas
     const coords = getRawCoordinates(e.clientX, e.clientY);
 
-    // If this is the first click, set the pin position
+    // If this is the first click, set the pin point position
     if (drawingStage === 'initial') {
-      setPinPosition(coords);
+      setPinPointPosition(coords);
       setDrawingStage('positioning');
     }
-    // If this is the second click, save the bend position and create pin
-    else if (drawingStage === 'positioning' && pinPosition) {
-      // Set the bend position to current mouse position
-      setBendPosition(coords);
+    // If this is the second click, save the bend point position and create extension line
+    else if (drawingStage === 'positioning' && pinPointPosition) {
+      // Set the bend point position to current mouse position
+      setBendPointPosition(coords);
 
       // Normalize the pin and bend points to scale 1 and 0 degrees rotation
-      const normalizedPinPoint = normalizeCoordinatesToZeroRotation(pinPosition, canvas.width, canvas.height, scale, rotation);
+      const normalizedPinPoint = normalizeCoordinatesToZeroRotation(
+        pinPointPosition,
+        canvas.width,
+        canvas.height,
+        scale,
+        rotation,
+      );
 
       const normalizedBendPoint = normalizeCoordinatesToZeroRotation(coords, canvas.width, canvas.height, scale, rotation);
 
-      // Prompt for pin text
-      const text = prompt('Enter pin text:');
+      // Prompt for extension line text
+      const text = prompt('Enter extension line text:');
       if (!text) {
         // Reset if user cancels
-        setPinPosition(null);
-        setBendPosition(null);
+        setPinPointPosition(null);
+        setBendPointPosition(null);
         setDrawingStage('initial');
         return;
       }
 
       // Calculate the bounding box for image capture
-      // Expand the area around the pin
-      const padding = 50; // Pins need more padding for the arrow
+      // Expand the area around the extension line
+      const padding = 50; // Extension lines need more padding for the arrow
       const boundingBox = {
-        left: Math.max(0, Math.min(pinPosition.x, coords.x) - padding),
-        top: Math.max(0, Math.min(pinPosition.y, coords.y) - padding),
-        width: Math.min(canvas.width, Math.abs(coords.x - pinPosition.x) + padding * 2),
-        height: Math.min(canvas.height, Math.abs(coords.y - pinPosition.y) + padding * 2),
+        left: Math.max(0, Math.min(pinPointPosition.x, coords.x) - padding),
+        top: Math.max(0, Math.min(pinPointPosition.y, coords.y) - padding),
+        width: Math.min(canvas.width, Math.abs(coords.x - pinPointPosition.x) + padding * 2),
+        height: Math.min(canvas.height, Math.abs(coords.y - pinPointPosition.y) + padding * 2),
       };
 
       const boundPointTopLeft = normalizeCoordinatesToZeroRotation(
@@ -218,9 +224,9 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({
         image = captureDrawingImage(pdfCanvasRef?.current || null, canvas, boundingBox);
       }
 
-      // Create a new pin object with normalized coordinates
-      const newPin: Drawing = {
-        type: 'pin',
+      // Create a new extension line object with normalized coordinates
+      const newExtensionLine: Drawing = {
+        type: 'extensionLine',
         position: normalizedPinPoint,
         bendPoint: normalizedBendPoint,
         text,
@@ -231,15 +237,15 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({
       };
 
       // Call the callback with the new drawing
-      onDrawingCreated(newPin);
+      onDrawingCreated(newExtensionLine);
 
       // Reset drawing state
-      setPinPosition(null);
-      setBendPosition(null);
+      setPinPointPosition(null);
+      setBendPointPosition(null);
       setCurrentMousePosition(null);
       setDrawingStage('initial');
 
-      // Clear the canvas as the pin will be rendered by CompleteDrawings
+      // Clear the canvas as the extension line will be rendered by CompleteDrawings
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -259,13 +265,12 @@ const PinDrawingComponent: React.FC<PinDrawingComponentProps> = ({
   return (
     <canvas
       ref={canvasRef}
-      className={styles.pinCanvas}
+      className={classes.extensionLineCanvas}
       onClick={handleClick}
       onMouseMove={handleMouseMove}
       onKeyDown={handleKeyDown}
       tabIndex={0} // Make canvas focusable
-      data-testid='pin-drawing-canvas'
+      data-testid='extensionLine-drawing-canvas'
     />
   );
 };
-export default PinDrawingComponent;
