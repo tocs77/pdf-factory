@@ -197,6 +197,15 @@ export interface RectSelection extends BaseDrawing {
   endPoint: { x: number; y: number };
 }
 
+export interface PinSelection extends BaseDrawing {
+  type: 'PinSelection';
+  /**
+   * Position of the pin
+   * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
+   */
+  position: { x: number; y: number };
+}
+
 export interface DrawingMisc extends BaseDrawing {
   type: 'misc';
   pathes: DrawingPath[];
@@ -218,7 +227,8 @@ export type Drawing =
   | TextHighlight
   | TextArea
   | DrawingMisc
-  | RectSelection;
+  | RectSelection
+  | PinSelection;
 
 export type DrawingMode =
   | 'none'
@@ -233,7 +243,8 @@ export type DrawingMode =
   | 'textUnderline'
   | 'textCrossedOut'
   | 'ruler'
-  | 'RectSelection';
+  | 'RectSelection'
+  | 'PinSelection';
 
 // Valid rotation angles: 0, 90, 180, 270 degrees
 export type RotationAngle = 0 | 90 | 180 | 270;

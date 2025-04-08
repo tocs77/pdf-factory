@@ -10,6 +10,7 @@ import {
   renderTextCrossedOut,
   renderTextHighlight,
   renderTextArea,
+  renderPinSelection,
 } from '../../utils/drawingRenderers';
 import { renderExtensionLine } from '../../utils/extensionLineRenderer';
 import { Drawing } from '../../model/types/viewerSchema';
@@ -153,6 +154,10 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
             scale,
             rotation,
           );
+          break;
+
+        case 'PinSelection':
+          renderPinSelection(ctx, drawing, canvas.width, canvas.height, scale, rotation);
           break;
 
         case 'misc': {

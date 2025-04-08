@@ -11,6 +11,7 @@ import { RulerDrawingLayer } from '../RulerDrawingLayer/RulerDrawingLayer';
 import { Drawing } from '../../model/types/viewerSchema';
 import { DraftLayer } from '../DraftLayer/DraftLayer';
 import RectSelectionDrawingComponent from '../RectSelectionDrawingComponent/RectSelectionDrawingComponent';
+import PinSelectionDrawingComponent from '../PinSelectionDrawingComponent/PinSelectionDrawingComponent';
 
 // Page component for rendering a single PDF page
 interface PageProps {
@@ -213,6 +214,18 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
         };
       }
 
+      case 'PinSelection': {
+        // For pin selections, create a small bounding box around the pin
+        const pinDrawing = drawing as any;
+        const pinSize = 10; // Approximate size for bounding box purposes
+        return {
+          top: pinDrawing.position.y - pinSize,
+          left: pinDrawing.position.x - pinSize,
+          right: pinDrawing.position.x + pinSize,
+          bottom: pinDrawing.position.y + pinSize,
+        };
+      }
+
       case 'extensionLine': {
         // For pins, create a small area around the pin position
         const extensionLineDrawing = drawing as any;
@@ -395,6 +408,15 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
                 <RectSelectionDrawingComponent
                   pageNumber={pageNumber}
                   onDrawingCreated={handleDrawingCreated as any} // Use handleDrawingCreated, cast type if needed
+                  pdfCanvasRef={canvasRef}
+                />
+              )}
+
+              {/* Add PinSelection Layer */}
+              {drawingMode === 'PinSelection' && (
+                <PinSelectionDrawingComponent
+                  pageNumber={pageNumber}
+                  onDrawingCreated={handleDrawingCreated as any} // Use handleDrawingCreated
                   pdfCanvasRef={canvasRef}
                 />
               )}

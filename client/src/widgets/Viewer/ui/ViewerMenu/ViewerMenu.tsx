@@ -594,6 +594,25 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
                 <rect x='3' y='3' width='18' height='18' rx='2' ry='2'></rect>
               </svg>
             </button>
+            {/* Pin Selection Tool */}
+            <button
+              className={`${classes.toolButton} ${drawingMode === 'PinSelection' ? classes.active : ''}`}
+              onClick={() => changeDrawingMode('PinSelection')}
+              title={drawingMode === 'PinSelection' ? 'Disable pin selection tool' : 'Enable pin selection tool'}>
+              <svg
+                xmlns='http://www.w3.org/2000/svg'
+                width='16'
+                height='16'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+                strokeLinecap='round'
+                strokeLinejoin='round'>
+                <path d='M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z'></path>
+                <circle cx='12' cy='10' r='3'></circle>
+              </svg>
+            </button>
           </div>
         </div>
       </div>
