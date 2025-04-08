@@ -135,6 +135,26 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
           renderTextArea(ctx, drawing, canvas.width, canvas.height, scale, rotation);
           break;
 
+        case 'RectSelection':
+          // Render RectSelection as a simple dashed blue rectangle
+          // Need to provide a style object as RectSelection doesn't have one
+          renderRectangle(
+            ctx,
+            {
+              ...drawing,
+              style: {
+                strokeColor: '#0000FF', // Blue
+                strokeWidth: 1 / scale, // Normalize width
+                lineDash: [4, 4], // Dashed line
+              },
+            } as any, // Cast to satisfy renderRectangle, which expects a style prop
+            canvas.width,
+            canvas.height,
+            scale,
+            rotation,
+          );
+          break;
+
         case 'misc': {
           // Render all components of the misc drawing
           drawing.pathes.forEach((path) => {

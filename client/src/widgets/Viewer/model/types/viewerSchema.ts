@@ -183,6 +183,20 @@ export interface TextArea extends BaseDrawing {
   style: DrawingStyle;
 }
 
+export interface RectSelection extends BaseDrawing {
+  type: 'RectSelection';
+  /**
+   * Start point (top-left) of the selection rectangle
+   * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
+   */
+  startPoint: { x: number; y: number };
+  /**
+   * End point (bottom-right) of the selection rectangle
+   * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
+   */
+  endPoint: { x: number; y: number };
+}
+
 export interface DrawingMisc extends BaseDrawing {
   type: 'misc';
   pathes: DrawingPath[];
@@ -203,21 +217,23 @@ export type Drawing =
   | TextCrossedOut
   | TextHighlight
   | TextArea
-  | DrawingMisc;
+  | DrawingMisc
+  | RectSelection;
 
 export type DrawingMode =
+  | 'none'
   | 'freehand'
   | 'rectangle'
   | 'extensionLine'
+  | 'line'
+  | 'textArea'
+  | 'drawArea'
+  | 'zoomArea'
   | 'textHighlight'
   | 'textUnderline'
   | 'textCrossedOut'
-  | 'line'
-  | 'drawArea'
-  | 'zoomArea'
-  | 'textArea'
   | 'ruler'
-  | 'none';
+  | 'RectSelection';
 
 // Valid rotation angles: 0, 90, 180, 270 degrees
 export type RotationAngle = 0 | 90 | 180 | 270;

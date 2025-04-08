@@ -10,6 +10,7 @@ import { ZoomAreaLayer } from '../ZoomAreaLayer/ZoomAreaLayer';
 import { RulerDrawingLayer } from '../RulerDrawingLayer/RulerDrawingLayer';
 import { Drawing } from '../../model/types/viewerSchema';
 import { DraftLayer } from '../DraftLayer/DraftLayer';
+import RectSelectionDrawingComponent from '../RectSelectionDrawingComponent/RectSelectionDrawingComponent';
 
 // Page component for rendering a single PDF page
 interface PageProps {
@@ -200,7 +201,8 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
     switch (drawing.type) {
       case 'rectangle':
       case 'drawArea':
-      case 'textArea': {
+      case 'textArea':
+      case 'RectSelection': {
         // For rectangle-based drawings
         const rectDrawing = drawing as any;
         return {
@@ -387,6 +389,15 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
               {drawingMode === 'zoomArea' && <ZoomAreaLayer pageNumber={pageNumber} />}
 
               {drawingMode === 'ruler' && <RulerDrawingLayer pageNumber={pageNumber} pdfCanvasRef={canvasRef} />}
+
+              {/* Add RectSelection Layer */}
+              {drawingMode === 'RectSelection' && (
+                <RectSelectionDrawingComponent
+                  pageNumber={pageNumber}
+                  onDrawingCreated={handleDrawingCreated as any} // Use handleDrawingCreated, cast type if needed
+                  pdfCanvasRef={canvasRef}
+                />
+              )}
             </>
           )}
 
