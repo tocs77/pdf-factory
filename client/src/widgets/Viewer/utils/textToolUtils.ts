@@ -182,6 +182,8 @@ export const getHighlightRects = (
   const pageContainer = container || document.querySelector(`[data-page-number="${pageNumber}"]`);
   if (!pageContainer) return rects;
 
+  console.log('pageContainer', pageContainer.getBoundingClientRect());
+
   // Get all spans that are part of the selection
   const selectedElements = getSelectedElements(selection, pageContainer as HTMLElement);
 

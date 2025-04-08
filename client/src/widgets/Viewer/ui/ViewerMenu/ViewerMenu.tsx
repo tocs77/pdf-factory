@@ -95,11 +95,16 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
     dispatch({ type: 'rotatePageCounterClockwise', payload: currentPage });
   };
 
-  const toggleTextTools = () => {
-    if (!textLayerEnabled) {
-      dispatch({ type: 'toggleTextLayer' });
-    }
-    changeDrawingMode('text');
+  const toggleTextHighlight = () => {
+    dispatch({ type: 'setDrawingMode', payload: drawingMode === 'textHighlight' ? 'none' : 'textHighlight' });
+  };
+
+  const toggleTextUnderline = () => {
+    dispatch({ type: 'setDrawingMode', payload: drawingMode === 'textUnderline' ? 'none' : 'textUnderline' });
+  };
+
+  const toggleTextCrossedOut = () => {
+    dispatch({ type: 'setDrawingMode', payload: drawingMode === 'textCrossedOut' ? 'none' : 'textCrossedOut' });
   };
 
   const goToPreviousPage = () => {
@@ -293,9 +298,9 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
       <div className={classes.toolPanel}>
         <div className={classes.toolButtons}>
           <button
-            className={`${classes.toolButton} ${drawingMode === 'text' ? classes.active : ''}`}
-            onClick={toggleTextTools}
-            title={drawingMode === 'text' ? 'Disable text tools' : 'Enable text tools'}>
+            className={`${classes.toolButton} ${drawingMode === 'textUnderline' ? classes.active : ''}`}
+            onClick={toggleTextUnderline}
+            title={drawingMode === 'textUnderline' ? 'Disable text underline' : 'Enable text underline'}>
             <svg
               xmlns='http://www.w3.org/2000/svg'
               width='16'
@@ -306,9 +311,45 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
               strokeWidth='2'
               strokeLinecap='round'
               strokeLinejoin='round'>
-              <path d='M17 8h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3'></path>
-              <path d='M7 8H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h3'></path>
-              <line x1='12' y1='2' x2='12' y2='22'></line>
+              <path d='M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3' />
+              <line x1='4' y1='21' x2='20' y2='21' />
+            </svg>
+          </button>
+          <button
+            className={`${classes.toolButton} ${drawingMode === 'textCrossedOut' ? classes.active : ''}`}
+            onClick={toggleTextCrossedOut}
+            title={drawingMode === 'textCrossedOut' ? 'Disable text crossed out' : 'Enable text crossed out'}>
+            <svg
+              xmlns='http://www.w3.org/2000/svg'
+              width='16'
+              height='16'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='currentColor'
+              strokeWidth='2'
+              strokeLinecap='round'
+              strokeLinejoin='round'>
+              <line x1='4' y1='12' x2='20' y2='12' />
+              <path d='M6 20v-8a6 6 0 0 1 12 0v8' />
+            </svg>
+          </button>
+          <button
+            className={`${classes.toolButton} ${drawingMode === 'textHighlight' ? classes.active : ''}`}
+            onClick={toggleTextHighlight}
+            title={drawingMode === 'textHighlight' ? 'Disable text highlight' : 'Enable text highlight'}>
+            <svg
+              xmlns='http://www.w3.org/2000/svg'
+              width='16'
+              height='16'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='currentColor'
+              strokeWidth='2'
+              strokeLinecap='round'
+              strokeLinejoin='round'>
+              <rect x='3' y='5' width='18' height='14' rx='2' ry='2' />
+              <path d='M8 5v14' />
+              <path d='M16 5v14' />
             </svg>
           </button>
 

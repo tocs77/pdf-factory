@@ -360,18 +360,20 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
           <canvas ref={canvasRef} className={classes.pageCanvas} />
 
           {/* Text Layer - only render when text tool is selected */}
-          {drawingMode === 'text' && viewport && renderTask && (
-            <TextLayer
-              page={page}
-              viewport={viewport}
-              scale={scale}
-              rotation={rotation}
-              renderTask={renderTask}
-              pageNumber={pageNumber}
-              onDrawingCreated={handleDrawingCreated}
-              pdfCanvasRef={canvasRef}
-            />
-          )}
+          {(drawingMode === 'textUnderline' || drawingMode === 'textCrossedOut' || drawingMode === 'textHighlight') &&
+            viewport &&
+            renderTask && (
+              <TextLayer
+                page={page}
+                viewport={viewport}
+                scale={scale}
+                rotation={rotation}
+                renderTask={renderTask}
+                pageNumber={pageNumber}
+                onDrawingCreated={handleDrawingCreated}
+                pdfCanvasRef={canvasRef}
+              />
+            )}
 
           {/* Drawing components - only render when respective tool is selected */}
           {inView && (

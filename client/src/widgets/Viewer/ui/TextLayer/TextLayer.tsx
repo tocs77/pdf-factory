@@ -32,7 +32,7 @@ export const TextLayer = ({
   const [hasSelection, setHasSelection] = useState(false);
 
   // Get drawing color and line width from the ViewerContext
-  const { state } = useContext(ViewerContext);
+  const { state, dispatch } = useContext(ViewerContext);
   const { drawingColor, drawingLineWidth } = state;
 
   // Helper function to hide tools after applying
@@ -289,8 +289,26 @@ export const TextLayer = ({
     // No rotation transforms needed as PDF.js viewport already handles rotation
   }, [rotation, viewport]);
 
+  const handleFinishClick = () => {
+    switch (state.drawingMode) {
+      case 'textUnderline':
+        createTextUnderline();
+        break;
+      case 'textCrossedOut':
+        createTextCrossedOut();
+        break;
+      case 'textHighlight':
+        createTextHighlight();
+        break;
+      default:
+        break;
+    }
+    setHasSelection(false);
+    dispatch({ type: 'setDrawingMode', payload: 'none' });
+  };
+
   return (
-    <div className={classes.textLayer} ref={textLayerRef} data-page-number={pageNumber}>
+    <>
       {/* Add text tools menu when text is selected */}
       {hasSelection && (
         <div
@@ -308,9 +326,7 @@ export const TextLayer = ({
           }}>
           <TextAreaTools
             pageNumber={pageNumber}
-            onUnderlineClick={createTextUnderline}
-            onCrossOutClick={createTextCrossedOut}
-            onHighlightClick={createTextHighlight}
+            onFinishClick={handleFinishClick}
             onHideTools={() => {
               setHasSelection(false);
             }}
@@ -318,6 +334,7 @@ export const TextLayer = ({
           />
         </div>
       )}
-    </div>
+      <div className={classes.textLayer} ref={textLayerRef} data-page-number={pageNumber}></div>
+    </>
   );
 };
