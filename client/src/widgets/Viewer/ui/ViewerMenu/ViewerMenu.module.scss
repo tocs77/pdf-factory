@@ -36,16 +36,16 @@
   border-radius: 3px;
   cursor: pointer;
   transition: all 0.2s;
-  
+
   &:hover:not(:disabled) {
     background-color: #f0f0f0;
   }
-  
+
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
-  
+
   svg {
     width: 16px;
     height: 16px;
@@ -68,7 +68,7 @@
   border-radius: 3px;
   font-size: 12px;
   padding: 0 4px;
-  
+
   &:focus {
     outline: none;
     border-color: #2196f3;
@@ -87,11 +87,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  
+
   &:hover {
     background-color: #f0f0f0;
   }
-  
+
   &.active {
     background-color: #e3f2fd;
     border-color: #2196f3;
@@ -125,6 +125,15 @@
   gap: 4px;
 }
 
+/* Style for individual button groups */
+.toolGroup {
+  display: flex;
+  /* Make buttons in a group horizontal */
+  align-items: center;
+  gap: 4px;
+  /* Same gap as between individual buttons */
+}
+
 .toolButton {
   display: flex;
   align-items: center;
@@ -136,17 +145,17 @@
   cursor: pointer;
   transition: all 0.2s;
   font-size: 12px;
-  
+
   &:hover {
     background-color: #e0e0e0;
   }
-  
+
   &.active {
     background-color: #e3f2fd;
     border-color: #2196f3;
     color: #2196f3;
   }
-  
+
   svg {
     width: 16px;
     height: 16px;
@@ -163,7 +172,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  
+
   span {
     font-size: 12px;
     color: #666;
@@ -181,7 +190,7 @@
   border: 1px solid #ccc;
   border-radius: 50%;
   cursor: pointer;
-  
+
   &.active {
     box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.5);
   }
@@ -191,7 +200,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  
+
   span {
     font-size: 12px;
     color: #666;
@@ -213,7 +222,7 @@
   border: 1px solid #ccc;
   border-radius: 3px;
   cursor: pointer;
-  
+
   &.active {
     background-color: #e6f7ff;
     border-color: #1890ff;
@@ -249,12 +258,12 @@
   cursor: pointer;
   font-size: 12px;
   color: #f44336;
-  
+
   &:hover:not(:disabled) {
     background-color: #ffebee;
     border-color: #f44336;
   }
-  
+
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -271,17 +280,17 @@
   background-color: #f5f5f5;
   cursor: pointer;
   transition: all 0.2s;
-  
+
   &:hover {
     background-color: #e0e0e0;
   }
-  
+
   &.active {
     background-color: #e3f2fd;
     border-color: #2196f3;
     color: #2196f3;
   }
-  
+
   svg {
     width: 16px;
     height: 16px;
@@ -304,11 +313,11 @@
   border-radius: 3px;
   cursor: pointer;
   font-size: 12px;
-  
+
   svg {
     margin-right: 4px;
   }
-  
+
   &:hover {
     background-color: #f0f0f0;
   }
@@ -323,7 +332,10 @@
 
 .separator {
   height: 20px;
+  /* Adjust height to match button height */
   width: 1px;
-  background-color: #ddd;
-  margin: 0 4px;
-} 
+  background-color: #ccc;
+  /* Separator color */
+  margin: 0 6px;
+  /* Spacing around separator */
+}

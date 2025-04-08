@@ -14,8 +14,7 @@ const DEBOUNCE_TIME = 1000;
 
 export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages = 0, onPageChange }) => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, drawingMode, showThumbnails, pageRotations, textLayerEnabled, rulerEnabled } =
-    state;
+  const { scale, drawingColor, drawingLineWidth, drawingMode, showThumbnails, pageRotations, rulerEnabled } = state;
   const [pageInputValue, setPageInputValue] = useState<string>(currentPage.toString());
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -296,195 +295,6 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
       </button>
 
       <div className={classes.toolPanel}>
-        <div className={classes.toolButtons}>
-          <button
-            className={`${classes.toolButton} ${drawingMode === 'textUnderline' ? classes.active : ''}`}
-            onClick={toggleTextUnderline}
-            title={drawingMode === 'textUnderline' ? 'Disable text underline' : 'Enable text underline'}>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              width='16'
-              height='16'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='2'
-              strokeLinecap='round'
-              strokeLinejoin='round'>
-              <path d='M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3' />
-              <line x1='4' y1='21' x2='20' y2='21' />
-            </svg>
-          </button>
-          <button
-            className={`${classes.toolButton} ${drawingMode === 'textCrossedOut' ? classes.active : ''}`}
-            onClick={toggleTextCrossedOut}
-            title={drawingMode === 'textCrossedOut' ? 'Disable text crossed out' : 'Enable text crossed out'}>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              width='16'
-              height='16'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='2'
-              strokeLinecap='round'
-              strokeLinejoin='round'>
-              <line x1='4' y1='12' x2='20' y2='12' />
-              <path d='M6 20v-8a6 6 0 0 1 12 0v8' />
-            </svg>
-          </button>
-          <button
-            className={`${classes.toolButton} ${drawingMode === 'textHighlight' ? classes.active : ''}`}
-            onClick={toggleTextHighlight}
-            title={drawingMode === 'textHighlight' ? 'Disable text highlight' : 'Enable text highlight'}>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              width='16'
-              height='16'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='2'
-              strokeLinecap='round'
-              strokeLinejoin='round'>
-              <rect x='3' y='5' width='18' height='14' rx='2' ry='2' />
-              <path d='M8 5v14' />
-              <path d='M16 5v14' />
-            </svg>
-          </button>
-
-          {/* Freehand Drawing Tool */}
-          <button
-            className={`${classes.toolButton} ${drawingMode === 'freehand' ? classes.active : ''}`}
-            onClick={() => changeDrawingMode('freehand')}
-            title={drawingMode === 'freehand' ? 'Disable freehand drawing' : 'Enable freehand drawing'}>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              width='16'
-              height='16'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='2'
-              strokeLinecap='round'
-              strokeLinejoin='round'>
-              <path d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z'></path>
-            </svg>
-          </button>
-
-          {/* Rectangle Tool */}
-          <button
-            className={`${classes.toolButton} ${drawingMode === 'rectangle' ? classes.active : ''}`}
-            onClick={() => changeDrawingMode('rectangle')}
-            title={drawingMode === 'rectangle' ? 'Disable rectangle tool' : 'Enable rectangle tool'}>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              width='16'
-              height='16'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='2'
-              strokeLinecap='round'
-              strokeLinejoin='round'>
-              <rect x='3' y='3' width='18' height='18' rx='2' ry='2'></rect>
-            </svg>
-          </button>
-
-          {/* Pin Tool */}
-          <button
-            className={`${classes.toolButton} ${drawingMode === 'pin' ? classes.active : ''}`}
-            onClick={() => changeDrawingMode('pin')}
-            title={drawingMode === 'pin' ? 'Disable pin tool' : 'Enable pin tool'}>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              width='16'
-              height='16'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='2'
-              strokeLinecap='round'
-              strokeLinejoin='round'>
-              <path d='M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z'></path>
-              <circle cx='12' cy='10' r='3'></circle>
-            </svg>
-          </button>
-
-          {/* Line Drawing Tool */}
-          <button
-            className={`${classes.toolButton} ${drawingMode === 'line' ? classes.active : ''}`}
-            onClick={() => changeDrawingMode('line')}
-            title={drawingMode === 'line' ? 'Disable line tool' : 'Enable line tool'}>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              width='16'
-              height='16'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='2'
-              strokeLinecap='round'
-              strokeLinejoin='round'>
-              <line x1='5' y1='19' x2='19' y2='5'></line>
-            </svg>
-          </button>
-
-          {/* Draw Area Tool */}
-          <button
-            className={`${classes.toolButton} ${drawingMode === 'drawArea' ? classes.active : ''}`}
-            onClick={() => changeDrawingMode('drawArea')}
-            title={drawingMode === 'drawArea' ? 'Disable draw area tool' : 'Enable draw area tool'}>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              width='16'
-              height='16'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='2'
-              strokeLinecap='round'
-              strokeLinejoin='round'>
-              <rect x='3' y='3' width='18' height='18' rx='2' ry='2'></rect>
-              <path d='M9 3v18'></path>
-              <path d='M14 3v18'></path>
-              <path d='M21 9H3'></path>
-              <path d='M21 14H3'></path>
-            </svg>
-          </button>
-
-          {/* Text Area Tool */}
-          <button
-            className={`${classes.toolButton} ${drawingMode === 'textArea' ? classes.active : ''}`}
-            onClick={() => changeDrawingMode('textArea')}
-            title={drawingMode === 'textArea' ? 'Disable text area tool' : 'Enable text area tool'}>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              width='16'
-              height='16'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='2'
-              strokeLinecap='round'
-              strokeLinejoin='round'>
-              <rect x='3' y='3' width='18' height='18' rx='2' ry='2'></rect>
-              <line x1='8' y1='8' x2='16' y2='8'></line>
-              <line x1='8' y1='12' x2='16' y2='12'></line>
-              <line x1='8' y1='16' x2='12' y2='16'></line>
-            </svg>
-          </button>
-        </div>
-
-        {/* Separator */}
-        {(drawingMode === 'freehand' ||
-          drawingMode === 'rectangle' ||
-          drawingMode === 'pin' ||
-          drawingMode === 'line' ||
-          drawingMode === 'drawArea' ||
-          drawingMode === 'textArea' ||
-          textLayerEnabled) && <div className={classes.separator}></div>}
-
         {/* Drawing Options - Show when a drawing tool is selected OR text layer is enabled */}
         {(drawingMode === 'freehand' ||
           drawingMode === 'rectangle' ||
@@ -492,7 +302,9 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
           drawingMode === 'line' ||
           drawingMode === 'drawArea' ||
           drawingMode === 'textArea' ||
-          textLayerEnabled) && (
+          drawingMode === 'textHighlight' ||
+          drawingMode === 'textUnderline' ||
+          drawingMode === 'textCrossedOut') && (
           <div className={classes.drawingOptions}>
             <div className={classes.colorPicker}>
               <span>Color:</span>
@@ -533,7 +345,9 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
             {(drawingMode === 'freehand' ||
               drawingMode === 'rectangle' ||
               drawingMode === 'line' ||
-              drawingMode === 'drawArea') && (
+              drawingMode === 'drawArea' ||
+              drawingMode === 'textUnderline' ||
+              drawingMode === 'textCrossedOut') && (
               <div className={classes.lineWidthPicker}>
                 <span>Width:</span>
                 <div className={classes.lineWidthOptions}>
@@ -560,6 +374,206 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
             )}
           </div>
         )}
+
+        {/* Separator - only show if drawing options are visible */}
+        {drawingMode !== 'none' && drawingMode !== 'zoomArea' && drawingMode !== 'ruler' && (
+          <div className={classes.separator}></div>
+        )}
+
+        {/* Tool Buttons Groups */}
+        <div className={classes.toolButtons}>
+          {/* Group 1: Text Annotation Tools */}
+          <div className={classes.toolGroup}>
+            <button
+              className={`${classes.toolButton} ${drawingMode === 'textHighlight' ? classes.active : ''}`}
+              onClick={toggleTextHighlight}
+              title={drawingMode === 'textHighlight' ? 'Disable text highlight' : 'Enable text highlight'}>
+              <svg
+                xmlns='http://www.w3.org/2000/svg'
+                width='16'
+                height='16'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+                strokeLinecap='round'
+                strokeLinejoin='round'>
+                <path d='M12 20l9-9-4-4-9 9v4h4zm-6.2-2.8L12 10.6l4-4' />
+                <path d='M3 21h18' />
+              </svg>
+            </button>
+            <button
+              className={`${classes.toolButton} ${drawingMode === 'textUnderline' ? classes.active : ''}`}
+              onClick={toggleTextUnderline}
+              title={drawingMode === 'textUnderline' ? 'Disable text underline' : 'Enable text underline'}>
+              <svg
+                xmlns='http://www.w3.org/2000/svg'
+                width='16'
+                height='16'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+                strokeLinecap='round'
+                strokeLinejoin='round'>
+                <path d='M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3' />
+                <line x1='4' y1='21' x2='20' y2='21' />
+              </svg>
+            </button>
+            <button
+              className={`${classes.toolButton} ${drawingMode === 'textCrossedOut' ? classes.active : ''}`}
+              onClick={toggleTextCrossedOut}
+              title={drawingMode === 'textCrossedOut' ? 'Disable text crossed out' : 'Enable text crossed out'}>
+              <svg
+                xmlns='http://www.w3.org/2000/svg'
+                width='16'
+                height='16'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+                strokeLinecap='round'
+                strokeLinejoin='round'>
+                <line x1='4' y1='12' x2='20' y2='12' />
+                <path d='M6 20v-8a6 6 0 0 1 12 0v8' />
+              </svg>
+            </button>
+          </div>
+
+          {/* Separator */}
+          <div className={classes.separator}></div>
+
+          {/* Group 2: Drawing Tools */}
+          <div className={classes.toolGroup}>
+            {/* Freehand Drawing Tool */}
+            <button
+              className={`${classes.toolButton} ${drawingMode === 'freehand' ? classes.active : ''}`}
+              onClick={() => changeDrawingMode('freehand')}
+              title={drawingMode === 'freehand' ? 'Disable freehand drawing' : 'Enable freehand drawing'}>
+              <svg
+                xmlns='http://www.w3.org/2000/svg'
+                width='16'
+                height='16'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+                strokeLinecap='round'
+                strokeLinejoin='round'>
+                <path d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z'></path>
+              </svg>
+            </button>
+
+            {/* Rectangle Tool */}
+            <button
+              className={`${classes.toolButton} ${drawingMode === 'rectangle' ? classes.active : ''}`}
+              onClick={() => changeDrawingMode('rectangle')}
+              title={drawingMode === 'rectangle' ? 'Disable rectangle tool' : 'Enable rectangle tool'}>
+              <svg
+                xmlns='http://www.w3.org/2000/svg'
+                width='16'
+                height='16'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+                strokeLinecap='round'
+                strokeLinejoin='round'>
+                <rect x='3' y='3' width='18' height='18' rx='2' ry='2'></rect>
+              </svg>
+            </button>
+
+            {/* Pin Tool */}
+            <button
+              className={`${classes.toolButton} ${drawingMode === 'pin' ? classes.active : ''}`}
+              onClick={() => changeDrawingMode('pin')}
+              title={drawingMode === 'pin' ? 'Disable pin tool' : 'Enable pin tool'}>
+              <svg
+                xmlns='http://www.w3.org/2000/svg'
+                width='16'
+                height='16'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+                strokeLinecap='round'
+                strokeLinejoin='round'>
+                <path d='M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z'></path>
+                <circle cx='12' cy='10' r='3'></circle>
+              </svg>
+            </button>
+
+            {/* Line Drawing Tool */}
+            <button
+              className={`${classes.toolButton} ${drawingMode === 'line' ? classes.active : ''}`}
+              onClick={() => changeDrawingMode('line')}
+              title={drawingMode === 'line' ? 'Disable line tool' : 'Enable line tool'}>
+              <svg
+                xmlns='http://www.w3.org/2000/svg'
+                width='16'
+                height='16'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+                strokeLinecap='round'
+                strokeLinejoin='round'>
+                <line x1='5' y1='19' x2='19' y2='5'></line>
+              </svg>
+            </button>
+
+            {/* Text Area Tool */}
+            <button
+              className={`${classes.toolButton} ${drawingMode === 'textArea' ? classes.active : ''}`}
+              onClick={() => changeDrawingMode('textArea')}
+              title={drawingMode === 'textArea' ? 'Disable text area tool' : 'Enable text area tool'}>
+              <svg
+                xmlns='http://www.w3.org/2000/svg'
+                width='16'
+                height='16'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+                strokeLinecap='round'
+                strokeLinejoin='round'>
+                <rect x='3' y='3' width='18' height='18' rx='2' ry='2'></rect>
+                <line x1='8' y1='8' x2='16' y2='8'></line>
+                <line x1='8' y1='12' x2='16' y2='12'></line>
+                <line x1='8' y1='16' x2='12' y2='16'></line>
+              </svg>
+            </button>
+          </div>
+
+          {/* Separator */}
+          <div className={classes.separator}></div>
+
+          {/* Group 3: Area Capture Tool */}
+          <div className={classes.toolGroup}>
+            {/* Draw Area Tool */}
+            <button
+              className={`${classes.toolButton} ${drawingMode === 'drawArea' ? classes.active : ''}`}
+              onClick={() => changeDrawingMode('drawArea')}
+              title={drawingMode === 'drawArea' ? 'Disable draw area tool' : 'Enable draw area tool'}>
+              <svg
+                xmlns='http://www.w3.org/2000/svg'
+                width='16'
+                height='16'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+                strokeLinecap='round'
+                strokeLinejoin='round'>
+                <rect x='3' y='3' width='18' height='18' rx='2' ry='2'></rect>
+                <path d='M9 3v18'></path>
+                <path d='M14 3v18'></path>
+                <path d='M21 9H3'></path>
+                <path d='M21 14H3'></path>
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
