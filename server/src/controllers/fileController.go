@@ -102,14 +102,20 @@ func DeleteFile(c *fiber.Ctx) error {
 	// Delete the file from the uploads directory
 	hashDir := "./uploads/" + file.Hash
 	filePath := hashDir + "/" + file.Filename
-	if err := os.Remove(filePath); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to delete file from uploads",
-		})
-	}
 
-	// Try to remove the directory if it's empty
-	os.Remove(hashDir) // Ignore error if directory is not empty
+	// Check if the file exists before attempting to delete it
+	_, err := os.Stat(filePath)
+	os.IsNotExist(err)
+
+	if err == nil {
+		if err := os.Remove(filePath); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to delete file from uploads",
+			})
+		}
+		// Try to remove the directory if it's empty
+		os.Remove(hashDir) // Ignore error if directory is not empty
+	}
 
 	// Delete the file record from the database
 	database.DB.Delete(&file)

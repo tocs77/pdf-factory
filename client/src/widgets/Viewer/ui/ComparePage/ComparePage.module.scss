@@ -29,3 +29,15 @@
   /* Ensure canvas is not scaled by CSS */
   max-width: none;
 }
+
+.compareCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  /* Allow interaction with underlying canvas */
+  z-index: 1;
+  /* Ensure it appears above the primary canvas */
+  opacity: 0.7;
+  /* Adjust this for desired overlay effect */
+}

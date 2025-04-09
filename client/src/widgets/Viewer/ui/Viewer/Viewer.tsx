@@ -32,7 +32,9 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   const { scale, showThumbnails, compareModeEnabled } = state;
 
   const [pdfRef, setPdfRef] = useState<PDFDocumentProxy | null>(null);
+  const [comparePdfRef, setComparePdfRef] = useState<PDFDocumentProxy | null>(null);
   const [pages, setPages] = useState<PDFPageProxy[]>([]);
+  const [comparePages, setComparePages] = useState<PDFPageProxy[]>([]);
   const [selectedPage, setSelectedPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -183,62 +185,104 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     }
   }, [scale, handleScaleChange]);
 
-  // Load all pages when PDF is loaded
-  useEffect(() => {
-    const loadPages = async () => {
-      if (!pdfRef) return;
+  // Load PDF document
+  const loadPdf = async (pdfUrl: string): Promise<PDFDocumentProxy | null> => {
+    try {
+      const loadingTask = pdfjs.getDocument(pdfUrl);
+      return await loadingTask.promise;
+    } catch (err) {
+      console.error('Error loading PDF:', err);
+      setError('Failed to load PDF. Please check the URL and try again.');
+      setIsLoading(false);
+      return null;
+    }
+  };
 
-      try {
-        const pagesPromises = [];
-        for (let i = 1; i <= pdfRef.numPages; i++) {
-          pagesPromises.push(pdfRef.getPage(i));
+  // Load compare PDF document - only called when compare mode is enabled
+  const loadComparePdf = async (comparePdfUrl: string): Promise<PDFDocumentProxy | null> => {
+    if (!compareModeEnabled || !comparePdfUrl) {
+      return null;
+    }
+
+    try {
+      const loadingTask = pdfjs.getDocument(comparePdfUrl);
+      return await loadingTask.promise;
+    } catch (err) {
+      console.error('Error loading comparison PDF:', err);
+      setError('Failed to load comparison PDF. Please check the URL and try again.');
+      return null;
+    }
+  };
+
+  // Load all pages from a PDF document
+  const loadPages = async (document: PDFDocumentProxy | null): Promise<PDFPageProxy[]> => {
+    if (!document) return [];
+
+    try {
+      const pagesPromises = [];
+      for (let i = 1; i <= document.numPages; i++) {
+        pagesPromises.push(document.getPage(i));
+      }
+
+      const loadedPagesArray = await Promise.all(pagesPromises);
+      // Get default rotation for each page and set it in the context
+      loadedPagesArray.forEach((page, index) => {
+        const pageNumber = index + 1;
+
+        const defaultViewport = page.getViewport({ scale: 1 });
+        const defaultRotation = defaultViewport.rotation;
+        // Only update context if there's a rotation value
+        if (defaultRotation !== undefined) {
+          dispatch({
+            type: 'setPageRotation',
+            payload: { pageNumber, angle: defaultRotation },
+          });
         }
+      });
+      return loadedPagesArray;
+    } catch (err) {
+      console.error('Error loading pages:', err);
+      setError('Failed to load PDF pages. Please try again.');
+      setIsLoading(false);
+      return [];
+    }
+  };
 
-        const loadedPagesArray = await Promise.all(pagesPromises);
-        // Get default rotation for each page and set it in the context
-        loadedPagesArray.forEach((page, index) => {
-          const pageNumber = index + 1;
-
-          const defaultViewport = page.getViewport({ scale: 1 });
-          const defaultRotation = defaultViewport.rotation;
-          // Only update context if there's a rotation value
-          if (defaultRotation !== undefined) {
-            dispatch({
-              type: 'setPageRotation',
-              payload: { pageNumber, angle: defaultRotation },
-            });
-          }
-        });
-        setPages(loadedPagesArray);
-        setIsLoading(false);
-      } catch (err) {
-        console.error('Error loading pages:', err);
-        setError('Failed to load PDF pages. Please try again.');
-        setIsLoading(false);
-      }
-    };
-
-    loadPages();
-  }, [pdfRef]);
-
+  // Effect for loading the main PDF
   useEffect(() => {
-    const loadPdf = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
+    const initPdf = async () => {
+      setIsLoading(true);
+      setError(null);
+      const pdf = await loadPdf(url);
+      setPdfRef(pdf);
 
-        const loadingTask = pdfjs.getDocument(url);
-        const loadedPdf = await loadingTask.promise;
-        setPdfRef(loadedPdf);
-      } catch (err) {
-        console.error('Error loading PDF:', err);
-        setError('Failed to load PDF. Please check the URL and try again.');
-        setIsLoading(false);
+      if (compareModeEnabled && compareUrl) {
+        const comparePdf = await loadComparePdf(compareUrl);
+        setComparePdfRef(comparePdf);
+      }
+
+      setIsLoading(false);
+    };
+
+    initPdf();
+  }, [url, compareUrl, compareModeEnabled]);
+
+  // Effect for loading PDF pages
+  useEffect(() => {
+    const initPages = async () => {
+      if (pdfRef) {
+        const loadedPages = await loadPages(pdfRef);
+        setPages(loadedPages);
+      }
+
+      if (compareModeEnabled && comparePdfRef) {
+        const loadedComparePages = await loadPages(comparePdfRef);
+        setComparePages(loadedComparePages);
       }
     };
 
-    loadPdf();
-  }, [url]);
+    initPages();
+  }, [pdfRef, comparePdfRef, compareModeEnabled]);
 
   const handleThumbnailClick = (pageNumber: number) => {
     setSelectedPage(pageNumber);
@@ -394,9 +438,46 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     });
   };
 
-  // Define placeholder comparison colors
-  const compareColor1 = '#FF0000'; // Red
-  const compareColor2 = '#0000FF'; // Blue
+  // Render function for pages
+  const renderPages = () => {
+    if (!pages.length) return null;
+
+    return pages.map((page, index) => {
+      const pageNumber = index + 1;
+      const pageKey = `page-${pageNumber}`;
+      const pageId = `pdf-page-${pageNumber}`;
+
+      if (compareModeEnabled) {
+        // Get the corresponding compare page or null if index is out of bounds
+        const comparePage = pageNumber <= comparePages.length ? comparePages[index] : null;
+
+        return (
+          <ComparePage
+            key={pageKey}
+            page={page}
+            comparePage={comparePage}
+            pageNumber={pageNumber}
+            id={pageId}
+            className={classes.pageItem}
+            mainColor='#FF0000'
+            comparisonColor='#0000FF'
+          />
+        );
+      }
+
+      return (
+        <Page
+          key={pageKey}
+          page={page}
+          pageNumber={pageNumber}
+          id={pageId}
+          className={classes.pageItem}
+          drawings={drawings.filter((d) => d.pageNumber === pageNumber)}
+          onDrawingCreated={drawingCreated}
+        />
+      );
+    });
+  };
 
   // Show loading message or error
   if (isLoading || error) {
@@ -420,11 +501,11 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
         <div className={classes.thumbnailsContainer}>
           {pages.map((page, index) => (
             <Thumbnail
-              key={index + 1}
+              key={`thumbnail-${index + 1}`}
               page={page}
               pageNumber={index + 1}
               isSelected={selectedPage === index + 1}
-              onClick={handleThumbnailClick}
+              onClick={() => handleThumbnailClick(index + 1)}
             />
           ))}
         </div>
@@ -449,35 +530,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
               <span>Click and drag to scroll</span>
             </div>
           )}
-          <div className={classes.pdfContentWrapper}>
-            {pages.map((page, index) => {
-              const pageNumber = index + 1;
-              const pageId = `page-${pageNumber}`;
-              const comparePageId = `compare-page-${pageNumber}`;
-
-              // Determine color for compare mode (simple alternating example)
-              const comparisonColor = pageNumber % 2 ? compareColor1 : compareColor2;
-
-              return compareModeEnabled ? (
-                <ComparePage
-                  key={comparePageId}
-                  id={comparePageId}
-                  page={page}
-                  pageNumber={pageNumber}
-                  comparisonColor={comparisonColor}
-                />
-              ) : (
-                <Page
-                  key={pageId}
-                  id={pageId}
-                  page={page}
-                  pageNumber={pageNumber}
-                  drawings={drawings}
-                  onDrawingCreated={drawingCreated}
-                />
-              );
-            })}
-          </div>
+          <div className={classes.pdfContentWrapper}>{renderPages()}</div>
         </div>
       </div>
     </div>

@@ -14,11 +14,12 @@ import classes from './ViewPage.module.scss';
 export const ViewPage = () => {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
+  const compare = searchParams.get('compare');
   const dispatch = useAppDispatch();
   const { data: fileBlobUrl, isLoading } = useGetFileBlobUrlQuery(id || '');
+  const { data: compareFileBlobUrl, isLoading: isCompareLoading } = useGetFileBlobUrlQuery(compare || '', { skip: !compare });
   const drawings = useAppSelector(viewerPageSelectors.getDrawings);
   const pdfViewerRef = useRef<PdfViewerRef>(null);
-  const compare = searchParams.get('compare');
 
   useEffect(() => {
     return () => {
@@ -34,7 +35,7 @@ export const ViewPage = () => {
     pdfViewerRef.current?.scrollToDraw(drawingId);
   };
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading || isCompareLoading) return <div>Loading...</div>;
   return (
     <div className={classes.ViewPage}>
       <PdfViewer
@@ -42,7 +43,7 @@ export const ViewPage = () => {
         url={fileBlobUrl || ''}
         drawings={drawings}
         drawingCreated={handleDrawingCreated}
-        compareUrl={compare || undefined}
+        compareUrl={compareFileBlobUrl || undefined}
       />
       <div className={classes.drawings}>
         {drawings.map((drawing: Drawing) => (
