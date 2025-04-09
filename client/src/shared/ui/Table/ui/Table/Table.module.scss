@@ -64,6 +64,10 @@
   font-weight: 500;
 }
 
+.selected {
+  background-color: var(--secondary-hover) !important;
+}
+
 .clickable {
   cursor: pointer;
 }
@@ -123,4 +127,18 @@
 .edited_cell:active {
   border: none;
   outline: none;
+}
+
+.dragGhost {
+  position: fixed;
+  display: none;
+  background: white;
+  border-radius: 4px;
+  opacity: 0.8;
+  min-width: 200px;
+  max-width: 90vw;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0 0 0 / 20%);
 }

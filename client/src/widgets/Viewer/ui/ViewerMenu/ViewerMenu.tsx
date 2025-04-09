@@ -8,11 +8,12 @@ interface ViewerMenuProps {
   currentPage: number;
   totalPages?: number;
   onPageChange?: (pageNumber: number) => void;
+  hasCompare?: boolean;
 }
 
 const DEBOUNCE_TIME = 1000;
 
-export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages = 0, onPageChange }) => {
+export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages = 0, onPageChange, hasCompare }) => {
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, drawingColor, drawingLineWidth, drawingMode, showThumbnails, pageRotations, rulerEnabled } = state;
   const [pageInputValue, setPageInputValue] = useState<string>(currentPage.toString());
@@ -295,12 +296,14 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
       </button>
 
       {/* Compare Mode Toggle Button */}
-      <button
-        onClick={() => dispatch({ type: 'toggleCompareMode' })}
-        className={`${classes.zoomButton} ${state.compareModeEnabled ? classes.active : ''}`}
-        title={state.compareModeEnabled ? 'Disable Compare Mode' : 'Enable Compare Mode'}>
-        Compare
-      </button>
+      {hasCompare && (
+        <button
+          onClick={() => dispatch({ type: 'toggleCompareMode' })}
+          className={`${classes.zoomButton} ${state.compareModeEnabled ? classes.active : ''}`}
+          title={state.compareModeEnabled ? 'Disable Compare Mode' : 'Enable Compare Mode'}>
+          Compare
+        </button>
+      )}
 
       <div className={classes.toolPanel}>
         {/* Drawing Options - Show when a drawing tool is selected OR text layer is enabled */}

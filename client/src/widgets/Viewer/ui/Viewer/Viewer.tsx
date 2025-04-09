@@ -3,7 +3,7 @@ import * as pdfjs from 'pdfjs-dist';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import { Thumbnail } from '../Thumbnail/Thumbnail';
 import { Page } from '../Page/Page';
-import ComparePage from '../ComparePage/ComparePage';
+import { ComparePage } from '../ComparePage/ComparePage';
 import { ViewerMenu } from '../ViewerMenu/ViewerMenu';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { ViewerProvider } from '../../model/context/ViewerProvider';
@@ -20,13 +20,14 @@ export type PdfViewerRef = {
 
 interface PdfViewerProps {
   url: string;
+  compareUrl?: string;
   drawings: Drawing[];
   drawingCreated: (drawing: Omit<Drawing, 'id'>) => void;
 }
 
 // Internal viewer component that will be wrapped with the provider
 const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) => {
-  const { url, drawings, drawingCreated } = props;
+  const { url, drawings, drawingCreated, compareUrl } = props;
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, showThumbnails, compareModeEnabled } = state;
 
@@ -430,7 +431,12 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       )}
 
       <div className={classes.viewerContainer}>
-        <ViewerMenu currentPage={selectedPage} totalPages={pages.length} onPageChange={handlePageChange} />
+        <ViewerMenu
+          currentPage={selectedPage}
+          totalPages={pages.length}
+          onPageChange={handlePageChange}
+          hasCompare={!!compareUrl}
+        />
 
         <div
           className={classNames(classes.pdfContainer, {

@@ -10,7 +10,6 @@ import {
   getExpandedRowModel,
 } from '@tanstack/react-table';
 
-import { FaSortUp, FaSortDown } from 'react-icons/fa';
 import { classNames } from '@/shared/utils';
 
 import { calcColumnSizes } from '../../lib/calcColumnSizes';
@@ -127,8 +126,34 @@ export const ExpandTable = <T extends { children?: T[] }>(props: TableProps<T>) 
                     <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
                     <span>
                       {{
-                        asc: <FaSortUp />,
-                        desc: <FaSortDown />,
+                        asc: (
+                          <svg
+                            xmlns='http://www.w3.org/2000/svg'
+                            width='16'
+                            height='16'
+                            viewBox='0 0 24 24'
+                            fill='none'
+                            stroke='currentColor'
+                            stroke-width='2'
+                            stroke-linecap='round'
+                            stroke-linejoin='round'>
+                            <path d='M18 15L12 9L6 15' />
+                          </svg>
+                        ),
+                        desc: (
+                          <svg
+                            xmlns='http://www.w3.org/2000/svg'
+                            width='16'
+                            height='16'
+                            viewBox='0 0 24 24'
+                            fill='none'
+                            stroke='currentColor'
+                            stroke-width='2'
+                            stroke-linecap='round'
+                            stroke-linejoin='round'>
+                            <path d='M6 9L12 15L18 9' />
+                          </svg>
+                        ),
                       }[header.column.getIsSorted() as string] ?? null}
                     </span>
                   </div>

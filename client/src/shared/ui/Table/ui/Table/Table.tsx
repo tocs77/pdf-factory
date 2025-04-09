@@ -1,5 +1,4 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FaSortUp, FaSortDown } from 'react-icons/fa';
 import {
   useReactTable,
   getSortedRowModel,
@@ -15,7 +14,7 @@ import { classNames } from '@/shared/utils';
 import { calcColumnSizes } from '../../lib/calcColumnSizes';
 import classes from './Table.module.scss';
 
-interface TableProps<T> {
+export interface TableProps<T> {
   columns: ColumnDef<T>[];
   data: T[];
   defaultSorted?: { id: string; desc: boolean };
@@ -23,11 +22,12 @@ interface TableProps<T> {
   rowContextHandler?: (e: React.MouseEvent, id: string) => void;
   rowClickHandler?: (e: React.MouseEvent, id: string) => void;
   getRowId?: (originalRow: T) => string;
-
+  selectedRows?: Record<string, boolean>;
   initialState: InitialTableState;
   mobile?: boolean;
   constColumns?: (keyof T)[];
   textAlign?: 'left' | 'right' | 'center';
+  getRowClassName?: (row: T) => string;
 }
 
 export const TableElement = <T,>(props: TableProps<T>) => {
@@ -41,7 +41,10 @@ export const TableElement = <T,>(props: TableProps<T>) => {
     getRowId,
     initialState = {},
     textAlign = 'center',
+    selectedRows,
+    getRowClassName,
   } = props;
+
   const columnSizesRef = useRef<Record<string, number>>({});
   const [domNode, setDomNode] = useState<HTMLTableElement>();
 
@@ -58,6 +61,9 @@ export const TableElement = <T,>(props: TableProps<T>) => {
     getSortedRowModel: getSortedRowModel(),
     enableColumnResizing: true,
     columnResizeMode: 'onChange',
+    state: {
+      rowSelection: selectedRows ?? {},
+    },
   });
   const { getHeaderGroups, getFlatHeaders } = table;
 
@@ -96,7 +102,7 @@ export const TableElement = <T,>(props: TableProps<T>) => {
   };
 
   //TODO check if no need setColumnsVars
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  //biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const columnSizeVars = useMemo(() => {
     recaclulateColumnSizes();
     return setColumnsVars();
@@ -124,8 +130,34 @@ export const TableElement = <T,>(props: TableProps<T>) => {
                     <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
                     <span>
                       {{
-                        asc: <FaSortUp />,
-                        desc: <FaSortDown />,
+                        asc: (
+                          <svg
+                            xmlns='http://www.w3.org/2000/svg'
+                            width='16'
+                            height='16'
+                            viewBox='0 0 24 24'
+                            fill='none'
+                            stroke='currentColor'
+                            stroke-width='2'
+                            stroke-linecap='round'
+                            stroke-linejoin='round'>
+                            <path d='M18 15L12 9L6 15' />
+                          </svg>
+                        ),
+                        desc: (
+                          <svg
+                            xmlns='http://www.w3.org/2000/svg'
+                            width='16'
+                            height='16'
+                            viewBox='0 0 24 24'
+                            fill='none'
+                            stroke='currentColor'
+                            stroke-width='2'
+                            stroke-linecap='round'
+                            stroke-linejoin='round'>
+                            <path d='M6 9L12 15L18 9' />
+                          </svg>
+                        ),
                       }[header.column.getIsSorted() as string] ?? null}
                     </span>
                   </div>
@@ -145,10 +177,17 @@ export const TableElement = <T,>(props: TableProps<T>) => {
           </tr>
         ))}
       </thead>
+
       {table.getState().columnSizingInfo.isResizingColumn ? (
-        <MemoizedTableBody table={table} textAlign={textAlign} />
+        <MemoizedTableBody table={table} textAlign={textAlign} getRowClassName={getRowClassName} />
       ) : (
-        <TableBody table={table} rowContextHandler={rowContextHandler} rowClickHandler={rowClickHandler} textAlign={textAlign} />
+        <TableBody
+          table={table}
+          rowContextHandler={rowContextHandler}
+          rowClickHandler={rowClickHandler}
+          textAlign={textAlign}
+          getRowClassName={getRowClassName}
+        />
       )}
     </table>
   );
@@ -159,10 +198,11 @@ interface TableBodyProps<T> {
   rowContextHandler?: (e: React.MouseEvent, id: string) => void;
   rowClickHandler?: (e: React.MouseEvent, id: string) => void;
   textAlign: 'left' | 'right' | 'center';
+  getRowClassName?: (row: T) => string;
 }
 
 export const TableBody = <T,>(props: TableBodyProps<T>) => {
-  const { table, rowContextHandler, rowClickHandler, textAlign } = props;
+  const { table, rowContextHandler, rowClickHandler, textAlign, getRowClassName } = props;
 
   const contextHandler = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
@@ -176,10 +216,19 @@ export const TableBody = <T,>(props: TableBodyProps<T>) => {
   return (
     <tbody>
       {table.getRowModel().rows.map((row) => {
+        const customClassName = getRowClassName ? getRowClassName(row.original) : '';
+
         return (
           <tr
             key={row.id}
-            className={classNames(classes.table_row, { [classes.clickable]: !!rowClickHandler })}
+            className={classNames(
+              classes.table_row,
+              {
+                [classes.clickable]: !!rowClickHandler,
+                [classes.selected]: row.getIsSelected(),
+              },
+              customClassName ? [customClassName] : undefined,
+            )}
             onContextMenu={(e) => contextHandler(e, row.id)}
             onClick={(e) => clickHandler(e, row.id)}>
             {row.getVisibleCells().map((cell) => {
@@ -187,12 +236,10 @@ export const TableBody = <T,>(props: TableBodyProps<T>) => {
                 <td
                   className={classes.table_cell}
                   key={cell.id}
-                  // style={{ width: cell.column.getSize() }}
                   style={{
                     width: `calc(var(--col-${cell.column.id}-size) * 1px)`,
                     textAlign: textAlign,
-                  }}
-                >
+                  }}>
                   <span className={classes.tableCellContent}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</span>
                 </td>
               );

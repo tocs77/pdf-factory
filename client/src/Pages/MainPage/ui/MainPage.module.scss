@@ -103,3 +103,34 @@
   align-items: center;
   color: var(--alert);
 }
+
+.uploadButton:disabled,
+.openButton:disabled {
+  background-color: #a0a0a0;
+  cursor: not-allowed;
+}
+
+.uploadButton:hover:not(:disabled),
+.openButton:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.openButton {
+  background-color: #28a745;
+  /* Green background */
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.table {
+  margin-top: 20px;
+  width: 100%;
+}

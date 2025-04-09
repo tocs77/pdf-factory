@@ -176,5 +176,3 @@ export const ComparePage = ({ page, pageNumber, id, className, comparisonColor }
     </div>
   );
 };
-
-export default ComparePage;

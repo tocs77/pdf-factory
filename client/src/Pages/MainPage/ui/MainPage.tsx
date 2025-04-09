@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { useGetFilesListQuery, useDeleteFileMutation, useUploadFileMutation } from '@/entities/File';
-import { Table } from '@/shared/ui/Table';
+import { SelectableTable } from '@/shared/ui/Table';
 
 import { makeColumns } from '../model/columns';
 
@@ -11,6 +11,7 @@ export const MainPage = () => {
   const { data: files } = useGetFilesListQuery();
   const [deleteFile] = useDeleteFileMutation();
   const [uploadFile] = useUploadFileMutation();
+  const [selectedHandles, setSelectedHandles] = useState<string[]>([]);
   const navigate = useNavigate();
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -31,9 +32,13 @@ export const MainPage = () => {
     deleteFile(id);
   };
 
-  const clickRowHandler = (e: React.MouseEvent, id: string) => {
-    e.preventDefault();
-    navigate(`/view/${id}`);
+  const handleOpenFiles = () => {
+    navigate({ pathname: `/view/${selectedHandles[0]}`, search: selectedHandles[1] ? `?compare=${selectedHandles[1]}` : '' });
+  };
+
+  const selectionChangeHandler = (selectedRows: Record<string, boolean>) => {
+    const handles = Object.keys(selectedRows).filter((key) => selectedRows[key]);
+    setSelectedHandles(handles);
   };
 
   return (
@@ -78,18 +83,26 @@ export const MainPage = () => {
           </svg>
           Upload
         </button>
+        <button
+          className={classes.openButton}
+          onClick={handleOpenFiles}
+          disabled={selectedHandles.length < 1 || selectedHandles.length > 2}>
+          Open
+        </button>
       </div>
 
       <div className={classes.table}>
-        <Table
+        <SelectableTable
           columns={makeColumns(handleDeleteFile)}
           data={data}
           initialState={{ columnVisibility: { handle: false } }}
           // rowContextHandler={contextMenuHandler}
-          rowClickHandler={clickRowHandler}
+
           textAlign='left'
           //getRowId={(p) => String(p.identifier)}
           getRowId={(p) => String(p.id)}
+          multiSelect
+          onSelectionChange={selectionChangeHandler}
         />
       </div>
     </div>
