@@ -6,6 +6,7 @@ import { SelectableTable } from '@/shared/ui/Table';
 import { makeColumns } from '../model/columns';
 
 import classes from './MainPage.module.scss';
+import { fileController } from '@/shared/api/controllers/fileController';
 export const MainPage = () => {
   const [file, setFile] = useState<File | null>(null);
   const { data: files } = useGetFilesListQuery();
@@ -23,6 +24,9 @@ export const MainPage = () => {
     if (file) {
       await uploadFile(file);
     }
+  };
+  const handleDownloadFile = (id: string) => {
+    fileController.downloadFile(id);
   };
   const data = useMemo(() => {
     if (!files) return [];
@@ -93,7 +97,7 @@ export const MainPage = () => {
 
       <div className={classes.table}>
         <SelectableTable
-          columns={makeColumns(handleDeleteFile)}
+          columns={makeColumns(handleDeleteFile, handleDownloadFile)}
           data={data}
           initialState={{ columnVisibility: { handle: false } }}
           // rowContextHandler={contextMenuHandler}

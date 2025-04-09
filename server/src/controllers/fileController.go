@@ -132,5 +132,5 @@ func DownloadFile(c *fiber.Ctx) error {
 	database.DB.First(&file, id)
 
 	filePath := "./uploads/" + file.Hash + "/" + file.Filename
-	return c.Download(filePath)
+	return c.Download(filePath, file.Filename)
 }

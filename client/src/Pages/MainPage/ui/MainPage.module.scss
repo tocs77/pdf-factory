@@ -96,12 +96,26 @@
   }
 }
 
+.actionIcons {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
 .delete {
   cursor: pointer;
   display: flex;
   justify-content: center;
   align-items: center;
   color: var(--alert);
+}
+
+.download {
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--primary);
 }
 
 .uploadButton:disabled,

@@ -3,10 +3,10 @@ import { ColumnDef } from '@tanstack/react-table';
 import { FileDto } from '@/entities/File';
 import { makeFileSizeString } from '@/shared/utils';
 
-import { FaTrash } from 'react-icons/fa';
+import { FaDownload, FaTrash } from 'react-icons/fa';
 import classes from '../ui/MainPage.module.scss';
 
-export const makeColumns = (deleteFile: (id: string) => void): ColumnDef<FileDto>[] => [
+export const makeColumns = (deleteFile: (id: string) => void, downloadFile: (id: string) => void): ColumnDef<FileDto>[] => [
   {
     id: 'name',
     accessorFn: (p) => p.filename,
@@ -27,8 +27,13 @@ export const makeColumns = (deleteFile: (id: string) => void): ColumnDef<FileDto
   {
     id: 'delete',
     cell: ({ row }) => (
-      <div className={classes.delete}>
-        <FaTrash onClick={() => deleteFile(row.original.id)} />
+      <div className={classes.actionIcons}>
+        <div className={classes.delete}>
+          <FaTrash onClick={() => deleteFile(row.original.id)} />
+        </div>
+        <div className={classes.download}>
+          <FaDownload onClick={() => downloadFile(row.original.id)} />
+        </div>
       </div>
     ),
     maxSize: 50,
