@@ -43,12 +43,13 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   const [error, setError] = useState<string | null>(null);
   const pdfContainerRef = useRef<HTMLDivElement>(null);
 
-  // State for drag-to-scroll functionality
+  // State for drag-to-scroll functionality (only isDragging needed now)
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStartX, setDragStartX] = useState(0);
-  const [dragStartY, setDragStartY] = useState(0);
-  const [scrollStartX, setScrollStartX] = useState(0);
-  const [scrollStartY, setScrollStartY] = useState(0);
+  // Refs for drag start coordinates and scroll position
+  const dragStartXRef = useRef(0);
+  const dragStartYRef = useRef(0);
+  const scrollStartXRef = useRef(0);
+  const scrollStartYRef = useRef(0);
 
   // State for comparison page overrides
   const [pageOverrides, setPageOverrides] = useState<PageOverrides>({});
@@ -373,67 +374,94 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     const container = pdfContainerRef.current;
     if (!container || !pdfRendered) return;
 
-    // Only enable drag-to-scroll when no drawing tools are active
-    if (state.drawingMode !== 'none') return;
+    // Determine if drag-scroll should be active
+    const shouldBeDraggable = state.drawingMode === 'none';
 
-    console.log('Setting up drag-to-scroll functionality');
+    if (!shouldBeDraggable) {
+      // If shouldn't be draggable, ensure cursor is default and listeners are removed (by cleanup)
+      if (container.style.cursor === 'grab' || container.style.cursor === 'grabbing') {
+        container.style.cursor = 'default';
+      }
+      // isDragging should be false if not draggable
+      if (isDragging) {
+        setIsDragging(false);
+      }
+      // Return empty cleanup if listeners weren't added in this run
+      return () => {};
+    }
+
+    // --- Setup listeners only if shouldBeDraggable ---
+    // console.log('Setting up drag-to-scroll functionality');
+    // Set cursor only if not currently dragging (avoids flicker on re-render)
+    if (!isDragging) {
+      container.style.cursor = 'grab';
+    }
 
     const handleMouseDown = (e: MouseEvent) => {
-      // Only activate on left mouse button
-      if (e.button !== 0) return;
+      // Check conditions again in case state changed between effect run and mousedown
+      if (e.button !== 0 || e.ctrlKey || state.drawingMode !== 'none') return;
 
-      // Don't activate if Ctrl key is pressed (for zoom)
-      if (e.ctrlKey) return;
+      // Read current scroll position directly when drag starts
+      const currentScrollLeft = container.scrollLeft;
+      const currentScrollTop = container.scrollTop;
 
-      // Set dragging state
-      setIsDragging(true);
+      // Use refs to store start coordinates
+      dragStartXRef.current = e.clientX;
+      dragStartYRef.current = e.clientY;
+      scrollStartXRef.current = currentScrollLeft;
+      scrollStartYRef.current = currentScrollTop;
 
-      // Store initial mouse position
-      setDragStartX(e.clientX);
-      setDragStartY(e.clientY);
+      setIsDragging(true); // Set dragging state
+      container.style.cursor = 'grabbing'; // Change cursor
+      e.preventDefault(); // Prevent text selection, etc.
 
-      // Store initial scroll position
-      setScrollStartX(container.scrollLeft);
-      setScrollStartY(container.scrollTop);
+      // --- Define move/up handlers inside mousedown ---
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        // Calculate movement delta based on ref values
+        const deltaX = moveEvent.clientX - dragStartXRef.current;
+        const deltaY = moveEvent.clientY - dragStartYRef.current;
+        // Apply scroll based on initial scroll position from refs
+        container.scrollLeft = scrollStartXRef.current - deltaX;
+        container.scrollTop = scrollStartYRef.current - deltaY;
+        moveEvent.preventDefault();
+      };
 
-      // Prevent default behavior
-      e.preventDefault();
+      const handleMouseUp = (upEvent: MouseEvent) => {
+        // Only react to the primary button release
+        if (upEvent.button !== 0) return;
+
+        setIsDragging(false); // Reset dragging state
+        container.style.cursor = 'grab'; // Restore cursor
+
+        // Remove the specific move/up listeners for this drag instance
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        // console.log('Cleaned up move/up listeners');
+      };
+      // --- End of defining move/up handlers ---
+
+      // Add listeners to the document for wider capture area and reliability
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
     };
 
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return;
-
-      // Calculate how far the mouse has moved
-      const deltaX = e.clientX - dragStartX;
-      const deltaY = e.clientY - dragStartY;
-
-      // Scroll the container in the opposite direction of the mouse movement
-      container.scrollLeft = scrollStartX - deltaX;
-      container.scrollTop = scrollStartY - deltaY;
-
-      // Prevent default behavior
-      e.preventDefault();
-    };
-
-    const handleMouseUp = () => {
-      if (!isDragging) return;
-
-      // Reset dragging state
-      setIsDragging(false);
-    };
-
-    // Add event listeners
+    // Add the mousedown listener to initiate drag
     container.addEventListener('mousedown', handleMouseDown);
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
 
-    // Clean up
+    // Cleanup function for the useEffect: remove mousedown listener and reset cursor
     return () => {
+      // console.log('Clean up drag effect: removing mousedown listener');
       container.removeEventListener('mousedown', handleMouseDown);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      // Reset cursor only if it was potentially set by this effect instance
+      if (container.style.cursor === 'grab' || container.style.cursor === 'grabbing') {
+        container.style.cursor = 'default';
+      }
+      // Note: mousemove/mouseup listeners are cleaned up internally by handleMouseUp
     };
-  }, [isDragging, dragStartX, dragStartY, scrollStartX, scrollStartY, state.drawingMode, pdfRendered]);
+
+    // Dependencies: Re-run when conditions for dragging change, or main state/readiness changes.
+    // isDragging is needed because we conditionally set the 'grab' cursor based on it.
+  }, [pdfRendered, state.drawingMode, state, isDragging]);
 
   const handlePageChange = useCallback(
     (newPage: number) => {
@@ -618,11 +646,11 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
         <div
           className={classNames(classes.pdfContainer, {
-            [classes.draggable]: state.drawingMode === 'none' && !compareModeEnabled,
+            [classes.draggable]: state.drawingMode === 'none',
             [classes.dragging]: isDragging,
           })}
           ref={pdfContainerRef}>
-          {state.drawingMode === 'none' && !compareModeEnabled && !isDragging && (
+          {state.drawingMode === 'none' && !isDragging && (
             <div className={classes.dragIndicator}>
               <span>Click and drag to scroll</span>
             </div>
