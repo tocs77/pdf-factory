@@ -62,7 +62,27 @@ export const ComparePageSideBySide: React.FC<ComparePageSideBySideProps> = ({
   useEffect(() => {
     const isContentRendered = hasRenderedPrimary && (!comparePage || hasRenderedCompare);
     if (inView && isContentRendered && onBecameVisible) {
+      // console.log(`[SideBySide ${pageNumber}] Became visible AND rendered, notifying parent.`); // Keep commented for now
       onBecameVisible(pageNumber);
+
+      // Also set the wrapper size when content is rendered and in view
+      // This ensures the wrapper has the correct dimensions based on the final content
+      if (inView && isContentRendered && sideBySideContainerRef.current) {
+        const primaryViewport = page.getViewport({ scale, rotation, dontFlip: false });
+        const compareViewport = comparePage?.getViewport({ scale, rotation, dontFlip: false });
+
+        const primaryCSSWidth = Math.floor(primaryViewport.width);
+        const primaryCSSHeight = Math.floor(primaryViewport.height);
+        const compareCSSWidth = compareViewport ? Math.floor(compareViewport.width) : 0;
+        const compareCSSHeight = compareViewport ? Math.floor(compareViewport.height) : 0;
+
+        // Use the maximum dimensions of either page
+        const maxWidth = Math.max(primaryCSSWidth, compareCSSWidth);
+        const maxHeight = Math.max(primaryCSSHeight, compareCSSHeight);
+
+        sideBySideContainerRef.current.style.width = `${maxWidth}px`;
+        sideBySideContainerRef.current.style.height = `${maxHeight}px`;
+      }
     }
   }, [inView, hasRenderedPrimary, hasRenderedCompare, comparePage, pageNumber, onBecameVisible]);
 
@@ -104,27 +124,12 @@ export const ComparePageSideBySide: React.FC<ComparePageSideBySideProps> = ({
 
     // --- Wrapper Size Setup ---
     // Ensure the main wrapper adapts to the largest necessary dimension (consider rotation)
-    // Removed setup from here, moved to useEffect
-    /*
     const sideBySideWrapper = sideBySideContainerRef.current;
     if (sideBySideWrapper) {
-        // Determine max dimensions based on *both* potential pages if they differ
-        const primaryViewport = page.getViewport({ scale, rotation, dontFlip: false });
-        const compareViewport = comparePage?.getViewport({ scale, rotation, dontFlip: false });
-
-        const primaryCSSWidth = Math.floor(primaryViewport.width);
-        const primaryCSSHeight = Math.floor(primaryViewport.height);
-        const compareCSSWidth = compareViewport ? Math.floor(compareViewport.width) : 0;
-        const compareCSSHeight = compareViewport ? Math.floor(compareViewport.height) : 0;
-
-        // Use the maximum dimensions of either page
-        const maxWidth = Math.max(primaryCSSWidth, compareCSSWidth);
-        const maxHeight = Math.max(primaryCSSHeight, compareCSSHeight);
-
-        sideBySideWrapper.style.width = canvas.style.width;
-        sideBySideWrapper.style.height = canvas.style.height;
+      // Set wrapper size based on our test dimensions
+      sideBySideWrapper.style.width = canvas.style.width;
+      sideBySideWrapper.style.height = canvas.style.height;
     }
-    */
 
     // --- Rendering ---
     const ctx = canvas.getContext('2d');
@@ -213,6 +218,12 @@ export const ComparePageSideBySide: React.FC<ComparePageSideBySideProps> = ({
   }, [isDraggingSlider]); // Only depends on isDraggingSlider
 
   // Log props on every render for debugging
+  // const primaryPageRefStr = page?.ref ? `${page.ref.gen}-${page.ref.num}` : 'no ref';
+  // const comparePageRefStr = comparePage?.ref ? `${comparePage.ref.gen}-${comparePage.ref.num}` : 'no ref';
+  // console.log(
+  //   `[SideBySide Render] Page ${pageNumber} - Primary Prop Ref: ${primaryPageRefStr}, Compare Prop Ref: ${comparePageRefStr}`,
+  // );
+
   const handleSliderMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
     event.preventDefault(); // Prevent text selection during drag
     setIsDraggingSlider(true);
