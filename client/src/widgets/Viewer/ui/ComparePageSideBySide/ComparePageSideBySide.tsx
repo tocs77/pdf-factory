@@ -3,7 +3,7 @@ import type { PDFPageProxy } from 'pdfjs-dist';
 import { ViewerContext } from '../../model/context/viewerContext';
 import classes from './ComparePageSideBySide.module.scss';
 import { classNames } from '@/shared/utils';
-import { setSliderDragging } from '@/shared/utils/dragControl';
+import { setSliderDragging, forceReleaseDrag } from '@/shared/utils';
 
 interface ComparePageSideBySideProps {
   page: PDFPageProxy;
@@ -196,18 +196,19 @@ export const ComparePageSideBySide: React.FC<ComparePageSideBySideProps> = ({
     };
 
     const handleMouseUp = (event: MouseEvent) => {
-      if (isDraggingSlider) {
-        // Prevent bubbling
-        event.stopPropagation();
+      // Always handle the mouse up event, regardless of drag state
+      // This ensures we clean up even if the event is missed
 
-        setIsDraggingSlider(false);
-        // Restore cursors
-        if (sliderRef.current) sliderRef.current.style.cursor = 'col-resize';
-        document.body.classList.remove('resizingHorizontal');
+      // Prevent bubbling
+      event.stopPropagation();
 
-        // Update global dragging state
-        setSliderDragging(false);
-      }
+      setIsDraggingSlider(false);
+      // Restore cursors
+      if (sliderRef.current) sliderRef.current.style.cursor = 'col-resize';
+      document.body.classList.remove('resizingHorizontal');
+
+      // Update global dragging state
+      setSliderDragging(false);
     };
 
     if (isDraggingSlider) {
@@ -217,19 +218,57 @@ export const ComparePageSideBySide: React.FC<ComparePageSideBySideProps> = ({
       // Set cursors for visual feedback
       if (sliderRef.current) sliderRef.current.style.cursor = 'col-resize';
       document.body.classList.add('resizingHorizontal');
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+
+      // Use capture phase to ensure we get the events
+      document.addEventListener('mousemove', handleMouseMove, true);
+      document.addEventListener('mouseup', handleMouseUp, true);
     }
 
     return () => {
       // Clean up listeners and styles on unmount or if isDraggingSlider becomes false
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mousemove', handleMouseMove, true);
+      document.removeEventListener('mouseup', handleMouseUp, true);
+
       if (sliderRef.current) sliderRef.current.style.cursor = 'col-resize';
       document.body.classList.remove('resizingHorizontal');
 
       // Reset global dragging state
       setSliderDragging(false);
+    };
+  }, [isDraggingSlider]);
+
+  // Always listen for mouse up globally to ensure drag is ended
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isDraggingSlider) {
+        setIsDraggingSlider(false);
+        forceReleaseDrag(); // Use our utility function instead
+      }
+    };
+
+    // Add global listener to catch mouse up events that might be missed
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+
+    return () => {
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isDraggingSlider]);
+
+  // Handle keyboard events to cancel dragging with ESC key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isDraggingSlider) {
+        setIsDraggingSlider(false);
+        forceReleaseDrag(); // Use our utility function instead
+      }
+    };
+
+    if (isDraggingSlider) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isDraggingSlider]);
 

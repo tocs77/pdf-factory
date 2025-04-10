@@ -10,7 +10,7 @@ import { ViewerContext } from '../../model/context/viewerContext';
 import { ViewerProvider } from '../../model/context/ViewerProvider';
 import { classNames } from '@/shared/utils';
 import { scrollToPage } from '../../utils/pageScrollUtils';
-import { isSliderBeingDragged } from '@/shared/utils/dragControl';
+import { isSliderBeingDragged } from '@/shared/utils';
 import classes from './Viewer.module.scss';
 import { Drawing } from '../../model/types/viewerSchema';
 
