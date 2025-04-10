@@ -21,7 +21,7 @@ export const initialViewerState: ViewerSchema = {
   textLayerEnabled: true,
   rulerEnabled: false,
   isDraftDrawing: false,
-  compareModeEnabled: false,
+  compareMode: 'none', // Initialize new compareMode state
 };
 
 // Create the context with default values
@@ -61,6 +61,10 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
       return {
         ...state,
         drawingMode: action.payload,
+        compareMode:
+          drawingTools.includes(action.payload) || action.payload === 'zoomArea' || action.payload === 'ruler'
+            ? 'none'
+            : state.compareMode,
         isDraftDrawing: isDraftDrawing,
       };
     }
@@ -80,6 +84,7 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
         ...state,
         rulerEnabled: !state.rulerEnabled,
         drawingMode: !state.rulerEnabled ? 'ruler' : 'none',
+        compareMode: !state.rulerEnabled ? 'none' : state.compareMode, // Turn off compare when ruler active
       };
     case 'rotatePageClockwise':
       return {
@@ -113,12 +118,18 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
         drawingMode: drawingMode,
       };
     }
-    case 'toggleCompareMode':
+    case 'setCompareMode': {
+      const newCompareMode = action.payload;
+      // Ensure drawing mode is 'none' if activating a compare mode
+      const newDrawingMode = newCompareMode !== 'none' ? 'none' : state.drawingMode;
       return {
         ...state,
-        compareModeEnabled: !state.compareModeEnabled,
-        drawingMode: !state.compareModeEnabled ? 'none' : state.drawingMode,
+        compareMode: newCompareMode,
+        drawingMode: newDrawingMode,
+        // Optionally reset other states like ruler
+        rulerEnabled: newCompareMode !== 'none' ? false : state.rulerEnabled,
       };
+    }
     default:
       return state;
   }

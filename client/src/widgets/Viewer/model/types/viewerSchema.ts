@@ -235,7 +235,7 @@ export type Drawing =
   | PinSelection;
 
 export type DrawingMode =
-  | 'none'
+  | 'none' // No tool active
   | 'freehand'
   | 'rectangle'
   | 'extensionLine'
@@ -266,19 +266,36 @@ export interface ViewerSchema {
   // Whether the ruler tool is enabled
   rulerEnabled?: boolean;
   isDraftDrawing: boolean;
-  compareModeEnabled: boolean;
+  compareMode: 'none' | 'diff' | 'sideBySide'; // Type of comparison mode active
 }
 
+// Action types using discriminated unions
+type SetScaleAction = { type: 'setScale'; payload: number };
+type SetDrawingColorAction = { type: 'setDrawingColor'; payload: string };
+type SetDrawingLineWidthAction = { type: 'setDrawingLineWidth'; payload: number };
+type SetDrawingModeAction = { type: 'setDrawingMode'; payload: DrawingMode };
+type ToggleThumbnailsAction = { type: 'toggleThumbnails' };
+type SetPageRotationAction = { type: 'setPageRotation'; payload: { pageNumber: number; angle: number } };
+type RotateClockwiseAction = { type: 'rotatePageClockwise'; payload: number };
+type RotateCounterClockwiseAction = { type: 'rotatePageCounterClockwise'; payload: number };
+type ToggleTextLayerAction = { type: 'toggleTextLayer' };
+type ToggleRulerAction = { type: 'toggleRuler' };
+// type ToggleCompareModeAction = { type: 'toggleCompareMode' }; // Obsolete
+type SetIsDraftDrawingAction = { type: 'setIsDraftDrawing'; payload: boolean };
+type SetCompareModeAction = { type: 'setCompareMode'; payload: 'none' | 'diff' | 'sideBySide' }; // New action type
+
+export type IsDraftDrawing = boolean;
+// Remove obsolete toggleCompareMode action type
 export type Action =
-  | { type: 'setScale'; payload: number }
-  | { type: 'setDrawingColor'; payload: string }
-  | { type: 'setDrawingLineWidth'; payload: number }
-  | { type: 'setDrawingMode'; payload: DrawingMode }
-  | { type: 'toggleThumbnails' }
-  | { type: 'toggleTextLayer' } // Toggle text layer visibility
-  | { type: 'toggleRuler' } // Toggle ruler tool
-  | { type: 'toggleCompareMode' }
-  | { type: 'rotatePageClockwise'; payload: number } // Page number to rotate
-  | { type: 'rotatePageCounterClockwise'; payload: number } // Page number to rotate
-  | { type: 'setPageRotation'; payload: { pageNumber: number; angle: number } }
-  | { type: 'setIsDraftDrawing'; payload: boolean };
+  | SetScaleAction
+  | SetDrawingColorAction
+  | SetDrawingLineWidthAction
+  | SetDrawingModeAction
+  | ToggleThumbnailsAction
+  | SetPageRotationAction
+  | RotateClockwiseAction
+  | RotateCounterClockwiseAction
+  | ToggleTextLayerAction
+  | ToggleRulerAction
+  | SetIsDraftDrawingAction
+  | SetCompareModeAction; // Added new action

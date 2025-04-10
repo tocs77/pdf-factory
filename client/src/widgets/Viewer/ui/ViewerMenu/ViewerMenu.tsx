@@ -26,8 +26,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
   onComparePageChange,
 }) => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, drawingMode, showThumbnails, pageRotations, rulerEnabled, compareModeEnabled } =
-    state;
+  const { scale, drawingColor, drawingLineWidth, drawingMode, showThumbnails, pageRotations, rulerEnabled, compareMode } = state;
 
   const [pageInputValue, setPageInputValue] = useState<string>(currentPage.toString());
   const mainPageDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -193,7 +192,8 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
             />
             <span>/{totalPages}</span>
           </div>
-          {compareModeEnabled && (
+          {/* Show compare page input only if a compare mode is active */}
+          {compareMode !== 'none' && (
             <>
               <span className={classes.pageSeparator}>vs</span>
               <div className={classes.pageCounter}>
@@ -345,12 +345,22 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
       </button>
 
       {hasCompare && (
-        <button
-          onClick={() => dispatch({ type: 'toggleCompareMode' })}
-          className={`${classes.zoomButton} ${compareModeEnabled ? classes.active : ''}`}
-          title={compareModeEnabled ? 'Disable Compare Mode' : 'Enable Compare Mode'}>
-          Compare
-        </button>
+        <>
+          {/* Diff Compare Button */}
+          <button
+            onClick={() => dispatch({ type: 'setCompareMode', payload: compareMode === 'diff' ? 'none' : 'diff' })}
+            className={`${classes.zoomButton} ${compareMode === 'diff' ? classes.active : ''}`}
+            title={compareMode === 'diff' ? 'Disable Diff Compare' : 'Enable Diff Compare'}>
+            Compare
+          </button>
+          {/* Side-by-Side Compare Button */}
+          <button
+            onClick={() => dispatch({ type: 'setCompareMode', payload: compareMode === 'sideBySide' ? 'none' : 'sideBySide' })}
+            className={`${classes.zoomButton} ${compareMode === 'sideBySide' ? classes.active : ''}`}
+            title={compareMode === 'sideBySide' ? 'Disable Side-by-Side Compare' : 'Enable Side-by-Side Compare'}>
+            Side-by-Side
+          </button>
+        </>
       )}
 
       <div className={classes.toolPanel}>

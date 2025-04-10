@@ -5,6 +5,7 @@ import { Thumbnail } from '../Thumbnail/Thumbnail';
 import { Page } from '../Page/Page';
 import { ComparePage } from '../ComparePage/ComparePage';
 import { ViewerMenu } from '../ViewerMenu/ViewerMenu';
+import { ComparePageSideBySide } from '../ComparePageSideBySide/ComparePageSideBySide';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { ViewerProvider } from '../../model/context/ViewerProvider';
 import { classNames } from '@/shared/utils';
@@ -31,7 +32,7 @@ type PageOverrides = Record<number, number>;
 const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) => {
   const { url, drawings, drawingCreated, compareUrl } = props;
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, showThumbnails, compareModeEnabled } = state;
+  const { scale, showThumbnails, compareMode, drawingMode } = state;
 
   const [pdfRef, setPdfRef] = useState<PDFDocumentProxy | null>(null);
   const [comparePdfRef, setComparePdfRef] = useState<PDFDocumentProxy | null>(null);
@@ -197,7 +198,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
   // Load compare PDF document - only called when compare mode is enabled
   const loadComparePdf = async (comparePdfUrl: string): Promise<PDFDocumentProxy | null> => {
-    if (!compareModeEnabled || !comparePdfUrl) {
+    if (!compareMode || !comparePdfUrl) {
       return null;
     }
 
@@ -255,7 +256,8 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       const pdf = await loadPdf(url);
       setPdfRef(pdf);
 
-      if (compareModeEnabled && compareUrl) {
+      // Load compare PDF if URL is provided, regardless of compareModeEnabled
+      if (compareUrl) {
         const comparePdf = await loadComparePdf(compareUrl);
         setComparePdfRef(comparePdf);
       } else {
@@ -267,7 +269,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     };
 
     initPdf();
-  }, [url, compareUrl, compareModeEnabled]);
+  }, [url, compareUrl]);
 
   // Effect for loading PDF pages
   useEffect(() => {
@@ -279,7 +281,8 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
         setPages([]);
       }
 
-      if (compareModeEnabled && comparePdfRef) {
+      // Load compare pages if compare PDF ref exists
+      if (comparePdfRef) {
         const loadedComparePages = await loadPages(comparePdfRef);
         setComparePages(loadedComparePages);
       } else {
@@ -288,7 +291,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     };
 
     initPages();
-  }, [pdfRef, comparePdfRef, compareModeEnabled]);
+  }, [pdfRef, comparePdfRef]);
 
   const handleThumbnailClick = (pageNumber: number) => {
     setSelectedPage(pageNumber);
@@ -320,7 +323,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     if (!container || !pdfRendered) return;
 
     // Determine if drag-scroll should be active
-    const shouldBeDraggable = state.drawingMode === 'none';
+    const shouldBeDraggable = drawingMode === 'none';
 
     if (!shouldBeDraggable) {
       // If shouldn't be draggable, ensure cursor is default and listeners are removed (by cleanup)
@@ -344,7 +347,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
     const handleMouseDown = (e: MouseEvent) => {
       // Check conditions again in case state changed between effect run and mousedown
-      if (e.button !== 0 || e.ctrlKey || state.drawingMode !== 'none') return;
+      if (e.button !== 0 || e.ctrlKey || drawingMode !== 'none') return;
 
       // Read current scroll position directly when drag starts
       const currentScrollLeft = container.scrollLeft;
@@ -406,58 +409,50 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
     // Dependencies: Re-run when conditions for dragging change, or main state/readiness changes.
     // isDragging is needed because we conditionally set the 'grab' cursor based on it.
-  }, [pdfRendered, state.drawingMode, state, isDragging]);
+  }, [pdfRendered, drawingMode, state, isDragging]);
 
   // Effect to reset to page 1 when compare mode is toggled
   const firstRenderRef = useRef(true);
-  const prevCompareModeRef = useRef(compareModeEnabled);
+  const prevCompareModeRef = useRef(compareMode);
   useEffect(() => {
-    const hasCompareModeChanged = prevCompareModeRef.current !== compareModeEnabled;
-    // console.log(`[CompareToggleEffect] Running... Mode changed: ${hasCompareModeChanged} (Prev: ${prevCompareModeRef.current}, Curr: ${compareModeEnabled})`);
+    const hasCompareModeChanged = prevCompareModeRef.current !== compareMode;
 
     // Skip the effect on the initial render
     if (firstRenderRef.current) {
       firstRenderRef.current = false;
-      // console.log('[CompareToggleEffect] Skipping initial render.');
-      prevCompareModeRef.current = compareModeEnabled; // Update ref on initial render too
+      prevCompareModeRef.current = compareMode; // Update ref on initial render too
       return;
     }
 
     // Only run the reset logic if the mode actually changed
     if (!hasCompareModeChanged) {
-      // console.log('[CompareToggleEffect] Skipping: Mode did not change.');
       return;
     }
 
     // Check if container and pages are ready
     if (!pdfContainerRef.current || pages.length === 0) {
-      // console.log('[CompareToggleEffect] Aborting: Container or pages not ready.');
-      prevCompareModeRef.current = compareModeEnabled; // Update ref even if aborted
+      prevCompareModeRef.current = compareMode; // Update ref even if aborted
       return;
     }
-
-    // console.log(`[CompareToggleEffect] Resetting to page 1.`);
 
     // Reset the selected page state to 1
     setSelectedPage(1);
 
     // Update the ref after processing the change
-    prevCompareModeRef.current = compareModeEnabled;
+    prevCompareModeRef.current = compareMode;
 
     // Scroll instantly to page 1
     requestAnimationFrame(() => {
-      // Re-check ref inside callback
       if (!pdfContainerRef.current) return;
-
       scrollToPage({
         newPage: 1,
-        currentPage: selectedPage, // Pass current page before reset for calculation
+        currentPage: selectedPage,
         totalPages: pages.length,
         containerRef: pdfContainerRef,
         pages,
       });
     });
-  }, [compareModeEnabled, pages]); // Added pages dependency
+  }, [compareMode, pages, selectedPage]); // Add selectedPage to deps as it's used in scroll calculation
 
   const handlePageChange = useCallback(
     (newPage: number) => {
@@ -555,7 +550,36 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       const pageKey = `page-${pageNumber}`;
       const pageId = `pdf-page-${pageNumber}`;
 
-      if (compareModeEnabled) {
+      // Side-by-Side Compare Mode
+      if (state.compareMode === 'sideBySide') {
+        // console.log(`[Render ${pageNumber}] SideBySide Mode Check. comparePages.length: ${comparePages.length}`);
+        // Determine the comparison page number to use
+        const comparePageNumToShow = pageOverrides[pageNumber] ?? pageNumber; // Use override or default
+        // console.log(`[Render ${pageNumber}] pageOverrides[${pageNumber}]: ${pageOverrides[pageNumber]}, comparePageNumToShow: ${comparePageNumToShow}`);
+
+        // Get the actual compare page object
+        const comparePageObject =
+          comparePageNumToShow >= 1 && comparePageNumToShow <= comparePages.length
+            ? comparePages[comparePageNumToShow - 1]
+            : null;
+
+        // console.log(`[Render ${pageNumber}] Final Compare Page Object: ${comparePageObject ? `Page ${comparePageObject.pageNumber}` : 'null'}`);
+
+        return (
+          <ComparePageSideBySide
+            key={pageKey}
+            page={page}
+            comparePage={comparePageObject}
+            pageNumber={pageNumber}
+            id={pageId}
+            className={classes.pageItem}
+            onBecameVisible={handlePageBecameVisible}
+          />
+        );
+      }
+
+      // Overlay Compare Mode
+      if (state.compareMode === 'diff') {
         // Determine the comparison page number to use
         const comparePageNumToShow = pageOverrides[pageNumber] ?? pageNumber; // Use override or default
 
@@ -644,11 +668,13 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
         <div
           className={classNames(classes.pdfContainer, {
-            [classes.draggable]: state.drawingMode === 'none',
+            // Draggable if no drawing tool AND no compare mode active
+            [classes.draggable]: drawingMode === 'none' && compareMode === 'none',
             [classes.dragging]: isDragging,
           })}
           ref={pdfContainerRef}>
-          {state.drawingMode === 'none' && !isDragging && (
+          {/* Show drag indicator only if draggable */}
+          {drawingMode === 'none' && compareMode === 'none' && !isDragging && (
             <div className={classes.dragIndicator}>
               <span>Click and drag to scroll</span>
             </div>
