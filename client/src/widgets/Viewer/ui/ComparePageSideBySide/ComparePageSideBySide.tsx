@@ -3,6 +3,7 @@ import type { PDFPageProxy } from 'pdfjs-dist';
 import { ViewerContext } from '../../model/context/viewerContext';
 import classes from './ComparePageSideBySide.module.scss';
 import { classNames } from '@/shared/utils';
+import { setSliderDragging } from '@/shared/utils/dragControl';
 
 interface ComparePageSideBySideProps {
   page: PDFPageProxy;
@@ -181,6 +182,10 @@ export const ComparePageSideBySide: React.FC<ComparePageSideBySideProps> = ({
     const handleMouseMove = (event: MouseEvent) => {
       if (!isDraggingSlider || !sideBySideContainerRef.current) return;
 
+      // Prevent any default browser behavior
+      event.preventDefault();
+      event.stopPropagation();
+
       const rect = sideBySideContainerRef.current.getBoundingClientRect();
       let newX = event.clientX - rect.left;
       let newSliderPosition = (newX / rect.width) * 100;
@@ -190,32 +195,43 @@ export const ComparePageSideBySide: React.FC<ComparePageSideBySideProps> = ({
       setSliderPosition(newSliderPosition);
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (event: MouseEvent) => {
       if (isDraggingSlider) {
+        // Prevent bubbling
+        event.stopPropagation();
+
         setIsDraggingSlider(false);
         // Restore cursors
         if (sliderRef.current) sliderRef.current.style.cursor = 'col-resize';
-        document.body.classList.remove(classes.resizingHorizontal);
+        document.body.classList.remove('resizingHorizontal');
+
+        // Update global dragging state
+        setSliderDragging(false);
       }
     };
 
     if (isDraggingSlider) {
+      // Update global dragging state
+      setSliderDragging(true);
+
       // Set cursors for visual feedback
       if (sliderRef.current) sliderRef.current.style.cursor = 'col-resize';
-      document.body.classList.add(classes.resizingHorizontal);
+      document.body.classList.add('resizingHorizontal');
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
     }
-    // No need for 'else' block to remove listeners here, the cleanup function handles it.
 
     return () => {
       // Clean up listeners and styles on unmount or if isDraggingSlider becomes false
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       if (sliderRef.current) sliderRef.current.style.cursor = 'col-resize';
-      document.body.classList.remove(classes.resizingHorizontal);
+      document.body.classList.remove('resizingHorizontal');
+
+      // Reset global dragging state
+      setSliderDragging(false);
     };
-  }, [isDraggingSlider]); // Only depends on isDraggingSlider
+  }, [isDraggingSlider]);
 
   // Log props on every render for debugging
   // const primaryPageRefStr = page?.ref ? `${page.ref.gen}-${page.ref.num}` : 'no ref';
@@ -225,15 +241,40 @@ export const ComparePageSideBySide: React.FC<ComparePageSideBySideProps> = ({
   // );
 
   const handleSliderMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
-    event.preventDefault(); // Prevent text selection during drag
+    // Prevent default behavior and stop propagation
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Set global dragging state
+    setSliderDragging(true);
+
     setIsDraggingSlider(true);
+  };
+
+  // Helper to determine if a click is near the slider
+  const isNearSlider = (clientX: number) => {
+    if (!sideBySideContainerRef.current) return false;
+
+    const rect = sideBySideContainerRef.current.getBoundingClientRect();
+    const sliderX = rect.left + (rect.width * sliderPosition) / 100;
+
+    // Define "near" as within 15 pixels of the slider
+    return Math.abs(clientX - sliderX) < 15;
+  };
+
+  const handleWrapperMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    // Check if the click is near the slider
+    if (isNearSlider(event.clientX)) {
+      // If near slider, stop propagation to prevent PDF drag-to-scroll
+      event.stopPropagation();
+    }
   };
 
   return (
     <div ref={containerRef} className={classNames(classes.pageContainer, {}, [className])} id={id} data-page-number={pageNumber}>
       {/* Only render content if it should be rendered (in view or previously rendered) */}
       {shouldRender && (
-        <div ref={sideBySideContainerRef} className={classes.sideBySideWrapper}>
+        <div ref={sideBySideContainerRef} className={classes.sideBySideWrapper} onMouseDown={handleWrapperMouseDown}>
           {/* Container for the Compare Page (Renders underneath) */}
           <div
             className={classNames(classes.pageHalf, {}, [classes.comparePage])}
@@ -261,10 +302,12 @@ export const ComparePageSideBySide: React.FC<ComparePageSideBySideProps> = ({
           {/* Slider Handle */}
           <div
             ref={sliderRef}
-            className={classes.sliderHandle}
+            className={classNames(classes.sliderHandle, {}, ['sliderHandle'])}
             style={{ left: `${sliderPosition}%` }}
-            onMouseDown={handleSliderMouseDown}>
-            <div className={classes.sliderLine}></div>
+            onMouseDown={handleSliderMouseDown}
+            onMouseMove={(e) => isDraggingSlider && e.stopPropagation()}
+            onMouseUp={(e) => isDraggingSlider && e.stopPropagation()}>
+            <div className={classNames(classes.sliderLine, {}, ['sliderLine'])}></div>
             {/* Optional: Add icons/arrows to the handle */}
           </div>
         </div>

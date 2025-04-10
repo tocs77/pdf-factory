@@ -10,6 +10,7 @@ import { ViewerContext } from '../../model/context/viewerContext';
 import { ViewerProvider } from '../../model/context/ViewerProvider';
 import { classNames } from '@/shared/utils';
 import { scrollToPage } from '../../utils/pageScrollUtils';
+import { isSliderBeingDragged } from '@/shared/utils/dragControl';
 import classes from './Viewer.module.scss';
 import { Drawing } from '../../model/types/viewerSchema';
 
@@ -339,15 +340,31 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     }
 
     // --- Setup listeners only if shouldBeDraggable ---
-    // console.log('Setting up drag-to-scroll functionality');
     // Set cursor only if not currently dragging (avoids flicker on re-render)
     if (!isDragging) {
       container.style.cursor = 'grab';
     }
 
     const handleMouseDown = (e: MouseEvent) => {
+      // Check if slider is being dragged first (highest priority check)
+      if (isSliderBeingDragged()) {
+        return;
+      }
+
       // Check conditions again in case state changed between effect run and mousedown
       if (e.button !== 0 || e.ctrlKey || drawingMode !== 'none') return;
+
+      // Check for slider elements
+      const target = e.target as HTMLElement;
+      if (
+        target.classList.contains('sliderHandle') ||
+        target.classList.contains('sliderLine') ||
+        target.closest('.sliderHandle') ||
+        document.body.classList.contains('slider-dragging') ||
+        document.body.classList.contains('resizingHorizontal')
+      ) {
+        return;
+      }
 
       // Read current scroll position directly when drag starts
       const currentScrollLeft = container.scrollLeft;
@@ -672,7 +689,13 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
             [classes.draggable]: drawingMode === 'none' && compareMode === 'none',
             [classes.dragging]: isDragging,
           })}
-          ref={pdfContainerRef}>
+          ref={pdfContainerRef}
+          onMouseDown={(e) => {
+            // If slider is being dragged, prevent drag-to-scroll
+            if (isSliderBeingDragged() || document.body.classList.contains('slider-dragging')) {
+              e.stopPropagation();
+            }
+          }}>
           {/* Show drag indicator only if draggable */}
           {drawingMode === 'none' && compareMode === 'none' && !isDragging && (
             <div className={classes.dragIndicator}>

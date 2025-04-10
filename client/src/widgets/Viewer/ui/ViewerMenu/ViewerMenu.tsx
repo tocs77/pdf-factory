@@ -3,6 +3,7 @@ import { ViewerContext } from '../../model/context/viewerContext';
 import { DrawingMode } from '../../model/types/viewerSchema';
 import { classNames } from '@/shared/utils';
 import classes from './ViewerMenu.module.scss';
+import '../../../../shared/utils/dragControl';
 
 interface ViewerMenuProps {
   currentPage: number;

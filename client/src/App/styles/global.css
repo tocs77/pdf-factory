@@ -1,0 +1,12 @@
+/* Global styles for slider dragging */
+body.slider-dragging * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+/* Prevent unwanted text selection during drag operations */
+.slider-dragging,
+.sliderHandle,
+.sliderLine {
+  user-select: none !important;
+} 

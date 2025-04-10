@@ -82,8 +82,8 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 5px;
-  /* Make handle thinner */
+  width: 15px;
+  /* Increased from 5px for larger hit area */
   cursor: col-resize;
   /* Use horizontal resize cursor */
   z-index: 3;
@@ -93,6 +93,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  touch-action: none;
+  /* Prevent touch scrolling */
 
   &:active {
     cursor: col-resize;
