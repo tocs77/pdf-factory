@@ -9,18 +9,33 @@ interface ViewerMenuProps {
   totalPages?: number;
   onPageChange?: (pageNumber: number) => void;
   hasCompare?: boolean;
+  comparePage?: number;
+  totalComparePages?: number;
+  onComparePageChange?: (pageNumber: number) => void;
 }
 
 const DEBOUNCE_TIME = 1000;
 
-export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages = 0, onPageChange, hasCompare }) => {
+export const ViewerMenu: React.FC<ViewerMenuProps> = ({
+  currentPage,
+  totalPages = 0,
+  onPageChange,
+  hasCompare,
+  comparePage,
+  totalComparePages = 0,
+  onComparePageChange,
+}) => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, drawingMode, showThumbnails, pageRotations, rulerEnabled } = state;
-  const [pageInputValue, setPageInputValue] = useState<string>(currentPage.toString());
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const { scale, drawingColor, drawingLineWidth, drawingMode, showThumbnails, pageRotations, rulerEnabled, compareModeEnabled } =
+    state;
 
-  // Update the input value when currentPage prop changes
-  React.useEffect(() => {
+  const [pageInputValue, setPageInputValue] = useState<string>(currentPage.toString());
+  const mainPageDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [comparePageInputValue, setComparePageInputValue] = useState<string>(comparePage ? comparePage.toString() : '');
+  const comparePageDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
     setPageInputValue(currentPage.toString());
   }, [currentPage]);
 
@@ -29,55 +44,78 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
     if (pageNumber && pageNumber >= 1 && pageNumber <= totalPages && onPageChange) {
       onPageChange(pageNumber);
     } else {
-      // Reset to current page if invalid
       setPageInputValue(currentPage.toString());
     }
   };
 
-  // Debounce effect for page input
   useEffect(() => {
-    // Don't trigger if it's the initial render or just syncing with currentPage
-    if (pageInputValue === currentPage.toString()) {
-      return;
-    }
-
-    // Clear any existing timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    // Set a new timer
-    debounceTimerRef.current = setTimeout(() => {
+    if (pageInputValue === currentPage.toString()) return;
+    if (mainPageDebounceTimerRef.current) clearTimeout(mainPageDebounceTimerRef.current);
+    mainPageDebounceTimerRef.current = setTimeout(() => {
       navigateToEnteredPage();
     }, DEBOUNCE_TIME);
-
-    // Cleanup on unmount or when pageInputValue changes again
     return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
+      if (mainPageDebounceTimerRef.current) clearTimeout(mainPageDebounceTimerRef.current);
     };
   }, [pageInputValue, currentPage, totalPages, onPageChange]);
 
-  const zoomIn = () => {
-    dispatch({ type: 'setScale', payload: scale + 0.25 });
+  const handlePageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^0-9]/g, '');
+    setPageInputValue(value);
   };
 
-  const zoomOut = () => {
-    dispatch({ type: 'setScale', payload: scale - 0.25 });
+  const handlePageInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      if (mainPageDebounceTimerRef.current) clearTimeout(mainPageDebounceTimerRef.current);
+      navigateToEnteredPage();
+    }
   };
 
-  const resetZoom = () => {
-    dispatch({ type: 'setScale', payload: 1.5 });
+  useEffect(() => {
+    setComparePageInputValue(comparePage ? comparePage.toString() : '');
+  }, [comparePage]);
+
+  const navigateToEnteredComparePage = () => {
+    const pageNumber = parseInt(comparePageInputValue, 10);
+    if (pageNumber && pageNumber >= 1 && pageNumber <= totalComparePages && onComparePageChange) {
+      onComparePageChange(pageNumber);
+    } else {
+      setComparePageInputValue(comparePage ? comparePage.toString() : '');
+    }
   };
 
-  const changeDrawingColor = (color: string) => {
-    dispatch({ type: 'setDrawingColor', payload: color });
+  useEffect(() => {
+    if (!onComparePageChange || comparePageInputValue === (comparePage?.toString() ?? '')) return;
+
+    if (comparePageDebounceTimerRef.current) clearTimeout(comparePageDebounceTimerRef.current);
+    comparePageDebounceTimerRef.current = setTimeout(() => {
+      navigateToEnteredComparePage();
+    }, DEBOUNCE_TIME);
+    return () => {
+      if (comparePageDebounceTimerRef.current) clearTimeout(comparePageDebounceTimerRef.current);
+    };
+  }, [comparePageInputValue, comparePage, totalComparePages, onComparePageChange]);
+
+  const handleComparePageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^0-9]/g, '');
+    setComparePageInputValue(value);
   };
 
-  const changeLineWidth = (width: number) => {
-    dispatch({ type: 'setDrawingLineWidth', payload: width });
+  const handleComparePageInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      if (comparePageDebounceTimerRef.current) clearTimeout(comparePageDebounceTimerRef.current);
+      navigateToEnteredComparePage();
+    }
   };
+
+  const zoomIn = () => dispatch({ type: 'setScale', payload: scale + 0.25 });
+  const zoomOut = () => dispatch({ type: 'setScale', payload: scale - 0.25 });
+  const resetZoom = () => dispatch({ type: 'setScale', payload: 1.5 });
+
+  const rotatePageClockwise = () => dispatch({ type: 'rotatePageClockwise', payload: currentPage });
+  const rotatePageCounterClockwise = () => dispatch({ type: 'rotatePageCounterClockwise', payload: currentPage });
+
+  const toggleRuler = () => dispatch({ type: 'toggleRuler' });
 
   const changeDrawingMode = (mode: DrawingMode) => {
     if (mode === drawingMode) {
@@ -87,12 +125,12 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
     }
   };
 
-  const rotatePageClockwise = () => {
-    dispatch({ type: 'rotatePageClockwise', payload: currentPage });
+  const changeDrawingColor = (color: string) => {
+    dispatch({ type: 'setDrawingColor', payload: color });
   };
 
-  const rotatePageCounterClockwise = () => {
-    dispatch({ type: 'rotatePageCounterClockwise', payload: currentPage });
+  const changeLineWidth = (width: number) => {
+    dispatch({ type: 'setDrawingLineWidth', payload: width });
   };
 
   const toggleTextHighlight = () => {
@@ -119,23 +157,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
     }
   };
 
-  const handlePageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Only allow numeric input
-    const value = e.target.value.replace(/[^0-9]/g, '');
-    setPageInputValue(value);
-  };
-
-  const handlePageInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      navigateToEnteredPage();
-    }
-  };
-
   const currentRotation = pageRotations[currentPage] || 0;
-
-  const toggleRuler = () => {
-    dispatch({ type: 'toggleRuler' });
-  };
 
   return (
     <div className={classes.zoomControls}>
@@ -154,18 +176,45 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
             <polyline points='15 18 9 12 15 6'></polyline>
           </svg>
         </button>
-        <div className={classes.pageCounter}>
-          <input
-            type='text'
-            value={pageInputValue}
-            onChange={handlePageInputChange}
-            onKeyDown={handlePageInputKeyDown}
-            onBlur={navigateToEnteredPage}
-            className={classes.pageInput}
-            title='Enter page number and press Enter'
-            aria-label='Current page'
-          />
-          <span>/{totalPages}</span>
+        <div className={classes.pageInputContainer}>
+          <div className={classes.pageCounter}>
+            <input
+              type='text'
+              value={pageInputValue}
+              onChange={handlePageInputChange}
+              onKeyDown={handlePageInputKeyDown}
+              onBlur={() => {
+                if (mainPageDebounceTimerRef.current) clearTimeout(mainPageDebounceTimerRef.current);
+                navigateToEnteredPage();
+              }}
+              className={classes.pageInput}
+              title='Enter main page number'
+              aria-label='Current main page'
+            />
+            <span>/{totalPages}</span>
+          </div>
+          {compareModeEnabled && (
+            <>
+              <span className={classes.pageSeparator}>vs</span>
+              <div className={classes.pageCounter}>
+                <input
+                  type='text'
+                  value={comparePageInputValue}
+                  onChange={handleComparePageInputChange}
+                  onKeyDown={handleComparePageInputKeyDown}
+                  onBlur={() => {
+                    if (comparePageDebounceTimerRef.current) clearTimeout(comparePageDebounceTimerRef.current);
+                    navigateToEnteredComparePage();
+                  }}
+                  className={classes.pageInput}
+                  title='Enter comparison page number'
+                  aria-label='Current comparison page'
+                  disabled={!onComparePageChange}
+                />
+                <span>/{totalComparePages > 0 ? totalComparePages : '?'}</span>
+              </div>
+            </>
+          )}
         </div>
         <button className={classes.pageButton} onClick={goToNextPage} disabled={currentPage >= totalPages} title='Next page'>
           <svg
@@ -295,18 +344,16 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
         Reset
       </button>
 
-      {/* Compare Mode Toggle Button */}
       {hasCompare && (
         <button
           onClick={() => dispatch({ type: 'toggleCompareMode' })}
-          className={`${classes.zoomButton} ${state.compareModeEnabled ? classes.active : ''}`}
-          title={state.compareModeEnabled ? 'Disable Compare Mode' : 'Enable Compare Mode'}>
+          className={`${classes.zoomButton} ${compareModeEnabled ? classes.active : ''}`}
+          title={compareModeEnabled ? 'Disable Compare Mode' : 'Enable Compare Mode'}>
           Compare
         </button>
       )}
 
       <div className={classes.toolPanel}>
-        {/* Drawing Options - Show when a drawing tool is selected OR text layer is enabled */}
         {(drawingMode === 'freehand' ||
           drawingMode === 'rectangle' ||
           drawingMode === 'extensionLine' ||
@@ -387,14 +434,11 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
           </div>
         )}
 
-        {/* Separator - only show if drawing options are visible */}
         {drawingMode !== 'none' && drawingMode !== 'zoomArea' && drawingMode !== 'ruler' && drawingMode !== 'PinSelection' && (
           <div className={classes.separator}></div>
         )}
 
-        {/* Tool Buttons Groups */}
         <div className={classes.toolButtons}>
-          {/* Group 1: Text Annotation Tools */}
           <div className={classes.toolGroup}>
             <button
               className={`${classes.toolButton} ${drawingMode === 'textHighlight' ? classes.active : ''}`}
@@ -452,12 +496,9 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
             </button>
           </div>
 
-          {/* Separator */}
           <div className={classes.separator}></div>
 
-          {/* Group 2: Drawing Tools */}
           <div className={classes.toolGroup}>
-            {/* Freehand Drawing Tool */}
             <button
               className={`${classes.toolButton} ${drawingMode === 'freehand' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('freehand')}
@@ -476,7 +517,6 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
               </svg>
             </button>
 
-            {/* Rectangle Tool */}
             <button
               className={`${classes.toolButton} ${drawingMode === 'rectangle' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('rectangle')}
@@ -495,7 +535,6 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
               </svg>
             </button>
 
-            {/* Extension Line Tool */}
             <button
               className={`${classes.toolButton} ${drawingMode === 'extensionLine' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('extensionLine')}
@@ -510,13 +549,11 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
                 strokeWidth='2'
                 strokeLinecap='round'
                 strokeLinejoin='round'>
-                {/* Arrow bent in the middle */}
                 <polyline points='5,19 17,17 19,5' />
                 <polyline points='16 3 19 5 16 7' />
               </svg>
             </button>
 
-            {/* Line Drawing Tool */}
             <button
               className={`${classes.toolButton} ${drawingMode === 'line' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('line')}
@@ -535,7 +572,6 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
               </svg>
             </button>
 
-            {/* Text Area Tool */}
             <button
               className={`${classes.toolButton} ${drawingMode === 'textArea' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('textArea')}
@@ -558,12 +594,9 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
             </button>
           </div>
 
-          {/* Separator */}
           <div className={classes.separator}></div>
 
-          {/* Group 3: Area Capture Tool */}
           <div className={classes.toolGroup}>
-            {/* Draw Area Tool */}
             <button
               className={`${classes.toolButton} ${drawingMode === 'drawArea' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('drawArea')}
@@ -585,7 +618,6 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
                 <path d='M21 14H3'></path>
               </svg>
             </button>
-            {/* Rect Selection Tool */}
             <button
               className={`${classes.toolButton} ${drawingMode === 'RectSelection' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('RectSelection')}
@@ -601,12 +633,9 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({ currentPage, totalPages 
                 strokeLinecap='round'
                 strokeLinejoin='round'
                 strokeDasharray='4 4'>
-                {' '}
-                {/* Dashed style */}
                 <rect x='3' y='3' width='18' height='18' rx='2' ry='2'></rect>
               </svg>
             </button>
-            {/* Pin Selection Tool */}
             <button
               className={`${classes.toolButton} ${drawingMode === 'PinSelection' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('PinSelection')}

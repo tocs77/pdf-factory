@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useContext, useEffect, useState, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import * as pdfjs from 'pdfjs-dist';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import { Thumbnail } from '../Thumbnail/Thumbnail';
@@ -25,6 +25,9 @@ interface PdfViewerProps {
   drawingCreated: (drawing: Omit<Drawing, 'id'>) => void;
 }
 
+// Type for page override mapping
+type PageOverrides = Record<number, number>;
+
 // Internal viewer component that will be wrapped with the provider
 const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) => {
   const { url, drawings, drawingCreated, compareUrl } = props;
@@ -46,6 +49,9 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   const [dragStartY, setDragStartY] = useState(0);
   const [scrollStartX, setScrollStartX] = useState(0);
   const [scrollStartY, setScrollStartY] = useState(0);
+
+  // State for comparison page overrides
+  const [pageOverrides, setPageOverrides] = useState<PageOverrides>({});
 
   // Use the zoom to mouse hook
   const { findVisiblePageElement, handleScaleChange } = useZoomToMouse({
@@ -253,12 +259,17 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     const initPdf = async () => {
       setIsLoading(true);
       setError(null);
+      // Reset page overrides when main URL changes
+      setPageOverrides({});
       const pdf = await loadPdf(url);
       setPdfRef(pdf);
 
       if (compareModeEnabled && compareUrl) {
         const comparePdf = await loadComparePdf(compareUrl);
         setComparePdfRef(comparePdf);
+      } else {
+        setComparePdfRef(null); // Clear compare ref if not in compare mode or no URL
+        setComparePages([]); // Clear compare pages
       }
 
       setIsLoading(false);
@@ -273,11 +284,15 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       if (pdfRef) {
         const loadedPages = await loadPages(pdfRef);
         setPages(loadedPages);
+      } else {
+        setPages([]);
       }
 
       if (compareModeEnabled && comparePdfRef) {
         const loadedComparePages = await loadPages(comparePdfRef);
         setComparePages(loadedComparePages);
+      } else {
+        setComparePages([]);
       }
     };
 
@@ -286,14 +301,15 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
   const handleThumbnailClick = (pageNumber: number) => {
     setSelectedPage(pageNumber);
-
-    // Use the utility function for consistent scrolling behavior
-    scrollToPage({
-      newPage: pageNumber,
-      currentPage: selectedPage,
-      totalPages: pages.length,
-      containerRef: pdfContainerRef,
-      pages,
+    // Delay scrolling slightly
+    requestAnimationFrame(() => {
+      scrollToPage({
+        newPage: pageNumber,
+        currentPage: selectedPage, // Pass previous selectedPage for calculation
+        totalPages: pages.length,
+        containerRef: pdfContainerRef,
+        pages,
+      });
     });
   };
 
@@ -316,11 +332,8 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       }
     };
 
-    // Add the scroll event listener
     container.addEventListener('scroll', handleScroll);
-
-    // Run the handler once to set the initial page
-    handleScroll();
+    handleScroll(); // Initial check
 
     return () => {
       container.removeEventListener('scroll', handleScroll);
@@ -333,7 +346,6 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     const container = pdfContainerRef.current;
     if (!container || pages.length === 0) return;
 
-    // Find the most visible page and update selectedPage
     const visiblePage = findVisiblePageElement();
     if (visiblePage) {
       const pageNumberAttr = visiblePage.getAttribute('data-page-number');
@@ -342,7 +354,6 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
         setSelectedPage(pageNumber);
       }
     } else {
-      // If no page is visible yet, default to page 1
       setSelectedPage(1);
     }
   }, [pages.length, findVisiblePageElement]);
@@ -424,19 +435,92 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     };
   }, [isDragging, dragStartX, dragStartY, scrollStartX, scrollStartY, state.drawingMode, pdfRendered]);
 
-  const handlePageChange = (newPage: number) => {
-    // Update the selected page state
-    setSelectedPage(newPage);
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      if (newPage >= 1 && newPage <= pages.length) {
+        setSelectedPage(newPage);
+        // Delay scrolling
+        requestAnimationFrame(() => {
+          scrollToPage({
+            newPage,
+            currentPage: selectedPage, // Pass previous for calculation
+            totalPages: pages.length,
+            containerRef: pdfContainerRef,
+            pages,
+          });
+        });
+      }
+    },
+    [pages.length, selectedPage],
+  );
 
-    // Use the utility function to handle scrolling logic
-    scrollToPage({
-      newPage,
-      currentPage: selectedPage,
-      totalPages: pages.length,
-      containerRef: pdfContainerRef,
-      pages,
-    });
-  };
+  // Handler for comparison page override input (triggered by menu input blur/enter)
+  const handleComparePageOverrideChange = useCallback(
+    (newComparePageNumInput: number | string) => {
+      // Validate input: Check if it's a number within the valid range
+      const isValidInput =
+        typeof newComparePageNumInput === 'number' &&
+        newComparePageNumInput >= 1 &&
+        newComparePageNumInput <= comparePages.length;
+
+      // Use the validated number or null if input was invalid/cleared
+      const newComparePageNum = isValidInput ? (newComparePageNumInput as number) : null;
+
+      setPageOverrides((prevOverrides) => {
+        // Get the previous comparison page number for the currently selected main page
+        // It's either the existing override or the page number itself if no override existed
+        const oldComparePageForSelected = prevOverrides[selectedPage] ?? selectedPage;
+
+        let shift = 0; // Initialize the shift amount
+        const newOverrides = { ...prevOverrides }; // Create a mutable copy of the overrides
+
+        if (newComparePageNum !== null) {
+          // --- Setting or Changing an Override ---
+          // Calculate the shift introduced by this specific change
+          shift = newComparePageNum - oldComparePageForSelected;
+          // Update the override for the currently selected main page
+          newOverrides[selectedPage] = newComparePageNum;
+        } else {
+          // --- Removing an Override ---
+          // Calculate the shift required to undo the effect of the removed override
+          // This is the negative of the difference the override was causing compared to the default page number
+          shift = -(oldComparePageForSelected - selectedPage);
+          // Remove the override for the currently selected main page
+          delete newOverrides[selectedPage];
+        }
+
+        // --- Propagate the Shift Downwards ---
+        // Only propagate if a shift actually occurred (shift !== 0)
+        if (shift !== 0) {
+          // Iterate through all main pages *after* the one that was just changed
+          for (let pageNum = selectedPage + 1; pageNum <= pages.length; pageNum++) {
+            // Determine the comparison page number for this subsequent page *before* applying the new shift
+            // It's either its existing override or the page number itself
+            const currentComparePage = newOverrides[pageNum] ?? pageNum;
+
+            // Calculate the new target comparison page number by applying the calculated shift
+            const shiftedComparePage = currentComparePage + shift;
+
+            // Check if the newly calculated comparison page number is valid
+            if (shiftedComparePage >= 1 && shiftedComparePage <= comparePages.length) {
+              // If valid, update the override for this subsequent page
+              newOverrides[pageNum] = shiftedComparePage;
+            } else {
+              // If the shift pushes the comparison page out of valid bounds,
+              // remove any existing override for this subsequent page.
+              // This effectively stops the cascade or resets it for this page onwards.
+              delete newOverrides[pageNum];
+              // Optional: could 'break;' here to stop cascade entirely once one goes out of bounds.
+            }
+          }
+        }
+
+        // Return the updated overrides object to set the state
+        return newOverrides;
+      });
+    },
+    [selectedPage, pages.length, comparePages.length],
+  ); // Dependencies: selectedPage and total page counts
 
   // Render function for pages
   const renderPages = () => {
@@ -448,14 +532,20 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       const pageId = `pdf-page-${pageNumber}`;
 
       if (compareModeEnabled) {
-        // Get the corresponding compare page or null if index is out of bounds
-        const comparePage = pageNumber <= comparePages.length ? comparePages[index] : null;
+        // Determine the comparison page number to use
+        const comparePageNumToShow = pageOverrides[pageNumber] ?? pageNumber; // Use override or default
+
+        // Get the actual compare page object (adjusting for 0-based index)
+        const comparePageObject =
+          comparePageNumToShow >= 1 && comparePageNumToShow <= comparePages.length
+            ? comparePages[comparePageNumToShow - 1]
+            : null; // Handle out-of-bounds or invalid override
 
         return (
           <ComparePage
             key={pageKey}
             page={page}
-            comparePage={comparePage}
+            comparePage={comparePageObject} // Pass the potentially shifted page
             pageNumber={pageNumber}
             id={pageId}
             className={classes.pageItem}
@@ -465,6 +555,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
         );
       }
 
+      // Render normal page if not in compare mode
       return (
         <Page
           key={pageKey}
@@ -495,6 +586,9 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     );
   }
 
+  // Calculate the comparison page number to pass to the menu
+  const currentComparePageNum = pageOverrides[selectedPage] ?? selectedPage;
+
   return (
     <div className={classNames(classes.container, { [classes.noThumbnails]: !showThumbnails }, [])}>
       {showThumbnails && (
@@ -517,6 +611,9 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
           totalPages={pages.length}
           onPageChange={handlePageChange}
           hasCompare={!!compareUrl}
+          comparePage={currentComparePageNum}
+          totalComparePages={comparePages.length}
+          onComparePageChange={handleComparePageOverrideChange}
         />
 
         <div
