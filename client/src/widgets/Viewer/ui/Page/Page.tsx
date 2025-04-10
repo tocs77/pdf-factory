@@ -15,6 +15,7 @@ import PinSelectionDrawingComponent from '../PinSelectionDrawingComponent/PinSel
 
 // Page component for rendering a single PDF page
 interface PageProps {
+  onBecameVisible?: (pageNumber: number) => void;
   page: PDFPageProxy;
   pageNumber: number;
   id: string;
@@ -23,7 +24,7 @@ interface PageProps {
   onDrawingCreated: (drawing: Omit<Drawing, 'id'>) => void;
 }
 
-export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreated }: PageProps) => {
+export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreated, onBecameVisible }: PageProps) => {
   const { state } = useContext(ViewerContext);
   const { drawingMode, pageRotations, scale, isDraftDrawing } = state;
 
@@ -49,17 +50,31 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
         setInView(entry.isIntersecting);
       },
       {
-        rootMargin: '200px 0px', // Load pages 200px above and below viewport
-        threshold: 0.01, // Trigger when at least 1% of the page is visible
+        rootMargin: '200px 0px', // Render slightly before entering viewport
+        threshold: 0.01,
       },
     );
 
-    observer.observe(containerRef.current);
+    const currentContainer = containerRef.current; // Capture ref value
+    if (currentContainer) {
+      observer.observe(currentContainer);
+    }
 
     return () => {
-      observer.disconnect();
+      if (currentContainer) {
+        observer.unobserve(currentContainer);
+      }
     };
   }, []);
+
+  // Effect to notify parent when visibility changes
+  useEffect(() => {
+    // Only notify if in view AND has rendered its content
+    if (inView && hasRendered && onBecameVisible) {
+      // console.log(`[Page ${pageNumber}] Became visible AND rendered, notifying parent.`);
+      onBecameVisible(pageNumber);
+    }
+  }, [inView, hasRendered, pageNumber, onBecameVisible]);
 
   // Only render when page is visible (or when explicitly set to visible)
   const shouldRender = inView || hasRendered;

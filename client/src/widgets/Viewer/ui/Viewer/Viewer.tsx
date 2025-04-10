@@ -10,7 +10,6 @@ import { ViewerProvider } from '../../model/context/ViewerProvider';
 import { classNames } from '@/shared/utils';
 import { scrollToPage } from '../../utils/pageScrollUtils';
 import classes from './Viewer.module.scss';
-import { useZoomToMouse } from '../../hooks/useZoomToMouse';
 import { Drawing } from '../../model/types/viewerSchema';
 
 // Define the ref type for scrollToDraw function
@@ -43,6 +42,9 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   const [error, setError] = useState<string | null>(null);
   const pdfContainerRef = useRef<HTMLDivElement>(null);
 
+  // Ref to track the current selected page without causing effect re-runs
+  const selectedPageRef = useRef(selectedPage);
+
   // State for drag-to-scroll functionality (only isDragging needed now)
   const [isDragging, setIsDragging] = useState(false);
   // Refs for drag start coordinates and scroll position
@@ -54,12 +56,13 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   // State for comparison page overrides
   const [pageOverrides, setPageOverrides] = useState<PageOverrides>({});
 
-  // Use the zoom to mouse hook
-  const { findVisiblePageElement, handleScaleChange } = useZoomToMouse({
-    scale,
-    dispatch,
-    containerRef: pdfContainerRef,
-  });
+  // Callback for child components to notify when they become visible
+  const handlePageBecameVisible = useCallback((visiblePageNumber: number) => {
+    if (visiblePageNumber !== selectedPageRef.current) {
+      // console.log(`[Viewer] Page ${visiblePageNumber} became visible. Current ref: ${selectedPageRef.current}. Updating state...`);
+      setSelectedPage(visiblePageNumber);
+    }
+  }, []); // Dependency array is empty as it only uses the ref
 
   // Expose scrollToDraw function to parent component
   useImperativeHandle(ref, () => ({
@@ -178,19 +181,6 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       }, 250); // Longer delay to ensure page is fully loaded and scrolled into view
     },
   }));
-
-  // Create a ref to track previous scale value
-  const prevScaleRef = useRef(scale);
-
-  // Track scale changes and adjust scroll position
-  useEffect(() => {
-    // Only handle scale changes, not initial render
-    if (prevScaleRef.current !== scale) {
-      handleScaleChange(prevScaleRef.current);
-      // Update the ref for next comparison
-      prevScaleRef.current = scale;
-    }
-  }, [scale, handleScaleChange]);
 
   // Load PDF document
   const loadPdf = async (pdfUrl: string): Promise<PDFDocumentProxy | null> => {
@@ -314,51 +304,6 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     });
   };
 
-  // Update current page on scroll - this effect sets up the scroll handler
-  useEffect(() => {
-    const container = pdfContainerRef.current;
-    if (!container) return;
-
-    const handleScroll = () => {
-      const visiblePage = findVisiblePageElement();
-
-      if (visiblePage) {
-        const pageNumberAttr = visiblePage.getAttribute('data-page-number');
-        if (pageNumberAttr) {
-          const pageNumber = parseInt(pageNumberAttr, 10);
-          if (pageNumber !== selectedPage) {
-            setSelectedPage(pageNumber);
-          }
-        }
-      }
-    };
-
-    container.addEventListener('scroll', handleScroll);
-    handleScroll(); // Initial check
-
-    return () => {
-      container.removeEventListener('scroll', handleScroll);
-    };
-  }, [selectedPage, pages.length, findVisiblePageElement]);
-
-  // Additional effect to update the current page when the container becomes available
-  // or when pages are loaded
-  useEffect(() => {
-    const container = pdfContainerRef.current;
-    if (!container || pages.length === 0) return;
-
-    const visiblePage = findVisiblePageElement();
-    if (visiblePage) {
-      const pageNumberAttr = visiblePage.getAttribute('data-page-number');
-      if (pageNumberAttr) {
-        const pageNumber = parseInt(pageNumberAttr, 10);
-        setSelectedPage(pageNumber);
-      }
-    } else {
-      setSelectedPage(1);
-    }
-  }, [pages.length, findVisiblePageElement]);
-
   // Track when the PDF is fully loaded and rendered
   const [pdfRendered, setPdfRendered] = useState(false);
 
@@ -462,6 +407,57 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     // Dependencies: Re-run when conditions for dragging change, or main state/readiness changes.
     // isDragging is needed because we conditionally set the 'grab' cursor based on it.
   }, [pdfRendered, state.drawingMode, state, isDragging]);
+
+  // Effect to reset to page 1 when compare mode is toggled
+  const firstRenderRef = useRef(true);
+  const prevCompareModeRef = useRef(compareModeEnabled);
+  useEffect(() => {
+    const hasCompareModeChanged = prevCompareModeRef.current !== compareModeEnabled;
+    // console.log(`[CompareToggleEffect] Running... Mode changed: ${hasCompareModeChanged} (Prev: ${prevCompareModeRef.current}, Curr: ${compareModeEnabled})`);
+
+    // Skip the effect on the initial render
+    if (firstRenderRef.current) {
+      firstRenderRef.current = false;
+      // console.log('[CompareToggleEffect] Skipping initial render.');
+      prevCompareModeRef.current = compareModeEnabled; // Update ref on initial render too
+      return;
+    }
+
+    // Only run the reset logic if the mode actually changed
+    if (!hasCompareModeChanged) {
+      // console.log('[CompareToggleEffect] Skipping: Mode did not change.');
+      return;
+    }
+
+    // Check if container and pages are ready
+    if (!pdfContainerRef.current || pages.length === 0) {
+      // console.log('[CompareToggleEffect] Aborting: Container or pages not ready.');
+      prevCompareModeRef.current = compareModeEnabled; // Update ref even if aborted
+      return;
+    }
+
+    // console.log(`[CompareToggleEffect] Resetting to page 1.`);
+
+    // Reset the selected page state to 1
+    setSelectedPage(1);
+
+    // Update the ref after processing the change
+    prevCompareModeRef.current = compareModeEnabled;
+
+    // Scroll instantly to page 1
+    requestAnimationFrame(() => {
+      // Re-check ref inside callback
+      if (!pdfContainerRef.current) return;
+
+      scrollToPage({
+        newPage: 1,
+        currentPage: selectedPage, // Pass current page before reset for calculation
+        totalPages: pages.length,
+        containerRef: pdfContainerRef,
+        pages,
+      });
+    });
+  }, [compareModeEnabled, pages]); // Added pages dependency
 
   const handlePageChange = useCallback(
     (newPage: number) => {
@@ -579,6 +575,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
             className={classes.pageItem}
             mainColor='#FF0000'
             comparisonColor='#0000FF'
+            onBecameVisible={handlePageBecameVisible}
           />
         );
       }
@@ -593,6 +590,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
           className={classes.pageItem}
           drawings={drawings.filter((d) => d.pageNumber === pageNumber)}
           onDrawingCreated={drawingCreated}
+          onBecameVisible={handlePageBecameVisible}
         />
       );
     });

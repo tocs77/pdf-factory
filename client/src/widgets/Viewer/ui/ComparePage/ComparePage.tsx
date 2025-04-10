@@ -12,6 +12,7 @@ interface ComparePageProps {
   className?: string;
   mainColor: string; // Color for unique content on the main page
   comparisonColor: string; // Color for unique content on the comparison page
+  onBecameVisible?: (pageNumber: number) => void;
 }
 
 // Helper function to parse hex color (e.g., #RRGGBB) to RGB
@@ -29,7 +30,16 @@ const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
 // Color for pixels that match on both pages
 const MIX_COLOR = { r: 0, g: 0, b: 0 }; // Black
 
-export const ComparePage = ({ page, comparePage, pageNumber, id, className, mainColor, comparisonColor }: ComparePageProps) => {
+export const ComparePage = ({
+  page,
+  comparePage,
+  pageNumber,
+  id,
+  className,
+  mainColor,
+  comparisonColor,
+  onBecameVisible,
+}: ComparePageProps) => {
   const { state } = useContext(ViewerContext);
   const { pageRotations, scale } = state;
 
@@ -57,9 +67,27 @@ export const ComparePage = ({ page, comparePage, pageNumber, id, className, main
       rootMargin: '200px 0px', // Render slightly before entering viewport
       threshold: 0.01,
     });
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
+    const currentContainer = containerRef.current; // Capture ref value
+    if (currentContainer) {
+      observer.observe(currentContainer);
+    }
+    return () => {
+      if (currentContainer) {
+        observer.unobserve(currentContainer);
+      }
+    };
   }, []);
+
+  // Effect to notify parent when visibility changes
+  useEffect(() => {
+    // Determine if the necessary content has rendered
+    const isContentRendered = hasRenderedPrimary && (!comparePage || hasRenderedCompare);
+
+    // Only notify if in view AND the necessary content has rendered
+    if (inView && isContentRendered && onBecameVisible) {
+      onBecameVisible(pageNumber);
+    }
+  }, [inView, hasRenderedPrimary, hasRenderedCompare, comparePage, pageNumber, onBecameVisible]);
 
   const shouldRenderPrimary = inView || hasRenderedPrimary;
   const shouldRenderCompare = (inView || hasRenderedCompare) && !!comparePage;
