@@ -47,11 +47,17 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
-        setInView(entry.isIntersecting);
+        // Check if intersecting and if the intersection ratio meets the threshold
+        const isNowVisible = entry.isIntersecting && entry.intersectionRatio >= 0.1;
+
+        // Only update state if visibility actually changed to prevent unnecessary re-renders
+        if (isNowVisible !== inView) {
+          setInView(isNowVisible);
+        }
       },
       {
-        rootMargin: '200px 0px', // Render slightly before entering viewport
-        threshold: 0.01,
+        rootMargin: '200px 0px', // Keep pre-rendering margin
+        threshold: 0.1, // Trigger when 10% of the target is visible
       },
     );
 
@@ -65,15 +71,16 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
         observer.unobserve(currentContainer);
       }
     };
-  }, []);
+    // Depend on inView to re-evaluate if needed (though the observer itself handles changes)
+  }, [inView]);
 
   // Effect to notify parent when visibility changes
   useEffect(() => {
-    // Only notify if in view AND has rendered its content
+    // Only notify if in view (based on the 10% threshold) AND has rendered its content
     if (inView && hasRendered && onBecameVisible) {
-      // console.log(`[Page ${pageNumber}] Became visible AND rendered, notifying parent.`);
       onBecameVisible(pageNumber);
     }
+    // Depend on the refined inView state, hasRendered, and the callback itself
   }, [inView, hasRendered, pageNumber, onBecameVisible]);
 
   // Only render when page is visible (or when explicitly set to visible)

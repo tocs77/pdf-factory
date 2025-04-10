@@ -60,11 +60,14 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
   // Callback for child components to notify when they become visible
   const handlePageBecameVisible = useCallback((visiblePageNumber: number) => {
-    if (visiblePageNumber !== selectedPageRef.current) {
-      // console.log(`[Viewer] Page ${visiblePageNumber} became visible. Current ref: ${selectedPageRef.current}. Updating state...`);
-      setSelectedPage(visiblePageNumber);
-    }
-  }, []); // Dependency array is empty as it only uses the ref
+    // Always update the ref to reflect the latest visible page reported
+    selectedPageRef.current = visiblePageNumber;
+
+    // Update the state for UI changes (e.g., menu page number)
+    setSelectedPage(visiblePageNumber);
+
+    // console.log(`[Viewer] Page ${visiblePageNumber} became visible. Updating state and ref.`);
+  }, []); // Dependency array remains empty
 
   // Expose scrollToDraw function to parent component
   useImperativeHandle(ref, () => ({
@@ -528,7 +531,9 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     }
 
     // Reset the selected page state to 1
+    // Also update the ref immediately
     setSelectedPage(1);
+    selectedPageRef.current = 1; // Synchronize ref
 
     // Update the ref after processing the change
     prevCompareModeRef.current = compareMode;
@@ -538,23 +543,28 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       if (!pdfContainerRef.current) return;
       scrollToPage({
         newPage: 1,
-        currentPage: selectedPage,
+        // Pass the UPDATED ref value (which is 1)
+        currentPage: selectedPageRef.current,
         totalPages: pages.length,
         containerRef: pdfContainerRef,
         pages,
       });
     });
-  }, [compareMode, pages, selectedPage]); // Add selectedPage to deps as it's used in scroll calculation
+  }, [compareMode, pages]); // Removed selectedPage from dependencies
 
   const handlePageChange = useCallback(
     (newPage: number) => {
       if (newPage >= 1 && newPage <= pages.length) {
+        // Update state and ref immediately before scrolling
         setSelectedPage(newPage);
+        selectedPageRef.current = newPage;
+
         // Delay scrolling
         requestAnimationFrame(() => {
           scrollToPage({
             newPage,
-            currentPage: selectedPage, // Pass previous for calculation
+            // Pass the UPDATED ref value
+            currentPage: selectedPageRef.current,
             totalPages: pages.length,
             containerRef: pdfContainerRef,
             pages,
@@ -562,7 +572,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
         });
       }
     },
-    [pages.length, selectedPage],
+    [pages], // Removed selectedPage from dependencies
   );
 
   // Handler for comparison page override input (triggered by menu input blur/enter)

@@ -63,10 +63,22 @@ export const ComparePage = ({
   // Use Intersection Observer to detect when the page is visible
   useEffect(() => {
     if (!containerRef.current) return;
-    const observer = new IntersectionObserver((entries) => setInView(entries[0].isIntersecting), {
-      rootMargin: '200px 0px', // Render slightly before entering viewport
-      threshold: 0.01,
-    });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        // Check if intersecting and if the intersection ratio meets the threshold
+        const isNowVisible = entry.isIntersecting && entry.intersectionRatio >= 0.1;
+
+        // Only update state if visibility actually changed
+        if (isNowVisible !== inView) {
+          setInView(isNowVisible);
+        }
+      },
+      {
+        rootMargin: '200px 0px', // Keep pre-rendering margin
+        threshold: 0.1, // Trigger when 10% of the target is visible
+      },
+    );
     const currentContainer = containerRef.current; // Capture ref value
     if (currentContainer) {
       observer.observe(currentContainer);
@@ -76,17 +88,19 @@ export const ComparePage = ({
         observer.unobserve(currentContainer);
       }
     };
-  }, []);
+    // Depend on inView to re-evaluate if needed
+  }, [inView]);
 
   // Effect to notify parent when visibility changes
   useEffect(() => {
     // Determine if the necessary content has rendered
     const isContentRendered = hasRenderedPrimary && (!comparePage || hasRenderedCompare);
 
-    // Only notify if in view AND the necessary content has rendered
+    // Only notify if in view (based on 10% threshold) AND the necessary content has rendered
     if (inView && isContentRendered && onBecameVisible) {
       onBecameVisible(pageNumber);
     }
+    // Depend on the refined inView state, rendering status, and the callback itself
   }, [inView, hasRenderedPrimary, hasRenderedCompare, comparePage, pageNumber, onBecameVisible]);
 
   const shouldRenderPrimary = inView || hasRenderedPrimary;
