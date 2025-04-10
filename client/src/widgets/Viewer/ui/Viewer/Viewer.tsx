@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import * as pdfjs from 'pdfjs-dist';
-import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
+import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 import { Thumbnail } from '../Thumbnail/Thumbnail';
 import { Page } from '../Page/Page';
 import { ComparePage } from '../ComparePage/ComparePage';
