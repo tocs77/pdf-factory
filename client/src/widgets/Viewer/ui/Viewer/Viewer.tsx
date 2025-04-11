@@ -13,6 +13,7 @@ import { scrollToPage } from '../../utils/pageScrollUtils';
 import { isSliderBeingDragged } from '@/shared/utils';
 import classes from './Viewer.module.scss';
 import { Drawing, RotationAngle } from '../../model/types/viewerSchema';
+import { useZoomToMouse } from '../../hooks/useZoomToMouse';
 
 // Define the ref type for scrollToDraw function
 export type PdfViewerRef = {
@@ -58,6 +59,9 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
   // State for comparison page overrides
   const [pageOverrides, setPageOverrides] = useState<PageOverrides>({});
+
+  // Setup zoom functionality using the custom hook
+  useZoomToMouse({ scale, dispatch, containerRef: pdfContainerRef });
 
   // Callback for child components to notify when they become visible
   const handlePageBecameVisible = useCallback((visiblePageNumber: number) => {
@@ -189,7 +193,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   }));
 
   // Load PDF document
-  const loadPdf = async (pdfUrl: string): Promise<PDFDocumentProxy | null> => {
+  const loadPdf = useCallback(async (pdfUrl: string): Promise<PDFDocumentProxy | null> => {
     try {
       const loadingTask = pdfjs.getDocument(pdfUrl);
       return await loadingTask.promise;
@@ -199,57 +203,63 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       setIsLoading(false);
       return null;
     }
-  };
+  }, []); // No dependencies needed for stable setters
 
   // Load compare PDF document - only called when compare mode is enabled
-  const loadComparePdf = async (comparePdfUrl: string): Promise<PDFDocumentProxy | null> => {
-    if (!compareMode || !comparePdfUrl) {
-      return null;
-    }
-
-    try {
-      const loadingTask = pdfjs.getDocument(comparePdfUrl);
-      return await loadingTask.promise;
-    } catch (err) {
-      console.error('Error loading comparison PDF:', err);
-      setError('Failed to load comparison PDF. Please check the URL and try again.');
-      return null;
-    }
-  };
-
-  // Load all pages from a PDF document
-  const loadPages = async (document: PDFDocumentProxy | null): Promise<PDFPageProxy[]> => {
-    if (!document) return [];
-
-    try {
-      const pagesPromises = [];
-      for (let i = 1; i <= document.numPages; i++) {
-        pagesPromises.push(document.getPage(i));
+  const loadComparePdf = useCallback(
+    async (comparePdfUrl: string): Promise<PDFDocumentProxy | null> => {
+      if (!compareMode || !comparePdfUrl) {
+        return null;
       }
 
-      const loadedPagesArray = await Promise.all(pagesPromises);
-      // Get default rotation for each page and set it in the context
-      loadedPagesArray.forEach((page, index) => {
-        const pageNumber = index + 1;
+      try {
+        const loadingTask = pdfjs.getDocument(comparePdfUrl);
+        return await loadingTask.promise;
+      } catch (err) {
+        console.error('Error loading comparison PDF:', err);
+        setError('Failed to load comparison PDF. Please check the URL and try again.');
+        return null;
+      }
+    },
+    [compareMode],
+  );
 
-        const defaultViewport = page.getViewport({ scale: 1 });
-        const defaultRotation = defaultViewport.rotation as RotationAngle;
-        // Only update context if there's a rotation value
-        if (defaultRotation !== undefined) {
-          dispatch({
-            type: 'setPageRotation',
-            payload: { pageNumber, angle: defaultRotation },
-          });
+  // Load all pages from a PDF document
+  const loadPages = useCallback(
+    async (document: PDFDocumentProxy | null): Promise<PDFPageProxy[]> => {
+      if (!document) return [];
+
+      try {
+        const pagesPromises = [];
+        for (let i = 1; i <= document.numPages; i++) {
+          pagesPromises.push(document.getPage(i));
         }
-      });
-      return loadedPagesArray;
-    } catch (err) {
-      console.error('Error loading pages:', err);
-      setError('Failed to load PDF pages. Please try again.');
-      setIsLoading(false);
-      return [];
-    }
-  };
+
+        const loadedPagesArray = await Promise.all(pagesPromises);
+        // Get default rotation for each page and set it in the context
+        loadedPagesArray.forEach((page, index) => {
+          const pageNumber = index + 1;
+
+          const defaultViewport = page.getViewport({ scale: 1 });
+          const defaultRotation = defaultViewport.rotation as RotationAngle;
+          // Only update context if there's a rotation value
+          if (defaultRotation !== undefined) {
+            dispatch({
+              type: 'setPageRotation',
+              payload: { pageNumber, angle: defaultRotation },
+            });
+          }
+        });
+        return loadedPagesArray;
+      } catch (err) {
+        console.error('Error loading pages:', err);
+        setError('Failed to load PDF pages. Please try again.');
+        setIsLoading(false);
+        return [];
+      }
+    },
+    [dispatch],
+  ); // Add dispatch dependency
 
   // Effect for loading the main PDF
   useEffect(() => {
@@ -261,20 +271,20 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       const pdf = await loadPdf(url);
       setPdfRef(pdf);
 
-      // Load compare PDF if URL is provided, regardless of compareModeEnabled
+      // Load compare PDF if URL is provided
       if (compareUrl) {
         const comparePdf = await loadComparePdf(compareUrl);
         setComparePdfRef(comparePdf);
       } else {
-        setComparePdfRef(null); // Clear compare ref if not in compare mode or no URL
-        setComparePages([]); // Clear compare pages
+        setComparePdfRef(null);
+        setComparePages([]);
       }
 
       setIsLoading(false);
     };
 
     initPdf();
-  }, [url, compareUrl]);
+  }, [url, compareUrl, loadPdf, loadComparePdf]);
 
   // Effect for loading PDF pages
   useEffect(() => {
@@ -296,7 +306,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     };
 
     initPages();
-  }, [pdfRef, comparePdfRef]);
+  }, [pdfRef, comparePdfRef, loadPages]);
 
   const handleThumbnailClick = (pageNumber: number) => {
     setSelectedPage(pageNumber);
@@ -321,62 +331,6 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       setPdfRendered(true);
     }
   }, [pages.length, isLoading]);
-
-  // Handle wheel zoom (Ctrl + mouse wheel)
-  const handleWheel = useCallback(
-    (e: React.WheelEvent<HTMLDivElement>) => {
-      // Only handle zoom when Ctrl key is pressed
-      if (!e.ctrlKey) return;
-
-      // Prevent the browser's default zoom behavior
-      e.preventDefault();
-
-      const container = pdfContainerRef.current;
-      if (!container) return;
-
-      // Get container dimensions and scroll position before zoom
-      const containerRect = container.getBoundingClientRect();
-      const preZoomScrollLeft = container.scrollLeft;
-      const preZoomScrollTop = container.scrollTop;
-
-      // Calculate cursor position relative to the content (accounting for scroll)
-      const cursorXRelativeToContent = e.clientX - containerRect.left + preZoomScrollLeft;
-      const cursorYRelativeToContent = e.clientY - containerRect.top + preZoomScrollTop;
-
-      // Calculate cursor position as a ratio of the content size
-      const cursorXRatio = cursorXRelativeToContent / (containerRect.width * scale);
-      const cursorYRatio = cursorYRelativeToContent / (containerRect.height * scale);
-
-      // Determine zoom direction
-      const delta = e.deltaY || e.deltaX;
-      const zoomFactor = 0.1; // 10% zoom step
-
-      // Calculate new scale based on wheel direction
-      // Negative delta means zoom in, positive means zoom out
-      const newScale =
-        delta < 0
-          ? Math.min(5, scale + zoomFactor) // Zoom in (cap at 500%)
-          : Math.max(0.5, scale - zoomFactor); // Zoom out (minimum 50%)
-
-      // Update scale in context
-      dispatch({ type: 'setScale', payload: newScale });
-
-      // After scale change, adjust scroll position to keep cursor at the same content point
-      // This will be applied after the render with the new scale
-      requestAnimationFrame(() => {
-        if (!container) return;
-
-        // Calculate new scroll position based on new scale
-        const newScrollLeft = cursorXRatio * containerRect.width * newScale - (e.clientX - containerRect.left);
-        const newScrollTop = cursorYRatio * containerRect.height * newScale - (e.clientY - containerRect.top);
-
-        // Apply new scroll position
-        container.scrollLeft = newScrollLeft;
-        container.scrollTop = newScrollTop;
-      });
-    },
-    [dispatch, scale],
-  );
 
   // Implement drag-to-scroll functionality
   useEffect(() => {
@@ -487,25 +441,6 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     // Dependencies: Re-run when conditions for dragging change, or main state/readiness changes.
     // isDragging is needed because we conditionally set the 'grab' cursor based on it.
   }, [pdfRendered, drawingMode, state, isDragging]);
-
-  // Effect to handle wheel events globally when focused on the PDF viewer
-  useEffect(() => {
-    if (!pdfRendered || !pdfContainerRef.current) return;
-
-    const preventDefaultZoom = (e: WheelEvent) => {
-      // Check if event originated within our container
-      if (pdfContainerRef.current?.contains(e.target as Node) && e.ctrlKey) {
-        e.preventDefault();
-      }
-    };
-
-    // Add passive: false to override browser defaults
-    window.addEventListener('wheel', preventDefaultZoom, { passive: false });
-
-    return () => {
-      window.removeEventListener('wheel', preventDefaultZoom);
-    };
-  }, [pdfRendered]);
 
   // Effect to reset to page 1 when compare mode is toggled
   const firstRenderRef = useRef(true);
@@ -782,8 +717,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
             if (isSliderBeingDragged() || document.body.classList.contains('slider-dragging')) {
               e.stopPropagation();
             }
-          }}
-          onWheel={handleWheel}>
+          }}>
           {/* Show drag indicator only if draggable */}
           {drawingMode === 'none' && compareMode === 'none' && !isDragging && (
             <div className={classes.dragIndicator}>
