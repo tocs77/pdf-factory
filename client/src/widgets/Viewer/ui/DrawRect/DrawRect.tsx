@@ -205,6 +205,7 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber, onDrawingCreated, pdfCa
 
     // Create a new rectangle object with normalized coordinates
     const newRectangle: Drawing = {
+      id: '',
       type: 'rectangle',
       startPoint: normalizedStartPoint,
       endPoint: normalizedEndPoint,

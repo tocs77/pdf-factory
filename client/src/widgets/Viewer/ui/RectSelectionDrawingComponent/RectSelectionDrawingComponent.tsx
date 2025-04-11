@@ -177,6 +177,7 @@ const RectSelectionDrawingComponent: React.FC<RectSelectionDrawingComponentProps
 
     // Create the new RectSelection object
     const newSelection: RectSelection = {
+      id: '',
       type: 'RectSelection',
       startPoint: normalizedStartPoint,
       endPoint: normalizedEndPoint,

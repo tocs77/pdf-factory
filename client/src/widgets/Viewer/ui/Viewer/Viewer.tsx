@@ -24,6 +24,7 @@ interface PdfViewerProps {
   compareUrl?: string;
   drawings: Drawing[];
   drawingCreated: (drawing: Omit<Drawing, 'id'>) => void;
+  onDrawingClicked?: (id: string) => void;
 }
 
 // Type for page override mapping
@@ -31,7 +32,7 @@ type PageOverrides = Record<number, number>;
 
 // Internal viewer component that will be wrapped with the provider
 const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) => {
-  const { url, drawings, drawingCreated, compareUrl } = props;
+  const { url, drawings, drawingCreated, compareUrl, onDrawingClicked } = props;
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, showThumbnails, compareMode, drawingMode } = state;
 
@@ -717,6 +718,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
           drawings={drawings.filter((d) => d.pageNumber === pageNumber)}
           onDrawingCreated={drawingCreated}
           onBecameVisible={handlePageBecameVisible}
+          onDrawingClicked={onDrawingClicked}
         />
       );
     });

@@ -114,6 +114,7 @@ const PinSelectionDrawingComponent: React.FC<PinSelectionDrawingComponentProps> 
 
     // 7. Create the PinSelection object
     const newPinSelection: PinSelection = {
+      id: '',
       type: 'PinSelection',
       position: normalizedPosition,
       pageNumber,

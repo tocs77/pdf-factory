@@ -1,6 +1,6 @@
 // Base interface for common drawing properties
 export interface BaseDrawing {
-  id?: string;
+  id: string;
   pageNumber: number;
   image?: string; // Store base64 image of the drawing area
   // Bounding box coordinates for the drawing - normalized to scale=1

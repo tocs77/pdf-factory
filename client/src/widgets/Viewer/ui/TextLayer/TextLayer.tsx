@@ -53,6 +53,7 @@ export const TextLayer = ({
 
     // Create drawing object
     const underline: TextUnderline = {
+      id: '',
       type: 'textUnderline',
       pageNumber,
       lines,
@@ -159,6 +160,7 @@ export const TextLayer = ({
 
     // Create drawing object
     const crossedOut: TextCrossedOut = {
+      id: '',
       type: 'textCrossedOut',
       pageNumber,
       lines: crossedOutLines,
@@ -200,6 +202,7 @@ export const TextLayer = ({
 
     // Create drawing object
     const highlight: TextHighlight = {
+      id: '',
       type: 'textHighlight',
       pageNumber,
       rects: highlightRects,

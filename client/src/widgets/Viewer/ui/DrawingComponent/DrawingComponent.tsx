@@ -260,6 +260,7 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({
 
     // Create a new drawing object with styles for each path
     const newDrawing: Drawing = {
+      id: '',
       type: 'freehand',
       paths: normalizedPaths,
       style: {

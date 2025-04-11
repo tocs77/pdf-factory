@@ -345,6 +345,7 @@ export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({
 
     // Create a new line object with normalized coordinates and per-line styles
     const newLine: Drawing = {
+      id: '',
       type: 'line',
       lines: normalizedLines,
       style: {

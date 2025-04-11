@@ -20,6 +20,7 @@ export const ViewPage = () => {
   const { data: compareFileBlobUrl, isLoading: isCompareLoading } = useGetFileBlobUrlQuery(compare || '', { skip: !compare });
   const drawings = useAppSelector(viewerPageSelectors.getDrawings);
   const pdfViewerRef = useRef<PdfViewerRef>(null);
+  const drawingsContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     return () => {
@@ -35,6 +36,15 @@ export const ViewPage = () => {
     pdfViewerRef.current?.scrollToDraw(drawingId);
   };
 
+  const pdfDrawingClicked = (drawingId: string) => {
+    if (drawingsContainerRef.current) {
+      const drawingElement = drawingsContainerRef.current.querySelector(`[data-drawing-id="${drawingId}"]`);
+      if (drawingElement) {
+        drawingElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  };
+
   if (isLoading || isCompareLoading) return <div>Loading...</div>;
   return (
     <div className={classes.ViewPage}>
@@ -44,15 +54,17 @@ export const ViewPage = () => {
         drawings={drawings}
         drawingCreated={handleDrawingCreated}
         compareUrl={compareFileBlobUrl || undefined}
+        onDrawingClicked={pdfDrawingClicked}
       />
-      <div className={classes.drawings}>
+      <div className={classes.drawings} ref={drawingsContainerRef}>
         {drawings.map((drawing: Drawing) => (
           <div
             key={drawing.id}
             className={classes.drawing}
-            onClick={() => drawing.id && handleDrawingClick(drawing.id)}
+            onClick={() => handleDrawingClick(drawing.id)}
             role='button'
             tabIndex={0}
+            data-drawing-id={drawing.id}
             aria-label={`View ${drawing.type} drawing`}>
             <img src={drawing.image} alt={drawing.type} className={classes.drawingImage} />
           </div>

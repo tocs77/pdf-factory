@@ -226,6 +226,7 @@ export const ExtensionLineDrawingComponent: React.FC<ExtensionLineDrawingCompone
 
       // Create a new extension line object with normalized coordinates
       const newExtensionLine: Drawing = {
+        id: '',
         type: 'extensionLine',
         position: normalizedPinPoint,
         bendPoint: normalizedBendPoint,

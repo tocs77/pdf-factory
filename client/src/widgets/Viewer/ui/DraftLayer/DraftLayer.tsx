@@ -13,7 +13,7 @@ import { ExtensionLineDrawingComponent } from '../ExtensionLineDrawingComponent/
 
 interface DraftLayerProps {
   pageNumber: number;
-  onDrawingCreated: (drawing: Drawing) => void;
+  onDrawingCreated: (drawing: Omit<Drawing, 'id'>) => void;
   pdfCanvasRef?: React.RefObject<HTMLCanvasElement>; // Reference to the PDF canvas
 }
 
@@ -24,6 +24,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
   const { drawingMode, isDraftDrawing } = state;
 
   const [draftDrawing, setDraftDrawing] = useState<DrawingMisc>({
+    id: '',
     type: 'misc',
     pathes: [],
     rectangles: [],
@@ -83,6 +84,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
     dispatch({ type: 'setIsDraftDrawing', payload: false }); // Turn off draft mode
     // Optionally clear the draft state
     setDraftDrawing({
+      id: '',
       type: 'misc',
       pathes: [],
       rectangles: [],
@@ -101,6 +103,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
       console.error('Cannot capture image: Missing PDF or Drawings canvas ref');
       // Still create the drawing object without image/bounds if canvases missing
       const drawing: DrawingMisc = {
+        id: '',
         type: 'misc',
         pageNumber: pageNumber,
         pathes: draftDrawing.pathes,
@@ -189,6 +192,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
     }
 
     const drawing: DrawingMisc = {
+      id: '',
       type: 'misc',
       pageNumber: pageNumber,
       pathes: draftDrawing.pathes,
@@ -206,6 +210,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
     // Reset state with boundingBox
     dispatch({ type: 'setIsDraftDrawing', payload: false });
     setDraftDrawing({
+      id: '',
       type: 'misc',
       pathes: [],
       rectangles: [],

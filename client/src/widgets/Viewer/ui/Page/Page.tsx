@@ -12,6 +12,7 @@ import { Drawing } from '../../model/types/viewerSchema';
 import { DraftLayer } from '../DraftLayer/DraftLayer';
 import RectSelectionDrawingComponent from '../RectSelectionDrawingComponent/RectSelectionDrawingComponent';
 import PinSelectionDrawingComponent from '../PinSelectionDrawingComponent/PinSelectionDrawingComponent';
+import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 
 // Page component for rendering a single PDF page
 interface PageProps {
@@ -22,9 +23,19 @@ interface PageProps {
   className?: string;
   drawings: Drawing[];
   onDrawingCreated: (drawing: Omit<Drawing, 'id'>) => void;
+  onDrawingClicked?: (id: string) => void;
 }
 
-export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreated, onBecameVisible }: PageProps) => {
+export const Page = ({
+  page,
+  pageNumber,
+  id,
+  className,
+  drawings,
+  onDrawingCreated,
+  onBecameVisible,
+  onDrawingClicked,
+}: PageProps) => {
   const { state } = useContext(ViewerContext);
   const { drawingMode, pageRotations, scale, isDraftDrawing } = state;
 
@@ -37,8 +48,93 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
   const [renderTask, setRenderTask] = useState<ReturnType<typeof page.render> | null>(null);
   const [viewport, setViewport] = useState<any>(null);
 
+  // Track drag state to prevent drawing clicks after drag
+  const isDraggingRef = useRef(false);
+  const mouseDownPosRef = useRef({ x: 0, y: 0 });
+  const dragThreshold = 5; // Pixels of movement to consider a drag
+
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;
+
+  // Handle mouse down to detect potential drag operations
+  const handleMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    // Only track when drawingMode is 'none' (same condition as click handling)
+    if (drawingMode !== 'none') return;
+
+    // Store mouse down position
+    mouseDownPosRef.current = { x: event.clientX, y: event.clientY };
+
+    // Reset dragging state at the start of a potential new drag
+    isDraggingRef.current = false;
+
+    // Add temporary event listeners to track movement
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      // Calculate distance moved from mouse down
+      const dx = moveEvent.clientX - mouseDownPosRef.current.x;
+      const dy = moveEvent.clientY - mouseDownPosRef.current.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // If moved more than threshold, consider it a drag
+      if (distance > dragThreshold) {
+        isDraggingRef.current = true;
+      }
+    };
+
+    const handleMouseUp = () => {
+      // Clean up event listeners
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    // Add listeners to window to catch events outside the element
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
+
+  // Function to handle canvas click
+  const handleCanvasClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    // Only proceed if drawing mode is 'none' and canvas ref is available
+    if (drawingMode !== 'none' || !canvasRef.current) return;
+
+    // Skip if no onDrawingClicked handler is provided
+    if (!onDrawingClicked) return;
+
+    // If a drag was detected, don't process the click
+    if (isDraggingRef.current) {
+      return;
+    }
+
+    // Get canvas position and dimensions
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+
+    // Calculate click position relative to canvas
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    // Normalize coordinates to account for rotation and scale
+    const normalizedPoint = normalizeCoordinatesToZeroRotation({ x, y }, canvas.width, canvas.height, scale, rotation);
+
+    // Check if click is inside any drawing's bounding box
+    for (const drawing of drawings) {
+      if (drawing.boundingBox && drawing.pageNumber === pageNumber) {
+        const { left, right, top, bottom } = drawing.boundingBox;
+
+        // Compare with normalized coordinates
+        if (normalizedPoint.x >= left && normalizedPoint.x <= right && normalizedPoint.y >= top && normalizedPoint.y <= bottom) {
+          // Make sure drawing.id is defined before passing to handler
+          if (drawing.id) {
+            // Use a type-safe approach with a local function
+            const handleDrawingClick = onDrawingClicked as (id: string) => void;
+            handleDrawingClick(drawing.id);
+          }
+          // Stop event propagation to prevent interference with drag-to-scroll
+          event.stopPropagation();
+          return;
+        }
+      }
+    }
+  };
 
   // Use Intersection Observer to detect when the page is visible
   useEffect(() => {
@@ -238,7 +334,9 @@ export const Page = ({ page, pageNumber, id, className, drawings, onDrawingCreat
                   alignItems: 'center',
                 }
               : {}),
-          }}>
+          }}
+          onMouseDown={handleMouseDown}
+          onClick={handleCanvasClick}>
           <canvas ref={canvasRef} className={classes.pageCanvas} />
 
           {/* Text Layer - only render when text tool is selected */}

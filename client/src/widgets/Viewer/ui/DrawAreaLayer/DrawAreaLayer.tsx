@@ -279,6 +279,7 @@ export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDraw
 
     // Create a new DrawArea object
     const newDrawArea: Drawing = {
+      id: '',
       type: 'drawArea',
       startPoint: normalizedStartPoint,
       endPoint: normalizedEndPoint,

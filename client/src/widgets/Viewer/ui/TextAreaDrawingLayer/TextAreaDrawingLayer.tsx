@@ -203,6 +203,7 @@ export const TextAreaDrawingLayer: React.FC<TextAreaDrawingLayerProps> = ({
 
     // Create temporary TextArea for rendering
     const tempTextArea: TextArea = {
+      id: '',
       type: 'textArea',
       pageNumber,
       startPoint: {
@@ -278,6 +279,7 @@ export const TextAreaDrawingLayer: React.FC<TextAreaDrawingLayerProps> = ({
 
     // Create final drawing object
     const drawing: TextArea = {
+      id: '',
       type: 'textArea',
       pageNumber,
       startPoint: normalizedStartPoint,
