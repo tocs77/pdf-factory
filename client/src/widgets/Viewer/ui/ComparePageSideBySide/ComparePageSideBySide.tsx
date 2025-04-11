@@ -304,30 +304,11 @@ export const ComparePageSideBySide: React.FC<ComparePageSideBySideProps> = ({
     setIsDraggingSlider(true);
   };
 
-  // Helper to determine if a click is near the slider
-  const isNearSlider = (clientX: number) => {
-    if (!sideBySideContainerRef.current) return false;
-
-    const rect = sideBySideContainerRef.current.getBoundingClientRect();
-    const sliderX = rect.left + (rect.width * sliderPosition) / 100;
-
-    // Define "near" as within 15 pixels of the slider
-    return Math.abs(clientX - sliderX) < 15;
-  };
-
-  const handleWrapperMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
-    // Check if the click is near the slider
-    if (isNearSlider(event.clientX)) {
-      // If near slider, stop propagation to prevent PDF drag-to-scroll
-      event.stopPropagation();
-    }
-  };
-
   return (
     <div ref={containerRef} className={classNames(classes.pageContainer, {}, [className])} id={id} data-page-number={pageNumber}>
       {/* Only render content if it should be rendered (in view or previously rendered) */}
       {shouldRender && (
-        <div ref={sideBySideContainerRef} className={classes.sideBySideWrapper} onMouseDown={handleWrapperMouseDown}>
+        <div ref={sideBySideContainerRef} className={classes.sideBySideWrapper}>
           {/* Container for the Compare Page (Renders underneath) */}
           <div
             className={classNames(classes.pageHalf, {}, [classes.comparePage])}
@@ -359,7 +340,8 @@ export const ComparePageSideBySide: React.FC<ComparePageSideBySideProps> = ({
             style={{ left: `${sliderPosition}%` }}
             onMouseDown={handleSliderMouseDown}
             onMouseMove={(e) => isDraggingSlider && e.stopPropagation()}
-            onMouseUp={(e) => isDraggingSlider && e.stopPropagation()}>
+            onMouseUp={(e) => isDraggingSlider && e.stopPropagation()}
+            data-dragscroll-ignore='true'>
             <div className={classNames(classes.sliderLine, {}, ['sliderLine'])}></div>
             {/* Optional: Add icons/arrows to the handle */}
           </div>

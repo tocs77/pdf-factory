@@ -14,6 +14,7 @@ import { isSliderBeingDragged } from '@/shared/utils';
 import classes from './Viewer.module.scss';
 import { Drawing, RotationAngle } from '../../model/types/viewerSchema';
 import { useZoomToMouse } from '../../hooks/useZoomToMouse';
+import { useDragToScroll } from '../../hooks/useDragToScroll';
 
 // Define the ref type for scrollToDraw function
 export type PdfViewerRef = {
@@ -49,16 +50,16 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   // Ref to track the current selected page without causing effect re-runs
   const selectedPageRef = useRef(selectedPage);
 
-  // State for drag-to-scroll functionality (only isDragging needed now)
-  const [isDragging, setIsDragging] = useState(false);
-  // Refs for drag start coordinates and scroll position
-  const dragStartXRef = useRef(0);
-  const dragStartYRef = useRef(0);
-  const scrollStartXRef = useRef(0);
-  const scrollStartYRef = useRef(0);
-
   // State for comparison page overrides
   const [pageOverrides, setPageOverrides] = useState<PageOverrides>({});
+
+  // Track when the PDF is fully loaded and rendered
+  const [pdfRendered, setPdfRendered] = useState(false);
+
+  // Setup drag-to-scroll functionality using the custom hook
+  // Enable drag-scroll if no drawing tool is active and PDF is rendered, regardless of compare mode
+  const isDragToScrollEnabled = drawingMode === 'none' && pdfRendered;
+  const isDragging = useDragToScroll({ containerRef: pdfContainerRef, isEnabled: isDragToScrollEnabled });
 
   // Setup zoom functionality using the custom hook
   useZoomToMouse({ scale, dispatch, containerRef: pdfContainerRef });
@@ -322,262 +323,12 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     });
   };
 
-  // Track when the PDF is fully loaded and rendered
-  const [pdfRendered, setPdfRendered] = useState(false);
-
   // Set pdfRendered to true when pages are loaded
   useEffect(() => {
     if (pages.length > 0 && !isLoading) {
       setPdfRendered(true);
     }
   }, [pages.length, isLoading]);
-
-  // Implement drag-to-scroll functionality
-  useEffect(() => {
-    const container = pdfContainerRef.current;
-    if (!container || !pdfRendered) return;
-
-    // Determine if drag-scroll should be active
-    const shouldBeDraggable = drawingMode === 'none';
-
-    if (!shouldBeDraggable) {
-      // If shouldn't be draggable, ensure cursor is default and listeners are removed (by cleanup)
-      if (container.style.cursor === 'grab' || container.style.cursor === 'grabbing') {
-        container.style.cursor = 'default';
-      }
-      // isDragging should be false if not draggable
-      if (isDragging) {
-        setIsDragging(false);
-      }
-      // Return empty cleanup if listeners weren't added in this run
-      return () => {};
-    }
-
-    // --- Setup listeners only if shouldBeDraggable ---
-    // Set cursor only if not currently dragging (avoids flicker on re-render)
-    if (!isDragging) {
-      container.style.cursor = 'grab';
-    }
-
-    const handleMouseDown = (e: MouseEvent) => {
-      // Check if slider is being dragged first (highest priority check)
-      if (isSliderBeingDragged()) {
-        return;
-      }
-
-      // Check conditions again in case state changed between effect run and mousedown
-      if (e.button !== 0 || e.ctrlKey || drawingMode !== 'none') return;
-
-      // Check for slider elements
-      const target = e.target as HTMLElement;
-      if (
-        target.classList.contains('sliderHandle') ||
-        target.classList.contains('sliderLine') ||
-        target.closest('.sliderHandle') ||
-        document.body.classList.contains('slider-dragging') ||
-        document.body.classList.contains('resizingHorizontal')
-      ) {
-        return;
-      }
-
-      // Read current scroll position directly when drag starts
-      const currentScrollLeft = container.scrollLeft;
-      const currentScrollTop = container.scrollTop;
-
-      // Use refs to store start coordinates
-      dragStartXRef.current = e.clientX;
-      dragStartYRef.current = e.clientY;
-      scrollStartXRef.current = currentScrollLeft;
-      scrollStartYRef.current = currentScrollTop;
-
-      setIsDragging(true); // Set dragging state
-      container.style.cursor = 'grabbing'; // Change cursor
-      e.preventDefault(); // Prevent text selection, etc.
-
-      // --- Define move/up handlers inside mousedown ---
-      const handleMouseMove = (moveEvent: MouseEvent) => {
-        // Calculate movement delta based on ref values
-        const deltaX = moveEvent.clientX - dragStartXRef.current;
-        const deltaY = moveEvent.clientY - dragStartYRef.current;
-        // Apply scroll based on initial scroll position from refs
-        container.scrollLeft = scrollStartXRef.current - deltaX;
-        container.scrollTop = scrollStartYRef.current - deltaY;
-        moveEvent.preventDefault();
-      };
-
-      const handleMouseUp = (upEvent: MouseEvent) => {
-        // Only react to the primary button release
-        if (upEvent.button !== 0) return;
-
-        setIsDragging(false); // Reset dragging state
-        container.style.cursor = 'grab'; // Restore cursor
-
-        // Remove the specific move/up listeners for this drag instance
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-        // console.log('Cleaned up move/up listeners');
-      };
-      // --- End of defining move/up handlers ---
-
-      // Add listeners to the document for wider capture area and reliability
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    };
-
-    // Add the mousedown listener to initiate drag
-    container.addEventListener('mousedown', handleMouseDown);
-
-    // Cleanup function for the useEffect: remove mousedown listener and reset cursor
-    return () => {
-      // console.log('Clean up drag effect: removing mousedown listener');
-      container.removeEventListener('mousedown', handleMouseDown);
-      // Reset cursor only if it was potentially set by this effect instance
-      if (container.style.cursor === 'grab' || container.style.cursor === 'grabbing') {
-        container.style.cursor = 'default';
-      }
-      // Note: mousemove/mouseup listeners are cleaned up internally by handleMouseUp
-    };
-
-    // Dependencies: Re-run when conditions for dragging change, or main state/readiness changes.
-    // isDragging is needed because we conditionally set the 'grab' cursor based on it.
-  }, [pdfRendered, drawingMode, state, isDragging]);
-
-  // Effect to reset to page 1 when compare mode is toggled
-  const firstRenderRef = useRef(true);
-  const prevCompareModeRef = useRef(compareMode);
-  useEffect(() => {
-    const hasCompareModeChanged = prevCompareModeRef.current !== compareMode;
-
-    // Skip the effect on the initial render
-    if (firstRenderRef.current) {
-      firstRenderRef.current = false;
-      prevCompareModeRef.current = compareMode; // Update ref on initial render too
-      return;
-    }
-
-    // Only run the reset logic if the mode actually changed
-    if (!hasCompareModeChanged) {
-      return;
-    }
-
-    // Check if container and pages are ready
-    if (!pdfContainerRef.current || pages.length === 0) {
-      prevCompareModeRef.current = compareMode; // Update ref even if aborted
-      return;
-    }
-
-    // Reset the selected page state to 1
-    // Also update the ref immediately
-    setSelectedPage(1);
-    selectedPageRef.current = 1; // Synchronize ref
-
-    // Update the ref after processing the change
-    prevCompareModeRef.current = compareMode;
-
-    // Scroll instantly to page 1
-    requestAnimationFrame(() => {
-      if (!pdfContainerRef.current) return;
-      scrollToPage({
-        newPage: 1,
-        // Pass the UPDATED ref value (which is 1)
-        currentPage: selectedPageRef.current,
-        totalPages: pages.length,
-        containerRef: pdfContainerRef,
-        pages,
-      });
-    });
-  }, [compareMode, pages]); // Removed selectedPage from dependencies
-
-  const handlePageChange = useCallback(
-    (newPage: number) => {
-      if (newPage >= 1 && newPage <= pages.length) {
-        // Update state and ref immediately before scrolling
-        setSelectedPage(newPage);
-        selectedPageRef.current = newPage;
-
-        // Delay scrolling
-        requestAnimationFrame(() => {
-          scrollToPage({
-            newPage,
-            // Pass the UPDATED ref value
-            currentPage: selectedPageRef.current,
-            totalPages: pages.length,
-            containerRef: pdfContainerRef,
-            pages,
-          });
-        });
-      }
-    },
-    [pages], // Removed selectedPage from dependencies
-  );
-
-  // Handler for comparison page override input (triggered by menu input blur/enter)
-  const handleComparePageOverrideChange = useCallback(
-    (newComparePageNumInput: number | string) => {
-      // Validate input: Check if it's a number within the valid range
-      const isValidInput =
-        typeof newComparePageNumInput === 'number' &&
-        newComparePageNumInput >= 1 &&
-        newComparePageNumInput <= comparePages.length;
-
-      // Use the validated number or null if input was invalid/cleared
-      const newComparePageNum = isValidInput ? (newComparePageNumInput as number) : null;
-
-      setPageOverrides((prevOverrides) => {
-        // Get the previous comparison page number for the currently selected main page
-        // It's either the existing override or the page number itself if no override existed
-        const oldComparePageForSelected = prevOverrides[selectedPage] ?? selectedPage;
-
-        let shift = 0; // Initialize the shift amount
-        const newOverrides = { ...prevOverrides }; // Create a mutable copy of the overrides
-
-        if (newComparePageNum !== null) {
-          // --- Setting or Changing an Override ---
-          // Calculate the shift introduced by this specific change
-          shift = newComparePageNum - oldComparePageForSelected;
-          // Update the override for the currently selected main page
-          newOverrides[selectedPage] = newComparePageNum;
-        } else {
-          // --- Removing an Override ---
-          // Calculate the shift required to undo the effect of the removed override
-          // This is the negative of the difference the override was causing compared to the default page number
-          shift = -(oldComparePageForSelected - selectedPage);
-          // Remove the override for the currently selected main page
-          delete newOverrides[selectedPage];
-        }
-
-        // --- Propagate the Shift Downwards ---
-        // Only propagate if a shift actually occurred (shift !== 0)
-        if (shift !== 0) {
-          // Iterate through all main pages *after* the one that was just changed
-          for (let pageNum = selectedPage + 1; pageNum <= pages.length; pageNum++) {
-            // Determine the comparison page number for this subsequent page *before* applying the new shift
-            // It's either its existing override or the page number itself
-            const currentComparePage = newOverrides[pageNum] ?? pageNum;
-
-            // Calculate the new target comparison page number by applying the calculated shift
-            const shiftedComparePage = currentComparePage + shift;
-
-            // Check if the newly calculated comparison page number is valid
-            if (shiftedComparePage >= 1 && shiftedComparePage <= comparePages.length) {
-              // If valid, update the override for this subsequent page
-              newOverrides[pageNum] = shiftedComparePage;
-            } else {
-              // If the shift pushes the comparison page out of valid bounds,
-              // remove any existing override for this subsequent page.
-              // This effectively stops the cascade or resets it for this page onwards.
-              delete newOverrides[pageNum];
-              // Optional: could 'break;' here to stop cascade entirely once one goes out of bounds.
-            }
-          }
-        }
-
-        // Return the updated overrides object to set the state
-        return newOverrides;
-      });
-    },
-    [selectedPage, pages.length, comparePages.length],
-  ); // Dependencies: selectedPage and total page counts
 
   // Render function for pages
   const renderPages = () => {
@@ -698,18 +449,60 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
         <ViewerMenu
           currentPage={selectedPage}
           totalPages={pages.length}
-          onPageChange={handlePageChange}
+          onPageChange={(newPage) => {
+            if (newPage >= 1 && newPage <= pages.length) {
+              setSelectedPage(newPage);
+            }
+          }}
           hasCompare={!!compareUrl}
           comparePage={currentComparePageNum}
           totalComparePages={comparePages.length}
-          onComparePageChange={handleComparePageOverrideChange}
+          onComparePageChange={(newComparePageNumInput) => {
+            const isValidInput =
+              typeof newComparePageNumInput === 'number' &&
+              newComparePageNumInput >= 1 &&
+              newComparePageNumInput <= comparePages.length;
+
+            const newComparePageNum = isValidInput ? (newComparePageNumInput as number) : null;
+
+            setPageOverrides((prevOverrides) => {
+              const oldComparePageForSelected = prevOverrides[selectedPage] ?? selectedPage;
+
+              let shift = 0;
+              const newOverrides = { ...prevOverrides };
+
+              if (newComparePageNum !== null) {
+                shift = newComparePageNum - oldComparePageForSelected;
+                newOverrides[selectedPage] = newComparePageNum;
+              } else {
+                shift = -(oldComparePageForSelected - selectedPage);
+                delete newOverrides[selectedPage];
+              }
+
+              if (shift !== 0) {
+                for (let pageNum = selectedPage + 1; pageNum <= pages.length; pageNum++) {
+                  const currentComparePage = newOverrides[pageNum] ?? pageNum;
+
+                  const shiftedComparePage = currentComparePage + shift;
+
+                  if (shiftedComparePage >= 1 && shiftedComparePage <= comparePages.length) {
+                    newOverrides[pageNum] = shiftedComparePage;
+                  } else {
+                    delete newOverrides[pageNum];
+                  }
+                }
+              }
+
+              return newOverrides;
+            });
+          }}
         />
 
         <div
           className={classNames(classes.pdfContainer, {
             // Draggable if no drawing tool AND no compare mode active
-            [classes.draggable]: drawingMode === 'none' && compareMode === 'none',
-            [classes.dragging]: isDragging,
+            [classes.draggable]: isDragToScrollEnabled,
+            [classes.dragging]: isDragging, // Use isDragging from the hook
           })}
           ref={pdfContainerRef}
           onMouseDown={(e) => {
@@ -719,7 +512,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
             }
           }}>
           {/* Show drag indicator only if draggable */}
-          {drawingMode === 'none' && compareMode === 'none' && !isDragging && (
+          {isDragToScrollEnabled && !isDragging && (
             <div className={classes.dragIndicator}>
               <span>Click and drag to scroll</span>
             </div>
