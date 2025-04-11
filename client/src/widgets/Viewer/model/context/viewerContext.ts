@@ -20,7 +20,7 @@ export const initialViewerState: ViewerSchema = {
   pageRotations: {},
   textLayerEnabled: true,
   rulerEnabled: false,
-  isDraftDrawing: false,
+  currentDrawingPage: -1,
   compareMode: 'none', // Initialize new compareMode state
 };
 
@@ -57,7 +57,10 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
         drawingLineWidth: action.payload,
       };
     case 'setDrawingMode': {
-      const isDraftDrawing = drawingTools.includes(action.payload) ? true : state.isDraftDrawing;
+      let currentDrawingPage = -1;
+      if (drawingTools.includes(action.payload)) {
+        currentDrawingPage = state.currentDrawingPage === -1 ? 0 : state.currentDrawingPage;
+      }
       return {
         ...state,
         drawingMode: action.payload,
@@ -65,7 +68,7 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
           drawingTools.includes(action.payload) || action.payload === 'zoomArea' || action.payload === 'ruler'
             ? 'none'
             : state.compareMode,
-        isDraftDrawing: isDraftDrawing,
+        currentDrawingPage: currentDrawingPage,
       };
     }
 
@@ -110,11 +113,11 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
           [action.payload.pageNumber]: action.payload.angle as RotationAngle,
         },
       };
-    case 'setIsDraftDrawing': {
-      const drawingMode = action.payload ? state.drawingMode : 'none';
+    case 'setCurrentDrawingPage': {
+      const drawingMode = action.payload !== -1 ? state.drawingMode : 'none';
       return {
         ...state,
-        isDraftDrawing: action.payload,
+        currentDrawingPage: action.payload,
         drawingMode: drawingMode,
       };
     }

@@ -37,7 +37,7 @@ export const Page = ({
   onDrawingClicked,
 }: PageProps) => {
   const { state } = useContext(ViewerContext);
-  const { drawingMode, pageRotations, scale, isDraftDrawing } = state;
+  const { drawingMode, pageRotations, scale, currentDrawingPage } = state;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -358,7 +358,7 @@ export const Page = ({
           {/* Drawing components - only render when respective tool is selected */}
           {inView && (
             <>
-              {isDraftDrawing && (
+              {(currentDrawingPage === 0 || currentDrawingPage === pageNumber) && (
                 <DraftLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
               )}
               {drawingMode === 'drawArea' && (

@@ -265,7 +265,7 @@ export interface ViewerSchema {
   textLayerEnabled?: boolean;
   // Whether the ruler tool is enabled
   rulerEnabled?: boolean;
-  isDraftDrawing: boolean;
+  currentDrawingPage: number; //-1 means no current drawing page   0 means all pages
   compareMode: 'none' | 'diff' | 'sideBySide'; // Type of comparison mode active
 }
 
@@ -281,7 +281,7 @@ type RotateCounterClockwiseAction = { type: 'rotatePageCounterClockwise'; payloa
 type ToggleTextLayerAction = { type: 'toggleTextLayer' };
 type ToggleRulerAction = { type: 'toggleRuler' };
 // type ToggleCompareModeAction = { type: 'toggleCompareMode' }; // Obsolete
-type SetIsDraftDrawingAction = { type: 'setIsDraftDrawing'; payload: boolean };
+type SetCurrentDrawingPageAction = { type: 'setCurrentDrawingPage'; payload: number };
 type SetCompareModeAction = { type: 'setCompareMode'; payload: 'none' | 'diff' | 'sideBySide' }; // New action type
 
 export type IsDraftDrawing = boolean;
@@ -297,5 +297,5 @@ export type Action =
   | RotateCounterClockwiseAction
   | ToggleTextLayerAction
   | ToggleRulerAction
-  | SetIsDraftDrawingAction
+  | SetCurrentDrawingPageAction
   | SetCompareModeAction; // Added new action

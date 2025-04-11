@@ -21,7 +21,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
   const { pageNumber, onDrawingCreated, pdfCanvasRef } = props;
   const completeDrawingsCanvasRef = useRef<HTMLCanvasElement>(null); // Ref for CompleteDrawings canvas
   const { state, dispatch } = useContext(ViewerContext); // Get dispatch
-  const { drawingMode, isDraftDrawing } = state;
+  const { drawingMode, currentDrawingPage } = state;
 
   const [draftDrawing, setDraftDrawing] = useState<DrawingMisc>({
     id: '',
@@ -55,6 +55,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
       default:
         break;
     }
+    dispatch({ type: 'setCurrentDrawingPage', payload: pageNumber });
   };
 
   // Helper to update normalized bounding box from another bounding box
@@ -81,7 +82,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
       createDraftDrawing();
     }
 
-    dispatch({ type: 'setIsDraftDrawing', payload: false }); // Turn off draft mode
+    dispatch({ type: 'setCurrentDrawingPage', payload: 0 }); // allow drawing on all pages
     // Optionally clear the draft state
     setDraftDrawing({
       id: '',
@@ -125,8 +126,6 @@ export const DraftLayer = (props: DraftLayerProps) => {
       maxX: 0,
       maxY: 0,
     };
-
-    console.log('combinedNormalizedBounds', draftDrawing.rectangles);
 
     // Iterate through all drawings and combine their bounding boxes
     draftDrawing.pathes.forEach((drawing) => updateBoundsFromBox(combinedNormalizedBounds, drawing.boundingBox));
@@ -208,7 +207,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
 
   const handleCancel = () => {
     // Reset state with boundingBox
-    dispatch({ type: 'setIsDraftDrawing', payload: false });
+    dispatch({ type: 'setCurrentDrawingPage', payload: 0 });
     setDraftDrawing({
       id: '',
       type: 'misc',
@@ -225,7 +224,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
   return (
     <>
       {/* Add Finish and Cancel buttons like in DrawingComponent */}
-      {isDraftDrawing && (
+      {currentDrawingPage === pageNumber && (
         <div className={styles.finishButtonContainer}>
           <button className={styles.finishButton} onClick={handleFinish}>
             <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor'>
