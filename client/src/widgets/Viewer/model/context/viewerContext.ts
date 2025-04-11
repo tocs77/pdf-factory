@@ -110,7 +110,7 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
         ...state,
         pageRotations: {
           ...state.pageRotations,
-          [action.payload.pageNumber]: action.payload.angle as RotationAngle,
+          [action.payload.pageNumber]: action.payload.angle,
         },
       };
     case 'setCurrentDrawingPage': {

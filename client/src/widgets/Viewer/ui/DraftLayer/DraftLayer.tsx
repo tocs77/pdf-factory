@@ -207,7 +207,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
 
   const handleCancel = () => {
     // Reset state with boundingBox
-    dispatch({ type: 'setCurrentDrawingPage', payload: 0 });
+    dispatch({ type: 'setCurrentDrawingPage', payload: -1 });
     setDraftDrawing({
       id: '',
       type: 'misc',

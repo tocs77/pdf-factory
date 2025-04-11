@@ -12,7 +12,7 @@ import { classNames } from '@/shared/utils';
 import { scrollToPage } from '../../utils/pageScrollUtils';
 import { isSliderBeingDragged } from '@/shared/utils';
 import classes from './Viewer.module.scss';
-import { Drawing } from '../../model/types/viewerSchema';
+import { Drawing, RotationAngle } from '../../model/types/viewerSchema';
 
 // Define the ref type for scrollToDraw function
 export type PdfViewerRef = {
@@ -233,7 +233,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
         const pageNumber = index + 1;
 
         const defaultViewport = page.getViewport({ scale: 1 });
-        const defaultRotation = defaultViewport.rotation;
+        const defaultRotation = defaultViewport.rotation as RotationAngle;
         // Only update context if there's a rotation value
         if (defaultRotation !== undefined) {
           dispatch({
