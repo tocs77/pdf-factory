@@ -219,6 +219,29 @@ export interface DrawingMisc extends BaseDrawing {
   textAreas: TextArea[];
 }
 
+export interface ImageAnnotation extends BaseDrawing {
+  type: 'image';
+  /**
+   * Top-left position of the image on the page (normalized to scale=1).
+   */
+  position: { x: number; y: number };
+  /**
+   * Width of the image on the page (normalized to scale=1, based on resized image).
+   */
+  width: number;
+  /**
+   * Height of the image on the page (normalized to scale=1, based on resized image).
+   */
+  height: number;
+  /**
+   * Optional style properties like rotation or opacity.
+   */
+  style?: {
+    rotation?: number; // Angle in degrees
+    opacity?: number; // 0 to 1
+  };
+}
+
 // Union type for all drawings
 export type Drawing =
   | DrawingPath
@@ -232,7 +255,8 @@ export type Drawing =
   | TextArea
   | DrawingMisc
   | RectSelection
-  | PinSelection;
+  | PinSelection
+  | ImageAnnotation;
 
 export type DrawingMode =
   | 'none' // No tool active
@@ -248,7 +272,8 @@ export type DrawingMode =
   | 'textCrossedOut'
   | 'ruler'
   | 'RectSelection'
-  | 'PinSelection';
+  | 'PinSelection'
+  | 'image';
 
 // Valid rotation angles: 0, 90, 180, 270 degrees
 export type RotationAngle = 0 | 90 | 180 | 270;

@@ -1,4 +1,4 @@
-import React, { useContext, useState, KeyboardEvent, useEffect, useRef } from 'react';
+import { useContext, useState, KeyboardEvent, useEffect, useRef } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { DrawingMode } from '../../model/types/viewerSchema';
 import { classNames } from '@/shared/utils';
@@ -133,15 +133,24 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
   };
 
   const toggleTextHighlight = () => {
-    dispatch({ type: 'setDrawingMode', payload: drawingMode === 'textHighlight' ? 'none' : 'textHighlight' });
+    dispatch({
+      type: 'setDrawingMode',
+      payload: drawingMode === 'textHighlight' ? 'none' : 'textHighlight',
+    });
   };
 
   const toggleTextUnderline = () => {
-    dispatch({ type: 'setDrawingMode', payload: drawingMode === 'textUnderline' ? 'none' : 'textUnderline' });
+    dispatch({
+      type: 'setDrawingMode',
+      payload: drawingMode === 'textUnderline' ? 'none' : 'textUnderline',
+    });
   };
 
   const toggleTextCrossedOut = () => {
-    dispatch({ type: 'setDrawingMode', payload: drawingMode === 'textCrossedOut' ? 'none' : 'textCrossedOut' });
+    dispatch({
+      type: 'setDrawingMode',
+      payload: drawingMode === 'textCrossedOut' ? 'none' : 'textCrossedOut',
+    });
   };
 
   const goToPreviousPage = () => {
@@ -348,7 +357,12 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
         <>
           {/* Diff Compare Button */}
           <button
-            onClick={() => dispatch({ type: 'setCompareMode', payload: compareMode === 'diff' ? 'none' : 'diff' })}
+            onClick={() =>
+              dispatch({
+                type: 'setCompareMode',
+                payload: compareMode === 'diff' ? 'none' : 'diff',
+              })
+            }
             className={`${classes.zoomButton} ${compareMode === 'diff' ? classes.active : ''}`}
             title={compareMode === 'diff' ? 'Disable Diff Compare' : 'Enable Diff Compare'}>
             <svg
@@ -373,7 +387,12 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
           </button>
           {/* Side-by-Side Compare Button */}
           <button
-            onClick={() => dispatch({ type: 'setCompareMode', payload: compareMode === 'sideBySide' ? 'none' : 'sideBySide' })}
+            onClick={() =>
+              dispatch({
+                type: 'setCompareMode',
+                payload: compareMode === 'sideBySide' ? 'none' : 'sideBySide',
+              })
+            }
             className={`${classes.zoomButton} ${compareMode === 'sideBySide' ? classes.active : ''}`}
             title={compareMode === 'sideBySide' ? 'Disable Side-by-Side Compare' : 'Enable Side-by-Side Compare'}>
             <svg
@@ -631,6 +650,26 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
                 <line x1='8' y1='8' x2='16' y2='8'></line>
                 <line x1='8' y1='12' x2='16' y2='12'></line>
                 <line x1='8' y1='16' x2='12' y2='16'></line>
+              </svg>
+            </button>
+
+            <button
+              className={`${classes.toolButton} ${drawingMode === 'image' ? classes.active : ''}`}
+              onClick={() => changeDrawingMode('image')}
+              title={drawingMode === 'image' ? 'Cancel adding image' : 'Add image'}>
+              <svg
+                xmlns='http://www.w3.org/2000/svg'
+                width='16'
+                height='16'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+                strokeLinecap='round'
+                strokeLinejoin='round'>
+                <rect x='3' y='3' width='18' height='18' rx='2' ry='2'></rect>
+                <circle cx='8.5' cy='8.5' r='1.5'></circle>
+                <polyline points='21 15 16 10 5 21'></polyline>
               </svg>
             </button>
           </div>

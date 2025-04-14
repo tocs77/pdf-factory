@@ -1,0 +1,98 @@
+.imageLayerCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  /* Ensure it's above the PDF canvas but potentially below other UI */
+  cursor: crosshair;
+  /* Indicate placement action */
+  pointer-events: auto;
+  /* Make sure it captures clicks */
+  opacity: 0;
+  /* Make it invisible, only used for capturing clicks */
+}
+
+.imageDialog {
+  position: fixed;
+  /* Use fixed to position relative to viewport */
+  background-color: #ffffff;
+  /* Slightly brighter background */
+  border: 1px solid #cccccc;
+  /* Softer border */
+  color: #333333;
+  /* Ensure good text contrast */
+  border-radius: 6px;
+  /* Slightly larger radius */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.18);
+  /* Enhanced shadow */
+  padding: 16px 20px;
+  /* Increased padding */
+  z-index: 100;
+  /* Ensure dialog is above everything */
+  display: flex;
+  /* Keep flex, alignment handled by content */
+  cursor: default;
+  /* Reset cursor for dialog */
+  transform: translate(-50%, -50%);
+  /* Keep centered */
+  min-width: 250px;
+  /* Adjust min-width based on content + padding */
+}
+
+.dialogContent {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* Slightly increased gap */
+  font-size: 14px;
+  /* Explicit font size */
+  color: #333;
+  /* Remove fixed width */
+  width: auto;
+}
+
+.dialogText {
+  /* Remove fixed width/height */
+  color: #333333;
+  /* Match content color */
+  font-size: 14px;
+  /* Ensure consistent size */
+  /* Remove z-index, not needed here */
+  /* No height needed, let content flow */
+  white-space: nowrap;
+  /* Prevent wrapping */
+}
+
+.dialogButton {
+  padding: 8px 15px;
+  /* More balanced padding */
+  font-size: 13px;
+  /* Slightly smaller font for button */
+  font-weight: 500;
+  /* Medium weight */
+  cursor: pointer;
+  background-color: #007bff;
+  /* Primary button color */
+  color: #ffffff;
+  /* White text */
+  border: none;
+  /* Remove default border */
+  border-radius: 4px;
+  /* Remove fixed width/height */
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  /* Smooth transition */
+
+  &:hover {
+    background-color: #0056b3;
+    /* Darker shade on hover */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+    /* Add subtle shadow on hover */
+  }
+
+  &:active {
+    background-color: #004085;
+    /* Even darker when pressed */
+  }
+}

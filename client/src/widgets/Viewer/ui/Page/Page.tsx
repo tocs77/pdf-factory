@@ -12,6 +12,7 @@ import { Drawing } from '../../model/types/viewerSchema';
 import { DraftLayer } from '../DraftLayer/DraftLayer';
 import RectSelectionDrawingComponent from '../RectSelectionDrawingComponent/RectSelectionDrawingComponent';
 import PinSelectionDrawingComponent from '../PinSelectionDrawingComponent/PinSelectionDrawingComponent';
+import { ImageLayer } from '../ImageLayer/ImageLayer';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 
 // Page component for rendering a single PDF page
@@ -92,9 +93,9 @@ export const Page = ({
   };
 
   // Function to handle canvas click
-  const handleCanvasClick = (event: React.MouseEvent<HTMLDivElement>) => {
+  const handleDrawingClick = (event: React.MouseEvent<HTMLDivElement>) => {
     // Only proceed if drawing mode is 'none' and canvas ref is available
-    if (drawingMode !== 'none' || !canvasRef.current) return;
+    if (drawingMode !== 'none' || !canvasRef.current || !onDrawingClicked || isDraggingRef.current) return;
 
     // Skip if no onDrawingClicked handler is provided
     if (!onDrawingClicked) return;
@@ -113,7 +114,13 @@ export const Page = ({
     const y = event.clientY - rect.top;
 
     // Normalize coordinates to account for rotation and scale
-    const normalizedPoint = normalizeCoordinatesToZeroRotation({ x, y }, canvas.width, canvas.height, scale, rotation);
+    const normalizedPoint = normalizeCoordinatesToZeroRotation(
+      { x, y },
+      canvas.offsetWidth,
+      canvas.offsetHeight,
+      scale,
+      rotation,
+    );
 
     // Check if click is inside any drawing's bounding box
     for (const drawing of drawings) {
@@ -336,7 +343,7 @@ export const Page = ({
               : {}),
           }}
           onMouseDown={handleMouseDown}
-          onClick={handleCanvasClick}>
+          onClick={handleDrawingClick}>
           <canvas ref={canvasRef} className={classes.pageCanvas} />
 
           {/* Text Layer - only render when text tool is selected */}
@@ -384,6 +391,11 @@ export const Page = ({
                   onDrawingCreated={handleDrawingCreated}
                   pdfCanvasRef={canvasRef}
                 />
+              )}
+
+              {/* Conditionally render the ImageLayer */}
+              {drawingMode === 'image' && (
+                <ImageLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
               )}
             </>
           )}

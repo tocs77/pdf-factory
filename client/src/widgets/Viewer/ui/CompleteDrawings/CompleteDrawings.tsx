@@ -13,7 +13,7 @@ import {
   renderPinSelection,
 } from '../../utils/drawingRenderers';
 import { renderExtensionLine } from '../../utils/extensionLineRenderer';
-import { Drawing } from '../../model/types/viewerSchema';
+import { Drawing, ImageAnnotation } from '../../model/types/viewerSchema';
 import styles from './CompleteDrawings.module.scss';
 
 interface CompleteDrawingsProps {
@@ -159,6 +159,52 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
         case 'PinSelection':
           renderPinSelection(ctx, drawing, canvas.width, canvas.height, scale, rotation);
           break;
+
+        case 'image': {
+          const imgDrawing = drawing as ImageAnnotation;
+          const img = new Image();
+          img.onload = () => {
+            // Transform the CENTER position from normalized page coords to canvas coords
+            const transformedCenter = transformCoordinates(
+              imgDrawing.position.x,
+              imgDrawing.position.y,
+              canvas.width,
+              canvas.height,
+              scale,
+              rotation,
+            );
+
+            // Calculate display width/height based on normalized size and current scale
+            const displayWidth = imgDrawing.width * scale;
+            const displayHeight = imgDrawing.height * scale;
+
+            // Apply rotation and opacity if specified in style
+            const imageRotationDegrees = imgDrawing.style?.rotation || 0;
+            const imageOpacity = imgDrawing.style?.opacity ?? 1;
+            const imageRotationRadians = (imageRotationDegrees * Math.PI) / 180;
+
+            ctx.save();
+            ctx.globalAlpha = imageOpacity;
+
+            // Translate to the desired center of the image for rotation
+            ctx.translate(transformedCenter.x, transformedCenter.y);
+            ctx.rotate(imageRotationRadians);
+
+            // Draw the image centered at the translated/rotated origin
+            // (i.e., offset by negative half width/height)
+            ctx.drawImage(img, -displayWidth / 2, -displayHeight / 2, displayWidth, displayHeight);
+
+            ctx.restore(); // Restore rotation, alpha, etc.
+          };
+          img.onerror = () => {
+            console.error(`Failed to load image annotation with id ${imgDrawing.id}`);
+            // Optionally draw a placeholder/error indicator
+          };
+          if (imgDrawing.image) {
+            img.src = imgDrawing.image;
+          }
+          break;
+        }
 
         case 'misc': {
           // Render all components of the misc drawing
