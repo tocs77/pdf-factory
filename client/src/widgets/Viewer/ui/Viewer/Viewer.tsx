@@ -1,20 +1,18 @@
 import { useContext, useEffect, useState, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import * as pdfjs from 'pdfjs-dist';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
+import { classNames } from '@/shared/utils';
+import { isSliderBeingDragged } from '@/shared/utils';
 import { Thumbnail } from '../Thumbnail/Thumbnail';
-import { ViewPage } from '../ViewPage/ViewPage';
-import { ComparePageDiff } from '../ComparePageDiff/ComparePageDiff';
 import { ViewerMenu } from '../ViewerMenu/ViewerMenu';
-import { ComparePageSideBySide } from '../ComparePageSideBySide/ComparePageSideBySide';
+import { Page } from '../Page/Page';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { ViewerProvider } from '../../model/context/ViewerProvider';
-import { classNames } from '@/shared/utils';
 import { scrollToPage } from '../../utils/pageScrollUtils';
-import { isSliderBeingDragged } from '@/shared/utils';
-import classes from './Viewer.module.scss';
 import { Drawing, RotationAngle } from '../../model/types/viewerSchema';
 import { useZoomToMouse } from '../../hooks/useZoomToMouse';
 import { useDragToScroll } from '../../hooks/useDragToScroll';
+import classes from './Viewer.module.scss';
 
 // Define the ref type for scrollToDraw function
 export type PdfViewerRef = {
@@ -336,75 +334,26 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
     return pages.map((page, index) => {
       const pageNumber = index + 1;
-      const pageKey = `page-${pageNumber}`;
-      const pageId = `pdf-page-${pageNumber}`;
 
-      // Side-by-Side Compare Mode
-      if (state.compareMode === 'sideBySide') {
-        // console.log(`[Render ${pageNumber}] SideBySide Mode Check. comparePages.length: ${comparePages.length}`);
-        // Determine the comparison page number to use
-        const comparePageNumToShow = pageOverrides[pageNumber] ?? pageNumber; // Use override or default
-        // console.log(`[Render ${pageNumber}] pageOverrides[${pageNumber}]: ${pageOverrides[pageNumber]}, comparePageNumToShow: ${comparePageNumToShow}`);
+      // Determine the comparison page number to use
+      const comparePageNumToShow = pageOverrides[pageNumber] ?? pageNumber; // Use override or default
 
-        // Get the actual compare page object
-        const comparePageObject =
-          comparePageNumToShow >= 1 && comparePageNumToShow <= comparePages.length
-            ? comparePages[comparePageNumToShow - 1]
-            : null;
+      // Get the actual compare page object (adjusting for 0-based index)
+      const comparePageObject =
+        comparePageNumToShow >= 1 && comparePageNumToShow <= comparePages.length ? comparePages[comparePageNumToShow - 1] : null;
 
-        // console.log(`[Render ${pageNumber}] Final Compare Page Object: ${comparePageObject ? `Page ${comparePageObject.pageNumber}` : 'null'}`);
-
-        return (
-          <ComparePageSideBySide
-            key={pageKey}
-            page={page}
-            comparePage={comparePageObject}
-            pageNumber={pageNumber}
-            id={pageId}
-            className={classes.pageItem}
-            onBecameVisible={handlePageBecameVisible}
-          />
-        );
-      }
-
-      // Overlay Compare Mode
-      if (state.compareMode === 'diff') {
-        // Determine the comparison page number to use
-        const comparePageNumToShow = pageOverrides[pageNumber] ?? pageNumber; // Use override or default
-
-        // Get the actual compare page object (adjusting for 0-based index)
-        const comparePageObject =
-          comparePageNumToShow >= 1 && comparePageNumToShow <= comparePages.length
-            ? comparePages[comparePageNumToShow - 1]
-            : null; // Handle out-of-bounds or invalid override
-
-        return (
-          <ComparePageDiff
-            key={pageKey}
-            page={page}
-            comparePage={comparePageObject} // Pass the potentially shifted page
-            pageNumber={pageNumber}
-            id={pageId}
-            className={classes.pageItem}
-            mainColor='#FF0000'
-            comparisonColor='#0000FF'
-            onBecameVisible={handlePageBecameVisible}
-          />
-        );
-      }
-
-      // Render normal page if not in compare mode
       return (
-        <ViewPage
-          key={pageKey}
+        <Page
+          key={`page-${pageNumber}`}
           page={page}
           pageNumber={pageNumber}
-          id={pageId}
-          className={classes.pageItem}
-          drawings={drawings.filter((d) => d.pageNumber === pageNumber)}
-          onDrawingCreated={drawingCreated}
+          compareMode={state.compareMode}
+          comparePage={comparePageObject}
+          drawings={drawings}
+          drawingCreated={drawingCreated}
           onBecameVisible={handlePageBecameVisible}
           onDrawingClicked={onDrawingClicked}
+          className={classes.pageItem}
         />
       );
     });
