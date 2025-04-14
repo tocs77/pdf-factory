@@ -2,7 +2,7 @@ import { useContext, useEffect, useState, useRef, forwardRef, useImperativeHandl
 import * as pdfjs from 'pdfjs-dist';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 import { Thumbnail } from '../Thumbnail/Thumbnail';
-import { Page } from '../Page/Page';
+import { ViewPage } from '../ViewPage/ViewPage';
 import { ComparePageDiff } from '../ComparePageDiff/ComparePageDiff';
 import { ViewerMenu } from '../ViewerMenu/ViewerMenu';
 import { ComparePageSideBySide } from '../ComparePageSideBySide/ComparePageSideBySide';
@@ -395,7 +395,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
       // Render normal page if not in compare mode
       return (
-        <Page
+        <ViewPage
           key={pageKey}
           page={page}
           pageNumber={pageNumber}

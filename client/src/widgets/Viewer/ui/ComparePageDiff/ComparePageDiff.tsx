@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useContext } from 'react';
 import type { PDFPageProxy, RenderTask } from 'pdfjs-dist/types/src/display/api';
 import { ViewerContext } from '../../model/context/viewerContext';
-import classes from './ComparePage.module.scss';
+import classes from './ComparePageDiff.module.scss';
 import { classNames } from '@/shared/utils';
 
 interface ComparePageDiffProps {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useContext } from 'react';
 import type { PDFPageProxy } from 'pdfjs-dist';
-import classes from './Page.module.scss';
+
 import { classNames } from '@/shared/utils';
 import CompleteDrawings from '../CompleteDrawings/CompleteDrawings';
 import { ViewerContext } from '../../model/context/viewerContext';
@@ -13,9 +13,10 @@ import { DraftLayer } from '../DraftLayer/DraftLayer';
 import RectSelectionDrawingComponent from '../RectSelectionDrawingComponent/RectSelectionDrawingComponent';
 import PinSelectionDrawingComponent from '../PinSelectionDrawingComponent/PinSelectionDrawingComponent';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
+import classes from './ViewPage.module.scss';
 
 // Page component for rendering a single PDF page
-interface PageProps {
+interface ViewPageProps {
   onBecameVisible?: (pageNumber: number) => void;
   page: PDFPageProxy;
   pageNumber: number;
@@ -26,7 +27,7 @@ interface PageProps {
   onDrawingClicked?: (id: string) => void;
 }
 
-export const Page = ({
+export const ViewPage = ({
   page,
   pageNumber,
   id,
@@ -35,7 +36,7 @@ export const Page = ({
   onDrawingCreated,
   onBecameVisible,
   onDrawingClicked,
-}: PageProps) => {
+}: ViewPageProps) => {
   const { state } = useContext(ViewerContext);
   const { drawingMode, pageRotations, scale, currentDrawingPage } = state;
 
