@@ -11,21 +11,55 @@ interface ImageLayerProps {
   draftMode?: boolean;
 }
 
-// Helper function to resize image to fit specific dimensions
-async function resizeImageToFit(file: File, targetWidth: number, targetHeight: number, quality: number = 0.85): Promise<string> {
+// Helper function to resize image to fit specific dimensions while maintaining aspect ratio
+async function resizeImageToFit(
+  file: File,
+  targetWidth: number,
+  targetHeight: number,
+  quality: number = 0.85,
+): Promise<{ dataUrl: string; dimensions: { width: number; height: number } }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
+        // Calculate aspect ratios
+        const imageRatio = img.width / img.height;
+        const targetRatio = targetWidth / targetHeight;
+
+        // Determine dimensions that maintain aspect ratio
+        let finalWidth, finalHeight;
+
+        if (imageRatio > targetRatio) {
+          // Image is wider than target area proportionally
+          finalWidth = targetWidth;
+          finalHeight = finalWidth / imageRatio;
+        } else {
+          // Image is taller than target area proportionally
+          finalHeight = targetHeight;
+          finalWidth = finalHeight * imageRatio;
+        }
+
+        // Create canvas with calculated dimensions
         const canvas = document.createElement('canvas');
-        canvas.width = targetWidth;
-        canvas.height = targetHeight;
+        canvas.width = finalWidth;
+        canvas.height = finalHeight;
         const ctx = canvas.getContext('2d');
+
         if (!ctx) return reject(new Error('Could not get canvas context'));
-        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+        // Draw image with new dimensions
+        ctx.drawImage(img, 0, 0, finalWidth, finalHeight);
         const dataUrl = canvas.toDataURL('image/jpeg', quality);
-        resolve(dataUrl);
+
+        // Return both the data URL and the actual dimensions used
+        resolve({
+          dataUrl,
+          dimensions: {
+            width: finalWidth,
+            height: finalHeight,
+          },
+        });
       };
       img.onerror = reject;
       if (event.target?.result) img.src = event.target.result as string;
@@ -252,16 +286,32 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, onDrawingCre
     }
 
     try {
-      // Get actual pixel dimensions of the selection
+      // Get pixel dimensions of the selection area
       const selectionWidth = Math.abs(endPoint.x - startPoint.x);
       const selectionHeight = Math.abs(endPoint.y - startPoint.y);
 
-      // Normalize coordinates for scale and rotation
+      // Get coordinates in screen space
+      const screenStartX = Math.min(startPoint.x, endPoint.x);
+      const screenStartY = Math.min(startPoint.y, endPoint.y);
+      const screenEndX = Math.max(startPoint.x, endPoint.x);
+      const screenEndY = Math.max(startPoint.y, endPoint.y);
+
+      // Center point of selection in screen space
+      const centerX = (screenStartX + screenEndX) / 2;
+      const centerY = (screenStartY + screenEndY) / 2;
+
+      // Resize image to fit the selected area while maintaining aspect ratio
+      const { dataUrl, dimensions } = await resizeImageToFit(file, selectionWidth, selectionHeight);
+
+      // Recalculate start/end points to center the image in the selection
+      const imageStartX = centerX - dimensions.width / 2;
+      const imageStartY = centerY - dimensions.height / 2;
+      const imageEndX = imageStartX + dimensions.width;
+      const imageEndY = imageStartY + dimensions.height;
+
+      // Normalized coordinates for scale and rotation - now using the centered image dimensions
       const normalizedStartPoint = normalizeCoordinatesToZeroRotation(
-        {
-          x: Math.min(startPoint.x, endPoint.x),
-          y: Math.min(startPoint.y, endPoint.y),
-        },
+        { x: imageStartX, y: imageStartY },
         pdfCanvasRef.current.width,
         pdfCanvasRef.current.height,
         scale,
@@ -269,18 +319,12 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, onDrawingCre
       );
 
       const normalizedEndPoint = normalizeCoordinatesToZeroRotation(
-        {
-          x: Math.max(startPoint.x, endPoint.x),
-          y: Math.max(startPoint.y, endPoint.y),
-        },
+        { x: imageEndX, y: imageEndY },
         pdfCanvasRef.current.width,
         pdfCanvasRef.current.height,
         scale,
         rotation,
       );
-
-      // Resize image to fit the selected area
-      const dataUrl = await resizeImageToFit(file, selectionWidth, selectionHeight);
 
       // Create the annotation
       const newAnnotation: ImageAnnotation = {
