@@ -3,10 +3,10 @@ import { ViewerContext } from '../../model/context/viewerContext';
 import { Drawing, DrawingMisc } from '../../model/types/viewerSchema';
 import { LineDrawingLayer } from '../LineDrawingLayer/LineDrawingLayer';
 import TextAreaDrawingLayer from '../TextAreaDrawingLayer/TextAreaDrawingLayer';
-import { DrawingComponent } from '../DrawingComponent/DrawingComponent';
+import { FreeHandLayer } from '../FreeHandLayer/FreeHandLayer';
 import DrawRect from '../DrawRect/DrawRect';
 import CompleteDrawings from '../CompleteDrawings/CompleteDrawings';
-import styles from '../DrawingComponent/DrawingComponent.module.scss'; // Import styles
+import classes from './DraftLayer.module.scss'; // Import styles
 import { transformCoordinates } from '../../utils/rotationUtils';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
 import { ExtensionLineDrawingComponent } from '../ExtensionLineDrawingComponent/ExtensionLineDrawingComponent';
@@ -236,14 +236,14 @@ export const DraftLayer = (props: DraftLayerProps) => {
     <>
       {/* Add Finish and Cancel buttons like in DrawingComponent */}
       {currentDrawingPage === pageNumber && (
-        <div className={styles.finishButtonContainer}>
-          <button className={styles.finishButton} onClick={handleFinish}>
+        <div className={classes.finishButtonContainer}>
+          <button className={classes.finishButton} onClick={handleFinish}>
             <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor'>
               <polyline points='20 6 9 17 4 12'></polyline>
             </svg>
             <span>Finish</span>
           </button>
-          <button className={`${styles.finishButton} ${styles.cancelButton}`} onClick={handleCancel}>
+          <button className={`${classes.finishButton} ${classes.cancelButton}`} onClick={handleCancel}>
             <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor'>
               <line x1='18' y1='6' x2='6' y2='18'></line>
               <line x1='6' y1='6' x2='18' y2='18'></line>
@@ -253,7 +253,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
         </div>
       )}
       {drawingMode === 'freehand' && (
-        <DrawingComponent pageNumber={pageNumber} onDrawingCreated={handleDrawingAdded} pdfCanvasRef={pdfCanvasRef} draftMode />
+        <FreeHandLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingAdded} pdfCanvasRef={pdfCanvasRef} draftMode />
       )}
       {drawingMode === 'rectangle' && (
         <DrawRect pageNumber={pageNumber} onDrawingCreated={handleDrawingAdded} pdfCanvasRef={pdfCanvasRef} draftMode />

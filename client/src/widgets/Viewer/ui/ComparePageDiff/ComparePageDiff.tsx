@@ -4,7 +4,7 @@ import { ViewerContext } from '../../model/context/viewerContext';
 import classes from './ComparePage.module.scss';
 import { classNames } from '@/shared/utils';
 
-interface ComparePageProps {
+interface ComparePageDiffProps {
   page: PDFPageProxy;
   comparePage: PDFPageProxy | null; // Second page for comparison, might be null
   pageNumber: number;
@@ -30,7 +30,7 @@ const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
 // Color for pixels that match on both pages
 const MIX_COLOR = { r: 0, g: 0, b: 0 }; // Black
 
-export const ComparePage = ({
+export const ComparePageDiff = ({
   page,
   comparePage,
   pageNumber,
@@ -39,7 +39,7 @@ export const ComparePage = ({
   mainColor,
   comparisonColor,
   onBecameVisible,
-}: ComparePageProps) => {
+}: ComparePageDiffProps) => {
   const { state } = useContext(ViewerContext);
   const { pageRotations, scale } = state;
 

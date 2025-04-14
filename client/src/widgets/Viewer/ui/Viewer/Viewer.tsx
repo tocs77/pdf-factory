@@ -3,7 +3,7 @@ import * as pdfjs from 'pdfjs-dist';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 import { Thumbnail } from '../Thumbnail/Thumbnail';
 import { Page } from '../Page/Page';
-import { ComparePage } from '../ComparePage/ComparePage';
+import { ComparePageDiff } from '../ComparePageDiff/ComparePageDiff';
 import { ViewerMenu } from '../ViewerMenu/ViewerMenu';
 import { ComparePageSideBySide } from '../ComparePageSideBySide/ComparePageSideBySide';
 import { ViewerContext } from '../../model/context/viewerContext';
@@ -379,7 +379,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
             : null; // Handle out-of-bounds or invalid override
 
         return (
-          <ComparePage
+          <ComparePageDiff
             key={pageKey}
             page={page}
             comparePage={comparePageObject} // Pass the potentially shifted page

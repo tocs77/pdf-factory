@@ -3,9 +3,9 @@ import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
 import { Drawing, DrawingStyle } from '../../model/types/viewerSchema';
-import styles from './DrawingComponent.module.scss';
+import classes from './FreeHandLayer.module.scss';
 
-interface DrawingComponentProps {
+interface FreeHandLayerProps {
   pageNumber: number;
   onDrawingCreated: (drawing: Drawing) => void;
   pdfCanvasRef?: React.RefObject<HTMLCanvasElement>; // Reference to the PDF canvas
@@ -15,12 +15,8 @@ interface DrawingComponentProps {
 /**
  * Component for handling freehand drawing
  */
-export const DrawingComponent: React.FC<DrawingComponentProps> = ({
-  pageNumber,
-  onDrawingCreated,
-  pdfCanvasRef,
-  draftMode = false,
-}) => {
+export const FreeHandLayer = (props: FreeHandLayerProps) => {
+  const { pageNumber, onDrawingCreated, pdfCanvasRef, draftMode = false } = props;
   const { state } = useContext(ViewerContext);
   const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations } = state;
 
@@ -355,7 +351,7 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({
     <>
       <canvas
         ref={canvasRef}
-        className={styles.drawingCanvas}
+        className={classes.drawingCanvas}
         onMouseDown={startDrawing}
         onMouseMove={draw}
         onMouseUp={endDrawing}
@@ -363,9 +359,9 @@ export const DrawingComponent: React.FC<DrawingComponentProps> = ({
         data-testid='freehand-drawing-canvas'
       />
       {!draftMode && (
-        <div className={styles.controlsContainer}>
-          <div className={styles.finishButtonContainer}>
-            <button className={styles.finishButton} onClick={finishDrawing}>
+        <div className={classes.controlsContainer}>
+          <div className={classes.finishButtonContainer}>
+            <button className={classes.finishButton} onClick={finishDrawing}>
               Finish
             </button>
           </div>
