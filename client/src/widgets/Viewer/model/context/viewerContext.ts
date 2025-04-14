@@ -30,7 +30,7 @@ export const ViewerContext = createContext<ViewerContextType>({
   dispatch: () => null,
 });
 
-const drawingTools: DrawingMode[] = ['freehand', 'rectangle', 'extensionLine', 'line', 'textArea'];
+const drawingTools: DrawingMode[] = ['freehand', 'rectangle', 'extensionLine', 'line', 'textArea', 'image'];
 
 // Reducer function to handle state updates
 export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema => {

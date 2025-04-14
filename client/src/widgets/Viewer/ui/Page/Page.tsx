@@ -12,7 +12,6 @@ import { Drawing } from '../../model/types/viewerSchema';
 import { DraftLayer } from '../DraftLayer/DraftLayer';
 import RectSelectionDrawingComponent from '../RectSelectionDrawingComponent/RectSelectionDrawingComponent';
 import PinSelectionDrawingComponent from '../PinSelectionDrawingComponent/PinSelectionDrawingComponent';
-import { ImageLayer } from '../ImageLayer/ImageLayer';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 
 // Page component for rendering a single PDF page
@@ -391,11 +390,6 @@ export const Page = ({
                   onDrawingCreated={handleDrawingCreated}
                   pdfCanvasRef={canvasRef}
                 />
-              )}
-
-              {/* Conditionally render the ImageLayer */}
-              {drawingMode === 'image' && (
-                <ImageLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
               )}
             </>
           )}

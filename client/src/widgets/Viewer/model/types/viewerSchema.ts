@@ -217,6 +217,7 @@ export interface DrawingMisc extends BaseDrawing {
   extensionLines: ExtensionLine[];
   lines: Line[];
   textAreas: TextArea[];
+  images: ImageAnnotation[];
 }
 
 export interface ImageAnnotation extends BaseDrawing {
@@ -231,13 +232,6 @@ export interface ImageAnnotation extends BaseDrawing {
    * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
    */
   endPoint: { x: number; y: number };
-  /**
-   * Optional style properties like rotation or opacity.
-   */
-  style?: {
-    rotation?: number; // Angle in degrees
-    opacity?: number; // 0 to 1
-  };
 }
 
 // Union type for all drawings

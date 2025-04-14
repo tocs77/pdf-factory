@@ -10,6 +10,7 @@ import styles from '../DrawingComponent/DrawingComponent.module.scss'; // Import
 import { transformCoordinates } from '../../utils/rotationUtils';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
 import { ExtensionLineDrawingComponent } from '../ExtensionLineDrawingComponent/ExtensionLineDrawingComponent';
+import { ImageLayer } from '../ImageLayer/ImageLayer';
 
 interface DraftLayerProps {
   pageNumber: number;
@@ -31,6 +32,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
     extensionLines: [],
     lines: [],
     textAreas: [],
+    images: [],
     pageNumber: pageNumber,
     boundingBox: { left: 0, top: 0, right: 0, bottom: 0 },
   });
@@ -51,6 +53,9 @@ export const DraftLayer = (props: DraftLayerProps) => {
         break;
       case 'textArea':
         setDraftDrawing((prev) => ({ ...prev, textAreas: [...prev.textAreas, drawing] }));
+        break;
+      case 'image':
+        setDraftDrawing((prev) => ({ ...prev, images: [...prev.images, drawing] }));
         break;
       default:
         break;
@@ -76,7 +81,8 @@ export const DraftLayer = (props: DraftLayerProps) => {
       draftDrawing.rectangles.length > 0 ||
       draftDrawing.extensionLines.length > 0 ||
       draftDrawing.lines.length > 0 ||
-      draftDrawing.textAreas.length > 0;
+      draftDrawing.textAreas.length > 0 ||
+      draftDrawing.images.length > 0;
 
     if (hasDrawing) {
       createDraftDrawing();
@@ -92,6 +98,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
       extensionLines: [],
       lines: [],
       textAreas: [],
+      images: [],
       pageNumber: pageNumber,
       boundingBox: { left: 0, top: 0, right: 0, bottom: 0 },
     });
@@ -112,6 +119,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
         extensionLines: draftDrawing.extensionLines,
         lines: draftDrawing.lines,
         textAreas: draftDrawing.textAreas,
+        images: draftDrawing.images,
         image: '',
         boundingBox: { left: 0, top: 0, right: 0, bottom: 0 }, // Default empty bounds
       };
@@ -133,6 +141,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
     draftDrawing.extensionLines.forEach((drawing) => updateBoundsFromBox(combinedNormalizedBounds, drawing.boundingBox));
     draftDrawing.lines.forEach((drawing) => updateBoundsFromBox(combinedNormalizedBounds, drawing.boundingBox));
     draftDrawing.textAreas.forEach((drawing) => updateBoundsFromBox(combinedNormalizedBounds, drawing.boundingBox));
+    draftDrawing.images.forEach((drawing) => updateBoundsFromBox(combinedNormalizedBounds, drawing.boundingBox));
 
     // Create the final bounding box for the DrawingMisc object
     const finalMiscBoundingBox = {
@@ -199,6 +208,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
       extensionLines: draftDrawing.extensionLines,
       lines: draftDrawing.lines,
       textAreas: draftDrawing.textAreas,
+      images: draftDrawing.images,
       image: image,
       boundingBox: finalMiscBoundingBox, // Add the calculated combined bounds
     };
@@ -216,6 +226,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
       extensionLines: [],
       lines: [],
       textAreas: [],
+      images: [],
       pageNumber: pageNumber,
       boundingBox: { left: 0, top: 0, right: 0, bottom: 0 },
     });
@@ -265,6 +276,9 @@ export const DraftLayer = (props: DraftLayerProps) => {
           pdfCanvasRef={pdfCanvasRef}
           draftMode
         />
+      )}
+      {drawingMode === 'image' && (
+        <ImageLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingAdded} pdfCanvasRef={pdfCanvasRef} draftMode />
       )}
       {/* Removed temporary canvas */}
       <CompleteDrawings ref={completeDrawingsCanvasRef} pageNumber={pageNumber} drawings={[draftDrawing]} />

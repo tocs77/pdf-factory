@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
-import { ImageAnnotation } from '../../model/types/viewerSchema';
+import { Drawing, type ImageAnnotation } from '../../model/types/viewerSchema';
 import classes from './ImageLayer.module.scss'; // Assuming you have a similar CSS module
 
 interface ImageLayerProps {
   pageNumber: number;
-  onDrawingCreated: (drawing: Omit<ImageAnnotation, 'id'>) => void;
-  pdfCanvasRef: React.RefObject<HTMLCanvasElement>; // Reference to the main PDF canvas
+  onDrawingCreated: (drawing: Drawing) => void;
+  pdfCanvasRef?: React.RefObject<HTMLCanvasElement>; // Reference to the main PDF canvas
+  draftMode?: boolean;
 }
 
 // Helper function to resize image to fit specific dimensions
@@ -35,7 +36,7 @@ async function resizeImageToFit(file: File, targetWidth: number, targetHeight: n
   });
 }
 
-export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, onDrawingCreated, pdfCanvasRef }) => {
+export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, onDrawingCreated, pdfCanvasRef, draftMode = false }) => {
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, drawingMode, pageRotations } = state;
   const rotation = pageRotations[pageNumber] || 0;
@@ -217,7 +218,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, onDrawingCre
       if (dialogRef.current && !dialogRef.current.contains(event.target as Node) && dialogPosition) {
         setDialogPosition(null);
         resetDrawing();
-        dispatch({ type: 'setDrawingMode', payload: 'none' });
+        if (!draftMode) dispatch({ type: 'setDrawingMode', payload: 'none' });
       }
     };
 
@@ -225,7 +226,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, onDrawingCre
       if (event.key === 'Escape' && dialogPosition) {
         setDialogPosition(null);
         resetDrawing();
-        dispatch({ type: 'setDrawingMode', payload: 'none' });
+        if (!draftMode) dispatch({ type: 'setDrawingMode', payload: 'none' });
       }
     };
 
@@ -242,11 +243,11 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, onDrawingCre
 
   // Process image and create annotation
   const processAndCreateImageAnnotation = async (file: File | null) => {
-    if (!file || !startPoint || !endPoint || !pdfCanvasRef.current) {
+    if (!file || !startPoint || !endPoint || !pdfCanvasRef?.current) {
       console.log('Missing required data for image annotation.');
       resetDrawing();
       setDialogPosition(null);
-      dispatch({ type: 'setDrawingMode', payload: 'none' });
+      if (!draftMode) dispatch({ type: 'setDrawingMode', payload: 'none' });
       return;
     }
 
@@ -282,13 +283,13 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, onDrawingCre
       const dataUrl = await resizeImageToFit(file, selectionWidth, selectionHeight);
 
       // Create the annotation
-      const newAnnotation: Omit<ImageAnnotation, 'id'> = {
+      const newAnnotation: ImageAnnotation = {
+        id: '',
         type: 'image',
         pageNumber,
         startPoint: normalizedStartPoint,
         endPoint: normalizedEndPoint,
         image: dataUrl,
-        style: { rotation: 0, opacity: 1 },
         boundingBox: {
           left: normalizedStartPoint.x,
           top: normalizedStartPoint.y,
@@ -306,7 +307,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, onDrawingCre
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      dispatch({ type: 'setDrawingMode', payload: 'none' });
+      if (!draftMode) dispatch({ type: 'setDrawingMode', payload: 'none' });
     }
   };
 
@@ -365,7 +366,6 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, onDrawingCre
           onMouseUp={endDrawing}
           onMouseLeave={endDrawing}
           data-testid={`image-layer-canvas-${pageNumber}`}
-          style={{ opacity: isDrawing ? 1 : 0 }}
         />
       )}
 
