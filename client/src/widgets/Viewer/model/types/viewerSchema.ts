@@ -222,17 +222,15 @@ export interface DrawingMisc extends BaseDrawing {
 export interface ImageAnnotation extends BaseDrawing {
   type: 'image';
   /**
-   * Top-left position of the image on the page (normalized to scale=1).
+   * Start point (top-left) of the image area
+   * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
    */
-  position: { x: number; y: number };
+  startPoint: { x: number; y: number };
   /**
-   * Width of the image on the page (normalized to scale=1, based on resized image).
+   * End point (bottom-right) of the image area
+   * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
    */
-  width: number;
-  /**
-   * Height of the image on the page (normalized to scale=1, based on resized image).
-   */
-  height: number;
+  endPoint: { x: number; y: number };
   /**
    * Optional style properties like rotation or opacity.
    */

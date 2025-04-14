@@ -10,8 +10,8 @@
   /* Indicate placement action */
   pointer-events: auto;
   /* Make sure it captures clicks */
-  opacity: 0;
-  /* Make it invisible, only used for capturing clicks */
+  /* opacity is now controlled via inline styles */
+  /* opacity: 0; */
 }
 
 .imageDialog {

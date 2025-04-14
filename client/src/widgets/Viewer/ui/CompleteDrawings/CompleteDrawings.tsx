@@ -1,4 +1,4 @@
-import { useEffect, useRef, useContext, forwardRef } from 'react';
+import { useEffect, useRef, useContext, forwardRef, useMemo } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { transformCoordinates } from '../../utils/rotationUtils';
 import {
@@ -29,6 +29,8 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
   // Use the forwarded ref if provided, otherwise use a local ref
   const internalRef = useRef<HTMLCanvasElement>(null);
   const canvasRef = ref || internalRef;
+  const imagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   const { state } = useContext(ViewerContext);
   const { scale, pageRotations } = state;
@@ -36,24 +38,88 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;
 
-  // Filter drawings for this page
-  const pageDrawings = drawings.filter((drawing) => drawing.pageNumber === pageNumber);
+  // Filter drawings for this page - use useMemo to prevent recreation on every render
+  const pageDrawings = useMemo(() => drawings.filter((drawing) => drawing.pageNumber === pageNumber), [drawings, pageNumber]);
 
-  // Render drawings on canvas
+  // Split drawings into image and non-image types - also memoized
+  const imageDrawings = useMemo(() => pageDrawings.filter((d) => d.type === 'image') as ImageAnnotation[], [pageDrawings]);
+
+  const nonImageDrawings = useMemo(() => pageDrawings.filter((d) => d.type !== 'image'), [pageDrawings]);
+
+  // Load images without setState to avoid render loops
   useEffect(() => {
-    // Ensure canvasRef is not null and is a RefObject
+    // Skip if there are no images
+    if (imageDrawings.length === 0) {
+      imagesRef.current = new Map();
+      return;
+    }
+
+    // Keep track of already loaded images to avoid reloading
+    const newImageMap = new Map<string, HTMLImageElement>();
+
+    // Function to check if all images have been loaded or attempted to load
+    const triggerRender = () => {
+      // Force a re-render without changing state
+      const canvas = typeof canvasRef === 'function' ? null : canvasRef?.current;
+      if (canvas) {
+        renderCanvas();
+      }
+    };
+
+    // Load each image
+    imageDrawings.forEach((imgDrawing) => {
+      if (!imgDrawing.image || !imgDrawing.id) return;
+
+      // Skip if we already have this image loaded
+      if (imagesRef.current.has(imgDrawing.id)) {
+        newImageMap.set(imgDrawing.id, imagesRef.current.get(imgDrawing.id)!);
+        return;
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        newImageMap.set(imgDrawing.id, img);
+        imagesRef.current = newImageMap;
+        triggerRender();
+      };
+
+      img.onerror = () => {
+        console.error(`Failed to load image annotation with id ${imgDrawing.id}`);
+        triggerRender();
+      };
+
+      img.src = imgDrawing.image;
+    });
+
+    // Update imagesRef
+    imagesRef.current = newImageMap;
+  }, [imageDrawings, canvasRef]);
+
+  // Function to render the canvas
+  const renderCanvas = () => {
     const canvas = typeof canvasRef === 'function' ? null : canvasRef?.current;
     if (!canvas) return;
 
     // Set canvas dimensions based on parent container
     const parent = canvas.parentElement;
-    if (parent) {
-      // Use parent dimensions directly without any transforms
-      canvas.width = parent.clientWidth;
-      canvas.height = parent.clientHeight;
-    } else {
+    if (!parent) {
       console.warn('No parent element found for canvas');
+      return;
     }
+
+    // Get parent dimensions
+    const parentWidth = parent.clientWidth;
+    const parentHeight = parent.clientHeight;
+
+    // Validate dimensions - avoid zero-sized canvas
+    if (parentWidth <= 0 || parentHeight <= 0) {
+      // Instead of just warning, we'll wait for valid dimensions via ResizeObserver
+      return;
+    }
+
+    // Use parent dimensions without any transforms
+    canvas.width = parentWidth;
+    canvas.height = parentHeight;
 
     // Clear canvas
     const ctx = canvas.getContext('2d');
@@ -64,8 +130,59 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw all drawings based on their type using the appropriate renderer functions
-    pageDrawings.forEach((drawing) => {
+    // First, render all images
+    imageDrawings.forEach((imgDrawing) => {
+      // Skip if we don't have a loaded image
+      if (!imgDrawing.id || !imagesRef.current.has(imgDrawing.id)) return;
+
+      const img = imagesRef.current.get(imgDrawing.id)!;
+
+      // Transform the start point (top-left position)
+      const transformedStartPoint = transformCoordinates(
+        imgDrawing.startPoint.x,
+        imgDrawing.startPoint.y,
+        canvas.width,
+        canvas.height,
+        scale,
+        rotation,
+      );
+
+      // Transform the end point (bottom-right position)
+      const transformedEndPoint = transformCoordinates(
+        imgDrawing.endPoint.x,
+        imgDrawing.endPoint.y,
+        canvas.width,
+        canvas.height,
+        scale,
+        rotation,
+      );
+
+      // Calculate display width/height from the transformed points
+      const displayWidth = transformedEndPoint.x - transformedStartPoint.x;
+      const displayHeight = transformedEndPoint.y - transformedStartPoint.y;
+
+      // Apply rotation and opacity if specified in style
+      const imageRotationDegrees = imgDrawing.style?.rotation || 0;
+      const imageOpacity = imgDrawing.style?.opacity ?? 1;
+      const imageRotationRadians = (imageRotationDegrees * Math.PI) / 180;
+
+      ctx.save();
+      ctx.globalAlpha = imageOpacity;
+
+      // Translate to the center of the image for rotation
+      const centerX = transformedStartPoint.x + displayWidth / 2;
+      const centerY = transformedStartPoint.y + displayHeight / 2;
+      ctx.translate(centerX, centerY);
+      ctx.rotate(imageRotationRadians);
+
+      // Draw the image centered at the translated/rotated origin
+      ctx.drawImage(img, -displayWidth / 2, -displayHeight / 2, displayWidth, displayHeight);
+
+      ctx.restore(); // Restore rotation, alpha, etc.
+    });
+
+    // Then render all other drawings on top
+    nonImageDrawings.forEach((drawing) => {
       switch (drawing.type) {
         case 'freehand':
           renderFreehandPath(ctx, drawing, canvas.width, canvas.height, scale, rotation);
@@ -160,52 +277,6 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
           renderPinSelection(ctx, drawing, canvas.width, canvas.height, scale, rotation);
           break;
 
-        case 'image': {
-          const imgDrawing = drawing as ImageAnnotation;
-          const img = new Image();
-          img.onload = () => {
-            // Transform the CENTER position from normalized page coords to canvas coords
-            const transformedCenter = transformCoordinates(
-              imgDrawing.position.x,
-              imgDrawing.position.y,
-              canvas.width,
-              canvas.height,
-              scale,
-              rotation,
-            );
-
-            // Calculate display width/height based on normalized size and current scale
-            const displayWidth = imgDrawing.width * scale;
-            const displayHeight = imgDrawing.height * scale;
-
-            // Apply rotation and opacity if specified in style
-            const imageRotationDegrees = imgDrawing.style?.rotation || 0;
-            const imageOpacity = imgDrawing.style?.opacity ?? 1;
-            const imageRotationRadians = (imageRotationDegrees * Math.PI) / 180;
-
-            ctx.save();
-            ctx.globalAlpha = imageOpacity;
-
-            // Translate to the desired center of the image for rotation
-            ctx.translate(transformedCenter.x, transformedCenter.y);
-            ctx.rotate(imageRotationRadians);
-
-            // Draw the image centered at the translated/rotated origin
-            // (i.e., offset by negative half width/height)
-            ctx.drawImage(img, -displayWidth / 2, -displayHeight / 2, displayWidth, displayHeight);
-
-            ctx.restore(); // Restore rotation, alpha, etc.
-          };
-          img.onerror = () => {
-            console.error(`Failed to load image annotation with id ${imgDrawing.id}`);
-            // Optionally draw a placeholder/error indicator
-          };
-          if (imgDrawing.image) {
-            img.src = imgDrawing.image;
-          }
-          break;
-        }
-
         case 'misc': {
           // Render all components of the misc drawing
           drawing.pathes.forEach((path) => {
@@ -258,7 +329,42 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
         }
       }
     });
-  }, [pageDrawings, scale, pageNumber, rotation, canvasRef]);
+  };
+
+  // Set up a ResizeObserver to detect when parent dimensions change
+  useEffect(() => {
+    const canvas = typeof canvasRef === 'function' ? null : canvasRef?.current;
+    if (!canvas) return;
+
+    const parent = canvas.parentElement;
+    if (!parent) return;
+
+    // Set up the observer
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          // Parent now has valid dimensions, render the canvas
+          renderCanvas();
+        }
+      }
+    });
+
+    // Start observing the parent element
+    observer.observe(parent);
+    resizeObserverRef.current = observer;
+
+    // Cleanup observer on unmount
+    return () => {
+      observer.disconnect();
+      resizeObserverRef.current = null;
+    };
+  }, [canvasRef]);
+
+  // Call renderCanvas whenever relevant props change
+  useEffect(() => {
+    renderCanvas();
+  }, [pageDrawings, scale, pageNumber, rotation]);
 
   return <canvas ref={canvasRef} className={styles.drawingsCanvas} data-testid='complete-drawings-canvas' />;
 });

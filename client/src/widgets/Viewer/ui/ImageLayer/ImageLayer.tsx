@@ -10,50 +10,21 @@ interface ImageLayerProps {
   pdfCanvasRef: React.RefObject<HTMLCanvasElement>; // Reference to the main PDF canvas
 }
 
-// Constant for image resizing
-const IMAGE_MAX_LENGTH = 300;
-
-// Helper function to resize image
-async function resizeImageBeforeBase64(
-  file: File,
-  maxWidth: number,
-  maxHeight: number,
-  quality: number = 0.85,
-): Promise<{ dataUrl: string; width: number; height: number }> {
+// Helper function to resize image to fit specific dimensions
+async function resizeImageToFit(file: File, targetWidth: number, targetHeight: number, quality: number = 0.85): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
-        let width = img.width;
-        let height = img.height;
-        if (width > height) {
-          if (width > maxWidth) {
-            height = Math.round(height * (maxWidth / width));
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width = Math.round(width * (maxHeight / height));
-            height = maxHeight;
-          }
-        }
-        if (width > maxWidth) {
-          height = Math.round(height * (maxWidth / width));
-          width = maxWidth;
-        }
-        if (height > maxHeight) {
-          width = Math.round(width * (maxHeight / height));
-          height = maxHeight;
-        }
         const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
         const ctx = canvas.getContext('2d');
         if (!ctx) return reject(new Error('Could not get canvas context'));
-        ctx.drawImage(img, 0, 0, width, height);
+        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
         const dataUrl = canvas.toDataURL('image/jpeg', quality);
-        resolve({ dataUrl, width, height });
+        resolve(dataUrl);
       };
       img.onerror = reject;
       if (event.target?.result) img.src = event.target.result as string;
@@ -71,10 +42,15 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, onDrawingCre
 
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [imagePlacementPos, setImagePlacementPos] = useState<{ x: number; y: number } | null>(null);
-  const [dialogPosition, setDialogPosition] = useState<{ top: number; left: number } | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const pageRef = useRef<HTMLDivElement>(null);
+
+  // Rectangle selection state
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
+  const [endPoint, setEndPoint] = useState<{ x: number; y: number } | null>(null);
+
+  // Dialog position state
+  const [dialogPosition, setDialogPosition] = useState<{ top: number; left: number } | null>(null);
 
   // Set up overlay canvas dimensions
   useEffect(() => {
@@ -85,7 +61,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, onDrawingCre
       canvas.width = parent.clientWidth;
       canvas.height = parent.clientHeight;
     }
-  }, [scale, pageNumber]); // Removed rotation dependency
+  }, [scale, pageNumber]);
 
   // Get raw coordinates relative to the overlay canvas
   const getRawCoordinates = (clientX: number, clientY: number): { x: number; y: number } | null => {
@@ -95,68 +71,164 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, onDrawingCre
     return { x: clientX - rect.left, y: clientY - rect.top };
   };
 
-  // Handler for clicks on the overlay when in 'image' mode
-  const handleOverlayClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (e.button !== 0 || drawingMode !== 'image' || !overlayCanvasRef.current || !pdfCanvasRef.current) {
-      return;
-    }
+  // Start drawing selection rectangle
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0 || drawingMode !== 'image') return;
 
     const clickCoords = getRawCoordinates(e.clientX, e.clientY);
     if (!clickCoords) return;
 
-    const pdfCanvas = pdfCanvasRef.current;
-    if (!pdfCanvas) return;
-    const normalizedPosition = normalizeCoordinatesToZeroRotation(
-      clickCoords,
-      pdfCanvas.offsetWidth,
-      pdfCanvas.offsetHeight,
-      scale,
-      rotation,
-    );
-
-    setImagePlacementPos(normalizedPosition);
-    setDialogPosition({ top: e.clientY, left: e.clientX });
-
-    // REMOVE dispatch from here
-    // dispatch({ type: 'setDrawingMode', payload: 'none' });
+    setIsDrawing(true);
+    setStartPoint(clickCoords);
+    setEndPoint(clickCoords);
   };
 
-  // NEW: Handler for the "Select File" button in the dialog
+  // Update the selection rectangle as mouse moves
+  const drawSelectionRectangle = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawing || !startPoint || drawingMode !== 'image') return;
+
+    const moveCoords = getRawCoordinates(e.clientX, e.clientY);
+    if (!moveCoords) return;
+
+    setEndPoint(moveCoords);
+
+    // Draw the selection rectangle
+    const canvas = overlayCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Calculate rectangle dimensions
+    const x = Math.min(startPoint.x, moveCoords.x);
+    const y = Math.min(startPoint.y, moveCoords.y);
+    const width = Math.abs(moveCoords.x - startPoint.x);
+    const height = Math.abs(moveCoords.y - startPoint.y);
+
+    // Draw semi-transparent fill
+    ctx.fillStyle = 'rgba(0, 119, 255, 0.1)';
+    ctx.fillRect(x, y, width, height);
+
+    // Draw dashed rectangle border
+    ctx.beginPath();
+    ctx.strokeStyle = '#0077FF';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.rect(x, y, width, height);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  };
+
+  // Finish drawing and show the dialog
+  const endDrawing = (_e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+
+    // Set drawing state to false immediately to stop tracking mouse
+    setIsDrawing(false);
+
+    if (!startPoint || !endPoint || drawingMode !== 'image') {
+      resetDrawing();
+      return;
+    }
+
+    // Prevent tiny selections (probably accidental clicks)
+    const width = Math.abs(endPoint.x - startPoint.x);
+    const height = Math.abs(endPoint.y - startPoint.y);
+
+    if (width < 20 || height < 20) {
+      resetDrawing();
+      return;
+    }
+
+    // Show dialog near the center of the selection
+    const centerX = (startPoint.x + endPoint.x) / 2;
+    const centerY = (startPoint.y + endPoint.y) / 2;
+
+    // Get viewport coordinates for dialog positioning
+    const canvas = overlayCanvasRef.current;
+    if (!canvas) {
+      resetDrawing();
+      return;
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const dialogX = rect.left + centerX;
+    const dialogY = rect.top + centerY;
+
+    setDialogPosition({ left: dialogX, top: dialogY });
+
+    // Keep the selection rectangle visible even after releasing the mouse
+    drawStaticSelectionRectangle();
+  };
+
+  // Draw a static selection rectangle (doesn't follow mouse)
+  const drawStaticSelectionRectangle = () => {
+    if (!startPoint || !endPoint || !overlayCanvasRef.current) return;
+
+    const canvas = overlayCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Calculate rectangle dimensions
+    const x = Math.min(startPoint.x, endPoint.x);
+    const y = Math.min(startPoint.y, endPoint.y);
+    const width = Math.abs(endPoint.x - startPoint.x);
+    const height = Math.abs(endPoint.y - startPoint.y);
+
+    // Draw semi-transparent fill
+    ctx.fillStyle = 'rgba(0, 119, 255, 0.1)';
+    ctx.fillRect(x, y, width, height);
+
+    // Draw dashed rectangle border
+    ctx.beginPath();
+    ctx.strokeStyle = '#0077FF';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.rect(x, y, width, height);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  };
+
+  // Reset drawing state and clear the canvas
+  const resetDrawing = () => {
+    setIsDrawing(false);
+    setStartPoint(null);
+    setEndPoint(null);
+
+    const canvas = overlayCanvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  };
+
+  // Handler for the "Select File" button in the dialog
   const handleSelectFileClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation(); // Keep this to prevent other potential listeners
+    e.stopPropagation();
     fileInputRef.current?.click();
-    // setDialogPosition(null); // REMOVE THIS LINE: Don't close dialog here
   };
 
   // Close dialog if user clicks outside or presses Escape
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Check if the click target is outside the dialog
-      if (
-        dialogRef.current &&
-        !dialogRef.current.contains(event.target as Node) &&
-        dialogPosition // Only act if the dialog is currently open
-      ) {
-        // Also check if the click was on the page canvas which might have triggered the dialog
-        // This check helps prevent the initial click from closing the dialog immediately
-        // It assumes the file input opening doesn't bubble up a click event itself.
-        const isClickOnPage = pageRef.current?.contains(event.target as Node);
-        if (!isClickOnPage || (isClickOnPage && event.target !== fileInputRef.current)) {
-          setDialogPosition(null);
-          setImagePlacementPos(null);
-          dispatch({ type: 'setDrawingMode', payload: 'none' }); // Reset mode
-        }
-      }
-    };
-    const handleEscapeKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && dialogPosition) {
+      if (dialogRef.current && !dialogRef.current.contains(event.target as Node) && dialogPosition) {
         setDialogPosition(null);
-        setImagePlacementPos(null);
-        dispatch({ type: 'setDrawingMode', payload: 'none' }); // Reset mode
+        resetDrawing();
+        dispatch({ type: 'setDrawingMode', payload: 'none' });
       }
     };
 
-    // Add listeners only when dialog might be visible
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && dialogPosition) {
+        setDialogPosition(null);
+        resetDrawing();
+        dispatch({ type: 'setDrawingMode', payload: 'none' });
+      }
+    };
+
     if (dialogPosition) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleEscapeKey);
@@ -166,65 +238,94 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, onDrawingCre
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscapeKey);
     };
-  }, [dialogPosition, dispatch, pageRef]); // Add pageRef dependency
+  }, [dialogPosition, dispatch]);
 
   // Process image and create annotation
-  const processAndCreateImageAnnotation = async (file: File | null, position: { x: number; y: number } | null) => {
-    console.log('processAndCreateImageAnnotation', file, position);
-    if (!file || !position) {
-      console.log('No file or position for image annotation.');
-      dispatch({ type: 'setDrawingMode', payload: 'none' }); // Keep this reset here for failure case
+  const processAndCreateImageAnnotation = async (file: File | null) => {
+    if (!file || !startPoint || !endPoint || !pdfCanvasRef.current) {
+      console.log('Missing required data for image annotation.');
+      resetDrawing();
+      setDialogPosition(null);
+      dispatch({ type: 'setDrawingMode', payload: 'none' });
       return;
     }
 
     try {
-      const {
-        dataUrl,
-        width: resizedPixelWidth,
-        height: resizedPixelHeight,
-      } = await resizeImageBeforeBase64(file, IMAGE_MAX_LENGTH, IMAGE_MAX_LENGTH);
-      const normalizedWidth = resizedPixelWidth / scale;
-      const normalizedHeight = resizedPixelHeight / scale;
+      // Get actual pixel dimensions of the selection
+      const selectionWidth = Math.abs(endPoint.x - startPoint.x);
+      const selectionHeight = Math.abs(endPoint.y - startPoint.y);
+
+      // Normalize coordinates for scale and rotation
+      const normalizedStartPoint = normalizeCoordinatesToZeroRotation(
+        {
+          x: Math.min(startPoint.x, endPoint.x),
+          y: Math.min(startPoint.y, endPoint.y),
+        },
+        pdfCanvasRef.current.width,
+        pdfCanvasRef.current.height,
+        scale,
+        rotation,
+      );
+
+      const normalizedEndPoint = normalizeCoordinatesToZeroRotation(
+        {
+          x: Math.max(startPoint.x, endPoint.x),
+          y: Math.max(startPoint.y, endPoint.y),
+        },
+        pdfCanvasRef.current.width,
+        pdfCanvasRef.current.height,
+        scale,
+        rotation,
+      );
+
+      // Resize image to fit the selected area
+      const dataUrl = await resizeImageToFit(file, selectionWidth, selectionHeight);
+
+      // Create the annotation
       const newAnnotation: Omit<ImageAnnotation, 'id'> = {
         type: 'image',
-        pageNumber: pageNumber,
-        position: position,
-        width: normalizedWidth,
-        height: normalizedHeight,
+        pageNumber,
+        startPoint: normalizedStartPoint,
+        endPoint: normalizedEndPoint,
         image: dataUrl,
         style: { rotation: 0, opacity: 1 },
         boundingBox: {
-          left: position.x,
-          top: position.y,
-          right: position.x + normalizedWidth,
-          bottom: position.y + normalizedHeight,
+          left: normalizedStartPoint.x,
+          top: normalizedStartPoint.y,
+          right: normalizedEndPoint.x,
+          bottom: normalizedEndPoint.y,
         },
       };
-      console.log('newAnnotation', newAnnotation);
+
       onDrawingCreated(newAnnotation);
     } catch (error) {
       console.error('Error processing image for annotation:', error);
     } finally {
-      setImagePlacementPos(null); // Reset placement position
-      setDialogPosition(null); // Ensure dialog is closed
+      resetDrawing();
+      setDialogPosition(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      dispatch({ type: 'setDrawingMode', payload: 'none' }); // Keep reset here for success/finally case
+      dispatch({ type: 'setDrawingMode', payload: 'none' });
     }
   };
 
   // Handler for file input change
   const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    processAndCreateImageAnnotation(file || null, imagePlacementPos);
-    // imagePlacementPos should be set if this is triggered
+    processAndCreateImageAnnotation(file || null);
   };
 
-  // Handler for paste events (bound to window)
+  // Handler for paste events
   const handleGlobalPaste = async (event: ClipboardEvent) => {
     const target = event.target as HTMLElement;
-    if (drawingMode !== 'image' || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+    if (
+      !dialogPosition || // Dialog must be open (meaning selection is active)
+      drawingMode !== 'image' ||
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable
+    ) {
       return;
     }
 
@@ -241,12 +342,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, onDrawingCre
 
     if (imageFile) {
       event.preventDefault();
-      // Only process paste if the dialog was just shown (placement pos is set)
-      if (!imagePlacementPos) return;
-
-      await processAndCreateImageAnnotation(imageFile, imagePlacementPos);
-      // Processing function now resets dialog/placement state and file input
-      // Mode is reset by handleOverlayClick
+      await processAndCreateImageAnnotation(imageFile);
     }
   };
 
@@ -256,11 +352,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, onDrawingCre
     return () => {
       window.removeEventListener('paste', handleGlobalPaste);
     };
-  }, [imagePlacementPos, processAndCreateImageAnnotation]); // Depend on placementPos
-
-  // Render only if drawing mode *was* 'image' (dialog might still be open)
-  // Or simply always render the input, but the overlay only if mode is image?
-  // Let's render the overlay only in image mode, but keep input and dialog logic
+  }, [dialogPosition, startPoint, endPoint]);
 
   return (
     <>
@@ -268,27 +360,27 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, onDrawingCre
         <canvas
           ref={overlayCanvasRef}
           className={classes.imageLayerCanvas}
-          onClick={handleOverlayClick}
+          onMouseDown={startDrawing}
+          onMouseMove={drawSelectionRectangle}
+          onMouseUp={endDrawing}
+          onMouseLeave={endDrawing}
           data-testid={`image-layer-canvas-${pageNumber}`}
+          style={{ opacity: isDrawing ? 1 : 0 }}
         />
       )}
 
-      {/* Conditionally render the dialog */}
       {dialogPosition && (
         <div
           className={classes.imageDialog}
           style={{
             left: `${dialogPosition.left}px`,
             top: `${dialogPosition.top}px`,
-            position: 'fixed', // Use fixed position for simplicity
-            transform: 'translate(-50%, 10px)', // Position slightly below and centered horizontally relative to the cursor
+            position: 'fixed',
+            transform: 'translate(-50%, -50%)',
           }}
-          // Add ref and stop propagation if needed for handleClickOutside
-          ref={dialogRef} // Add ref here
-          onClick={(e) => e.stopPropagation()} // Prevent click inside closing dialog
-          // Add mouse down propagation stop as well
-          onMouseDown={(e) => e.stopPropagation()}
-        >
+          ref={dialogRef}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}>
           <div className={classes.dialogContent}>
             <span className={classes.dialogText}>Paste image or</span>
             <button onClick={handleSelectFileClick} className={classes.dialogButton}>
