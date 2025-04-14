@@ -42,6 +42,7 @@ export const Page = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
+  const [isCentered, setIsCentered] = useState(false);
   const [hasRendered, setHasRendered] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
@@ -142,6 +143,23 @@ export const Page = ({
     }
   };
 
+  // Helper function to check if this page contains the center of the viewport
+  const checkIfPageContainsViewportCenter = () => {
+    if (!containerRef.current) return false;
+
+    // Get viewport dimensions and calculate midpoint
+    const viewportHeight = window.innerHeight;
+    const viewportCenter = window.scrollY + viewportHeight / 2;
+
+    // Get page position
+    const rect = containerRef.current.getBoundingClientRect();
+    const pageTop = window.scrollY + rect.top;
+    const pageBottom = pageTop + rect.height;
+
+    // Check if viewport center is within this page
+    return viewportCenter >= pageTop && viewportCenter <= pageBottom;
+  };
+
   // Use Intersection Observer to detect when the page is visible
   useEffect(() => {
     if (!containerRef.current) return;
@@ -149,17 +167,25 @@ export const Page = ({
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
-        // Check if intersecting and if the intersection ratio meets the threshold
+        // Check if page is intersecting with the viewport
         const isNowVisible = entry.isIntersecting && entry.intersectionRatio >= 0.1;
 
         // Only update state if visibility actually changed to prevent unnecessary re-renders
         if (isNowVisible !== inView) {
           setInView(isNowVisible);
         }
+
+        // Check if this page contains the center point of the viewport
+        if (isNowVisible) {
+          const nowCentered = checkIfPageContainsViewportCenter();
+          setIsCentered(nowCentered);
+        } else {
+          setIsCentered(false);
+        }
       },
       {
         rootMargin: '200px 0px', // Keep pre-rendering margin
-        threshold: 0.1, // Trigger when 10% of the target is visible
+        threshold: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0], // Multiple thresholds for better detection
       },
     );
 
@@ -168,22 +194,31 @@ export const Page = ({
       observer.observe(currentContainer);
     }
 
+    // Also set up scroll handler to check centering continuously
+    const handleScroll = () => {
+      if (inView) {
+        const nowCentered = checkIfPageContainsViewportCenter();
+        setIsCentered(nowCentered);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
     return () => {
       if (currentContainer) {
         observer.unobserve(currentContainer);
       }
+      window.removeEventListener('scroll', handleScroll);
     };
-    // Depend on inView to re-evaluate if needed (though the observer itself handles changes)
   }, [inView]);
 
-  // Effect to notify parent when visibility changes
+  // Effect to notify parent when page becomes centered
   useEffect(() => {
-    // Only notify if in view (based on the 10% threshold) AND has rendered its content
-    if (inView && hasRendered && onBecameVisible) {
+    // Only notify if page is centered AND has rendered its content
+    if (isCentered && hasRendered && onBecameVisible) {
       onBecameVisible(pageNumber);
     }
-    // Depend on the refined inView state, hasRendered, and the callback itself
-  }, [inView, hasRendered, pageNumber, onBecameVisible]);
+  }, [isCentered, hasRendered, pageNumber, onBecameVisible]);
 
   // Only render when page is visible (or when explicitly set to visible)
   const shouldRender = inView || hasRendered;
