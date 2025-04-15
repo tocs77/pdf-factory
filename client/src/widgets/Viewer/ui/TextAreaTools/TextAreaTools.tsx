@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { isLightColor } from '../../utils/textToolUtils';
 import styles from './TextAreaTools.module.scss';
@@ -10,7 +10,8 @@ interface TextAreaToolsProps {
   textLayerElement?: HTMLElement | null;
 }
 
-export const TextAreaTools: React.FC<TextAreaToolsProps> = ({ onFinishClick, onHideTools, pageNumber }) => {
+export const TextAreaTools = (props: TextAreaToolsProps) => {
+  const { onFinishClick, onHideTools, pageNumber } = props;
   const { state } = useContext(ViewerContext);
   const { drawingColor } = state;
   const [toolsVisible, setToolsVisible] = useState(true);

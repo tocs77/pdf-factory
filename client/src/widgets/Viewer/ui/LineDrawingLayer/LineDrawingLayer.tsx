@@ -12,15 +12,8 @@ interface LineDrawingLayerProps {
   draftMode?: boolean;
 }
 
-/**
- * Component for handling straight line drawing
- */
-export const LineDrawingLayer: React.FC<LineDrawingLayerProps> = ({
-  pageNumber,
-  onDrawingCreated,
-  pdfCanvasRef,
-  draftMode = false,
-}) => {
+export const LineDrawingLayer = (props: LineDrawingLayerProps) => {
+  const { pageNumber, onDrawingCreated, pdfCanvasRef, draftMode = false } = props;
   const { state } = useContext(ViewerContext);
   const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations } = state;
 

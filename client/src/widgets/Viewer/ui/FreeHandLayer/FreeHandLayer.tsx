@@ -12,9 +12,6 @@ interface FreeHandLayerProps {
   draftMode?: boolean;
 }
 
-/**
- * Component for handling freehand drawing
- */
 export const FreeHandLayer = (props: FreeHandLayerProps) => {
   const { pageNumber, onDrawingCreated, pdfCanvasRef, draftMode = false } = props;
   const { state } = useContext(ViewerContext);

@@ -1,6 +1,5 @@
 import { useContext, useEffect, useState, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
-import * as pdfjs from 'pdfjs-dist';
-import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
+import { PDFDocumentProxy, PDFPageProxy, getDocument } from 'pdfjs-dist';
 import { classNames } from '@/shared/utils';
 import { isSliderBeingDragged } from '@/shared/utils';
 import { Thumbnail } from '../Thumbnail/Thumbnail';
@@ -194,7 +193,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   // Load PDF document
   const loadPdf = useCallback(async (pdfUrl: string): Promise<PDFDocumentProxy | null> => {
     try {
-      const loadingTask = pdfjs.getDocument(pdfUrl);
+      const loadingTask = getDocument(pdfUrl);
       return await loadingTask.promise;
     } catch (err) {
       console.error('Error loading PDF:', err);
@@ -212,7 +211,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       }
 
       try {
-        const loadingTask = pdfjs.getDocument(comparePdfUrl);
+        const loadingTask = getDocument(comparePdfUrl);
         return await loadingTask.promise;
       } catch (err) {
         console.error('Error loading comparison PDF:', err);

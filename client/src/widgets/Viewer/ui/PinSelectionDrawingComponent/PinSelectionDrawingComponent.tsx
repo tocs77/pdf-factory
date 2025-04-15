@@ -18,11 +18,8 @@ const CAPTURE_AREA_HEIGHT = 100;
 /**
  * Component for handling pin placement by clicking and capturing the surrounding area.
  */
-const PinSelectionDrawingComponent: React.FC<PinSelectionDrawingComponentProps> = ({
-  pageNumber,
-  onDrawingCreated,
-  pdfCanvasRef,
-}) => {
+const PinSelectionDrawingComponent = (props: PinSelectionDrawingComponentProps) => {
+  const { pageNumber, onDrawingCreated, pdfCanvasRef } = props;
   const { state } = useContext(ViewerContext);
   const { scale, drawingMode, pageRotations, drawingColor } = state;
   const rotation = pageRotations[pageNumber] || 0;

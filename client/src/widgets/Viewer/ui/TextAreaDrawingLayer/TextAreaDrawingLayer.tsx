@@ -25,12 +25,8 @@ interface Rectangle {
   height: number;
 }
 
-export const TextAreaDrawingLayer: React.FC<TextAreaDrawingLayerProps> = ({
-  pageNumber,
-  onDrawingCreated,
-  pdfCanvasRef,
-  draftMode = false,
-}) => {
+export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
+  const { pageNumber, onDrawingCreated, pdfCanvasRef, draftMode = false } = props;
   const { state } = useContext(ViewerContext);
   const { drawingColor, drawingLineWidth, scale } = state;
   const rotation = state.pageRotations[pageNumber] || 0;

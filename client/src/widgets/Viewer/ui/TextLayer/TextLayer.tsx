@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useContext } from 'react';
-import type { PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
+import type { PDFPageProxy } from 'pdfjs-dist';
 import classes from './TextLayer.module.scss';
 import TextAreaTools from '../TextAreaTools/TextAreaTools';
 import { Drawing, TextHighlight, TextUnderline, TextCrossedOut } from '../../model/types/viewerSchema';
@@ -18,16 +18,8 @@ interface TextLayerProps {
   pdfCanvasRef?: React.RefObject<HTMLCanvasElement>;
 }
 
-export const TextLayer = ({
-  page,
-  viewport,
-  scale,
-  rotation,
-  renderTask,
-  pageNumber,
-  onDrawingCreated,
-  pdfCanvasRef,
-}: TextLayerProps) => {
+export const TextLayer = (props: TextLayerProps) => {
+  const { page, viewport, scale, rotation, renderTask, pageNumber, onDrawingCreated, pdfCanvasRef } = props;
   const textLayerRef = useRef<HTMLDivElement>(null);
   const [hasSelection, setHasSelection] = useState(false);
 

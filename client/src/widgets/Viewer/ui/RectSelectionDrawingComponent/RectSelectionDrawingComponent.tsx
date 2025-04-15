@@ -13,14 +13,8 @@ interface RectSelectionDrawingComponentProps {
 
 const CAPTURE_PADDING = 10; // Padding around the selection for image capture
 
-/**
- * Component for handling rectangular selection drawing and capturing the underlying area.
- */
-const RectSelectionDrawingComponent: React.FC<RectSelectionDrawingComponentProps> = ({
-  pageNumber,
-  onDrawingCreated,
-  pdfCanvasRef,
-}) => {
+const RectSelectionDrawingComponent = (props: RectSelectionDrawingComponentProps) => {
+  const { pageNumber, onDrawingCreated, pdfCanvasRef } = props;
   const { state } = useContext(ViewerContext);
   const { scale, drawingMode, pageRotations } = state;
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useContext, useState } from 'react';
+
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
@@ -13,15 +14,8 @@ interface ExtensionLineDrawingComponentProps {
   draftMode?: boolean;
 }
 
-/**
- * Component for handling pin drawing with arrow and bend point
- */
-export const ExtensionLineDrawingComponent: React.FC<ExtensionLineDrawingComponentProps> = ({
-  pageNumber,
-  onDrawingCreated,
-  pdfCanvasRef,
-  draftMode = false,
-}) => {
+export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingComponentProps) => {
+  const { pageNumber, onDrawingCreated, pdfCanvasRef, draftMode = false } = props;
   const { state } = useContext(ViewerContext);
   const { scale, drawingColor, pageRotations, drawingMode } = state;
 
