@@ -50,6 +50,10 @@ export const ViewPage = ({
   const [renderTask, setRenderTask] = useState<ReturnType<typeof page.render> | null>(null);
   const [viewport, setViewport] = useState<any>(null);
 
+  // Refs to track previous scale and rotation to avoid unnecessary re-renders
+  const prevScaleRef = useRef<number>(scale);
+  const prevRotationRef = useRef<number>(pageRotations[pageNumber] || 0);
+
   // Track drag state to prevent drawing clicks after drag
   const isDraggingRef = useRef(false);
   const mouseDownPosRef = useRef({ x: 0, y: 0 });
@@ -185,8 +189,8 @@ export const ViewPage = ({
         }
       },
       {
-        rootMargin: '200px 0px', // Keep pre-rendering margin
-        threshold: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0], // Multiple thresholds for better detection
+        rootMargin: '300px 0px', // Increase pre-rendering margin for high scales
+        threshold: [0.01, 0.1, 0.2, 0.3, 0.4, 0.5], // Add lower threshold for better detection
       },
     );
 
@@ -211,7 +215,7 @@ export const ViewPage = ({
       }
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [inView]);
+  }, [inView, pageNumber, scale]);
 
   // Effect to notify parent when page becomes centered
   useEffect(() => {
@@ -222,7 +226,7 @@ export const ViewPage = ({
   }, [isCentered, hasRendered, pageNumber, onBecameVisible]);
 
   // Only render when page is visible (or when explicitly set to visible)
-  const shouldRender = inView || hasRendered;
+  const shouldRender = inView || hasRendered || scale > 4.0;
 
   // Set up drawing canvas
   useEffect(() => {
@@ -231,10 +235,14 @@ export const ViewPage = ({
 
     const renderPage = async () => {
       // Skip rendering if the page isn't visible
-      if (!canvasRef.current || !shouldRender) return;
+      if (!canvasRef.current || !shouldRender) {
+        return;
+      }
 
       // If already rendered once, don't re-render
-      if (hasRendered) return;
+      if (hasRendered) {
+        return;
+      }
 
       // Create viewport with rotation
       // For 90/270 degree rotations, we need to ensure the viewport maintains the correct aspect ratio
@@ -326,19 +334,28 @@ export const ViewPage = ({
         currentRenderTask.cancel();
       }
     };
-  }, [page, scale, shouldRender, hasRendered, rotation]);
+  }, [page, scale, shouldRender, hasRendered, rotation, pageNumber, inView]);
 
-  // Re-render when rotation changes
+  // Re-render when rotation changes - use ref to compare with previous value
   useEffect(() => {
-    // Reset hasRendered to force re-rendering when rotation changes
-    setHasRendered(false);
-  }, [rotation]);
+    const rotation = pageRotations[pageNumber] || 0;
+    const prevRotation = prevRotationRef.current;
 
-  // Re-render when scale changes
+    if (rotation !== prevRotation) {
+      setHasRendered(false);
+      prevRotationRef.current = rotation;
+    }
+  }, [pageNumber, pageRotations]);
+
+  // Re-render when scale changes - use ref to compare with previous value
   useEffect(() => {
-    // Reset hasRendered to force re-rendering when scale changes
-    setHasRendered(false);
-  }, [scale]);
+    const prevScale = prevScaleRef.current;
+
+    if (scale !== prevScale) {
+      setHasRendered(false);
+      prevScaleRef.current = scale;
+    }
+  }, [scale, pageNumber]);
 
   const handleDrawingCreated = (drawing: Omit<Drawing, 'id'>) => {
     // Call the parent's onDrawingCreated with the enhanced drawing
@@ -430,7 +447,6 @@ export const ViewPage = ({
             </>
           )}
 
-          {/* Always render completed drawings */}
           {inView && <CompleteDrawings pageNumber={pageNumber} drawings={drawings} />}
         </div>
       </div>

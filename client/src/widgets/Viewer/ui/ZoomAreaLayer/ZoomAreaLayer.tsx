@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useContext } from 'react';
+import { useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation, transformCoordinates } from '../../utils/rotationUtils';
 import styles from './ZoomAreaLayer.module.scss';
@@ -10,7 +10,8 @@ interface ZoomAreaLayerProps {
 /**
  * Component for handling zoom area selection
  */
-export const ZoomAreaLayer: React.FC<ZoomAreaLayerProps> = ({ pageNumber }) => {
+export const ZoomAreaLayer = (props: ZoomAreaLayerProps) => {
+  const { pageNumber } = props;
   const { state, dispatch } = useContext(ViewerContext);
   const { drawingMode, scale, pageRotations } = state;
 
@@ -238,29 +239,14 @@ export const ZoomAreaLayer: React.FC<ZoomAreaLayerProps> = ({ pageNumber }) => {
         const containerRect = scrollContainer?.getBoundingClientRect();
         if (!containerRect || !scrollContainer) return;
 
-        // Calculate the scroll positions to center the drawing in the viewport
-        // First get the current scroll position
-        const currentScrollLeft = scrollContainer.scrollLeft;
-        const currentScrollTop = scrollContainer.scrollTop;
-
-        // Calculate the target scroll position to center the selection
-        const targetScrollLeft = currentScrollLeft + (drawingCenterX - containerRect.left) - containerRect.width / 2;
-        const targetScrollTop = currentScrollTop + (drawingCenterY - containerRect.top) - containerRect.height / 2;
-
-        // Ensure the selection is fully visible by adjusting the scroll position
-        const minScrollLeft = currentScrollLeft + (transformedStartPoint.x - containerRect.left);
-        const maxScrollLeft = currentScrollLeft + (transformedEndPoint.x - containerRect.left) - containerRect.width;
-        const minScrollTop = currentScrollTop + (transformedStartPoint.y - containerRect.top);
-        const maxScrollTop = currentScrollTop + (transformedEndPoint.y - containerRect.top) - containerRect.height;
-
-        // Use the target scroll position, but ensure the selection is fully visible
-        const finalScrollLeft = Math.min(Math.max(targetScrollLeft, minScrollLeft), maxScrollLeft);
-        const finalScrollTop = Math.min(Math.max(targetScrollTop, minScrollTop), maxScrollTop);
+        // Calculate the scroll positions to center the selected area in the viewport
+        const scrollLeft = scrollContainer.scrollLeft + (drawingCenterX - containerRect.left) - containerRect.width / 2;
+        const scrollTop = scrollContainer.scrollTop + (drawingCenterY - containerRect.top) - containerRect.height / 2;
 
         // Smooth scroll to center the drawing in both directions
         scrollContainer.scrollTo({
-          left: finalScrollLeft,
-          top: finalScrollTop,
+          left: scrollLeft,
+          top: scrollTop,
           behavior: 'smooth',
         });
       }, 100);
