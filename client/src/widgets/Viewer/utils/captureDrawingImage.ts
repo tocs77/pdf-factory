@@ -39,22 +39,9 @@ export const captureDrawingImage = (
   const dpr = window.devicePixelRatio;
 
   // Draw PDF portion first
-  newCanvasContext.drawImage(
-    pdfCanvas, 
-    left * dpr, 
-    top * dpr, 
-    width * dpr, 
-    height * dpr, 
-    0, 
-    0, 
-    width, 
-    height
-  );
-
-  // Draw drawing on top only if captureDrawingLayer is true
-  if (captureDrawingLayer && drawingCanvas) {
+  try {
     newCanvasContext.drawImage(
-      drawingCanvas, 
+      pdfCanvas, 
       left * dpr, 
       top * dpr, 
       width * dpr, 
@@ -64,6 +51,31 @@ export const captureDrawingImage = (
       width, 
       height
     );
+  } catch (error) {
+    // Silent fail
+  }
+
+  // Draw drawing on top only if captureDrawingLayer is true
+  if (captureDrawingLayer && drawingCanvas) {
+    // Calculate drawing canvas scale factor relative to PDF canvas
+    const scaleFactorX = drawingCanvas.width / pdfCanvas.width;
+    const scaleFactorY = drawingCanvas.height / pdfCanvas.height;
+    
+    try {
+      newCanvasContext.drawImage(
+        drawingCanvas, 
+        left * dpr * scaleFactorX, 
+        top * dpr * scaleFactorY, 
+        width * dpr * scaleFactorX, 
+        height * dpr * scaleFactorY, 
+        0, 
+        0, 
+        width, 
+        height
+      );
+    } catch (error) {
+      // Silent fail
+    }
   }
 
   // Convert to base64 image
