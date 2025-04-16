@@ -1,6 +1,5 @@
 import React, { ErrorInfo, Suspense } from 'react';
 
-
 interface ErrorBoundaryProps {
   children: React.ReactNode;
 }

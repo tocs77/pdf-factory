@@ -1,1 +1,1 @@
-export { TextLayer } from './TextLayer'; 
+export { TextLayer } from './TextLayer';

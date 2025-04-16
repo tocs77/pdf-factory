@@ -29,12 +29,12 @@ export const rotatePoint = (x0: number, y0: number, xc: number, yc: number, thet
  * @returns Transformed coordinates
  */
 export const transformCoordinates = (
-  x: number, 
-  y: number, 
-  canvasWidth: number, 
+  x: number,
+  y: number,
+  canvasWidth: number,
   canvasHeight: number,
   scale: number,
-  rotation: number
+  rotation: number,
 ): { x: number; y: number } => {
   // First scale the coordinates
   const scaledX = x * scale;
@@ -81,7 +81,7 @@ export const normalizeCoordinatesToZeroRotation = (
   canvasWidth: number,
   canvasHeight: number,
   scale: number,
-  rotation: number
+  rotation: number,
 ): { x: number; y: number } => {
   let xPrime: number;
   let yPrime: number;

@@ -7,11 +7,7 @@ interface ViewerProviderProps {
   initialDrawingLineWidth?: number;
 }
 
-export const ViewerProvider: React.FC<ViewerProviderProps> = ({ 
-  children, 
-  initialDrawingColor, 
-  initialDrawingLineWidth 
-}) => {
+export const ViewerProvider: React.FC<ViewerProviderProps> = ({ children, initialDrawingColor, initialDrawingLineWidth }) => {
   // Create an initial state that overrides defaults with provided props
   const customInitialState = {
     ...initialViewerState,
@@ -21,9 +17,5 @@ export const ViewerProvider: React.FC<ViewerProviderProps> = ({
 
   const [state, dispatch] = useReducer(viewerReducer, customInitialState);
 
-  return (
-    <ViewerContext.Provider value={{ state, dispatch }}>
-      {children}
-    </ViewerContext.Provider>
-  );
+  return <ViewerContext.Provider value={{ state, dispatch }}>{children}</ViewerContext.Provider>;
 };
