@@ -1,4 +1,29 @@
 import { useContext, useState, KeyboardEvent, useEffect, useRef } from 'react';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CompareDiffIcon,
+  CompareSideBySideIcon,
+  DrawAreaIcon,
+  ExtensionLineIcon,
+  ImageIcon,
+  LineIcon,
+  PencilIcon,
+  PinSelectionIcon,
+  RectangleIcon,
+  RectSelectionIcon,
+  RotateCcwIcon,
+  RotateCwIcon,
+  RulerIcon,
+  TextAreaIcon,
+  TextHighlightIcon,
+  TextStrikethroughIcon,
+  TextUnderlineIcon,
+  ThumbnailToggleIcon,
+  ZoomAreaIcon,
+  ZoomInIcon,
+  ZoomOutIcon,
+} from '@/shared/ui/Icons';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { DrawingMode } from '../../model/types/viewerSchema';
 import { classNames } from '@/shared/utils';
@@ -171,18 +196,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
     <div className={classes.zoomControls}>
       <div className={classes.pageControls}>
         <button className={classes.pageButton} onClick={goToPreviousPage} disabled={currentPage <= 1} title='Previous page'>
-          <svg
-            xmlns='http://www.w3.org/2000/svg'
-            width='16'
-            height='16'
-            viewBox='0 0 24 24'
-            fill='none'
-            stroke='currentColor'
-            strokeWidth='2'
-            strokeLinecap='round'
-            strokeLinejoin='round'>
-            <polyline points='15 18 9 12 15 6'></polyline>
-          </svg>
+          <ChevronLeftIcon />
         </button>
         <div className={classes.pageInputContainer}>
           <div className={classes.pageCounter}>
@@ -226,18 +240,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
           )}
         </div>
         <button className={classes.pageButton} onClick={goToNextPage} disabled={currentPage >= totalPages} title='Next page'>
-          <svg
-            xmlns='http://www.w3.org/2000/svg'
-            width='16'
-            height='16'
-            viewBox='0 0 24 24'
-            fill='none'
-            stroke='currentColor'
-            strokeWidth='2'
-            strokeLinecap='round'
-            strokeLinejoin='round'>
-            <polyline points='9 18 15 12 9 6'></polyline>
-          </svg>
+          <ChevronRightIcon />
         </button>
       </div>
 
@@ -245,62 +248,25 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
         className={classNames(classes.thumbnailToggle, { [classes.active]: showThumbnails }, [])}
         onClick={() => dispatch({ type: 'toggleThumbnails' })}
         title={showThumbnails ? 'Hide thumbnails' : 'Show thumbnails'}>
-        <svg
-          xmlns='http://www.w3.org/2000/svg'
-          width='16'
-          height='16'
-          viewBox='0 0 24 24'
-          fill='none'
-          stroke='currentColor'
-          strokeWidth='2'
-          strokeLinecap='round'
-          strokeLinejoin='round'>
-          <rect x='3' y='3' width='18' height='18' rx='2' ry='2'></rect>
-          <rect x='7' y='7' width='3' height='9'></rect>
-          <rect x='14' y='7' width='3' height='5'></rect>
-        </svg>
+        <ThumbnailToggleIcon />
       </button>
 
       <div className={classes.rotationControls}>
         <button onClick={rotatePageCounterClockwise} className={classes.rotationButton} title='Rotate counter-clockwise'>
-          <svg
-            xmlns='http://www.w3.org/2000/svg'
-            width='16'
-            height='16'
-            viewBox='0 0 24 24'
-            fill='none'
-            stroke='currentColor'
-            strokeWidth='2'
-            strokeLinecap='round'
-            strokeLinejoin='round'>
-            <path d='M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8'></path>
-            <path d='M3 3v5h5'></path>
-          </svg>
+          <RotateCcwIcon />
         </button>
         <span className={classes.rotationInfo}>{currentRotation}°</span>
         <button onClick={rotatePageClockwise} className={classes.rotationButton} title='Rotate clockwise'>
-          <svg
-            xmlns='http://www.w3.org/2000/svg'
-            width='16'
-            height='16'
-            viewBox='0 0 24 24'
-            fill='none'
-            stroke='currentColor'
-            strokeWidth='2'
-            strokeLinecap='round'
-            strokeLinejoin='round'>
-            <path d='M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8'></path>
-            <path d='M21 3v5h-5'></path>
-          </svg>
+          <RotateCwIcon />
         </button>
       </div>
 
       <button onClick={zoomOut} className={classes.zoomButton} title='Zoom out'>
-        -
+        <ZoomOutIcon />
       </button>
       <span className={classes.zoomPercentage}>{Math.round(scale * 100)}%</span>
       <button onClick={zoomIn} className={classes.zoomButton} title='Zoom in'>
-        +
+        <ZoomInIcon />
       </button>
 
       <button
@@ -308,21 +274,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
         className={`${classes.zoomButton} ${drawingMode === 'zoomArea' ? classes.active : ''}`}
         style={{ padding: '4px' }}
         title='Zoom to selected area'>
-        <svg
-          xmlns='http://www.w3.org/2000/svg'
-          width='14'
-          height='14'
-          viewBox='0 0 24 24'
-          fill='none'
-          stroke='currentColor'
-          strokeWidth='2'
-          strokeLinecap='round'
-          strokeLinejoin='round'>
-          <circle cx='11' cy='11' r='8'></circle>
-          <line x1='21' y1='21' x2='16.65' y2='16.65'></line>
-          <line x1='11' y1='8' x2='11' y2='14'></line>
-          <line x1='8' y1='11' x2='14' y2='11'></line>
-        </svg>
+        <ZoomAreaIcon />
       </button>
 
       <button
@@ -330,23 +282,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
         className={`${classes.zoomButton} ${rulerEnabled ? classes.active : ''}`}
         style={{ padding: '4px' }}
         title='Ruler tool'>
-        <svg
-          xmlns='http://www.w3.org/2000/svg'
-          width='16'
-          height='16'
-          viewBox='0 0 24 24'
-          fill='none'
-          stroke='currentColor'
-          strokeWidth='1.75'
-          strokeLinecap='round'
-          strokeLinejoin='round'>
-          <path d='M2 8h20v8H2z' fill='rgba(255,255,255,0.15)'></path>
-          <rect x='2' y='8' width='20' height='8'></rect>
-          <line x1='6' y1='8' x2='6' y2='12'></line>
-          <line x1='10' y1='8' x2='10' y2='16'></line>
-          <line x1='14' y1='8' x2='14' y2='12'></line>
-          <line x1='18' y1='8' x2='18' y2='16'></line>
-        </svg>
+        <RulerIcon />
       </button>
 
       <button onClick={resetZoom} className={classes.zoomButton} title='Reset zoom'>
@@ -365,25 +301,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
             }
             className={`${classes.zoomButton} ${compareMode === 'diff' ? classes.active : ''}`}
             title={compareMode === 'diff' ? 'Disable Diff Compare' : 'Enable Diff Compare'}>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              width='16'
-              height='16'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='2'
-              strokeLinecap='round'
-              strokeLinejoin='round'>
-              {/* First document slightly offset */}
-              <rect x='5' y='3' width='12' height='16' rx='1' />
-              {/* Second document overlapping */}
-              <rect x='9' y='5' width='12' height='16' rx='1' />
-              {/* Diff indicator lines */}
-              <line x1='12' y1='9' x2='16' y2='9' />
-              <line x1='12' y1='13' x2='18' y2='13' />
-              <line x1='12' y1='17' x2='14' y2='17' />
-            </svg>
+            <CompareDiffIcon />
           </button>
           {/* Side-by-Side Compare Button */}
           <button
@@ -395,20 +313,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
             }
             className={`${classes.zoomButton} ${compareMode === 'sideBySide' ? classes.active : ''}`}
             title={compareMode === 'sideBySide' ? 'Disable Side-by-Side Compare' : 'Enable Side-by-Side Compare'}>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              width='16'
-              height='16'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='2'
-              strokeLinecap='round'
-              strokeLinejoin='round'>
-              <rect x='3' y='3' width='7' height='18' rx='1'></rect>
-              <rect x='14' y='3' width='7' height='18' rx='1'></rect>
-              <line x1='10' y1='12' x2='14' y2='12'></line>
-            </svg>
+            <CompareSideBySideIcon />
           </button>
         </>
       )}
@@ -504,55 +409,19 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
               className={`${classes.toolButton} ${drawingMode === 'textHighlight' ? classes.active : ''}`}
               onClick={toggleTextHighlight}
               title={drawingMode === 'textHighlight' ? 'Disable text highlight' : 'Enable text highlight'}>
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='16'
-                height='16'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'>
-                <path d='M12 20l9-9-4-4-9 9v4h4zm-6.2-2.8L12 10.6l4-4' />
-                <path d='M3 21h18' />
-              </svg>
+              <TextHighlightIcon />
             </button>
             <button
               className={`${classes.toolButton} ${drawingMode === 'textUnderline' ? classes.active : ''}`}
               onClick={toggleTextUnderline}
               title={drawingMode === 'textUnderline' ? 'Disable text underline' : 'Enable text underline'}>
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='16'
-                height='16'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'>
-                <path d='M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3' />
-                <line x1='4' y1='21' x2='20' y2='21' />
-              </svg>
+              <TextUnderlineIcon />
             </button>
             <button
               className={`${classes.toolButton} ${drawingMode === 'textCrossedOut' ? classes.active : ''}`}
               onClick={toggleTextCrossedOut}
               title={drawingMode === 'textCrossedOut' ? 'Disable text crossed out' : 'Enable text crossed out'}>
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='16'
-                height='16'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'>
-                <line x1='4' y1='12' x2='20' y2='12' />
-                <path d='M6 20v-8a6 6 0 0 1 12 0v8' />
-              </svg>
+              <TextStrikethroughIcon />
             </button>
           </div>
 
@@ -563,114 +432,42 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
               className={`${classes.toolButton} ${drawingMode === 'freehand' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('freehand')}
               title={drawingMode === 'freehand' ? 'Disable freehand drawing' : 'Enable freehand drawing'}>
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='16'
-                height='16'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'>
-                <path d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z'></path>
-              </svg>
+              <PencilIcon />
             </button>
 
             <button
               className={`${classes.toolButton} ${drawingMode === 'rectangle' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('rectangle')}
               title={drawingMode === 'rectangle' ? 'Disable rectangle tool' : 'Enable rectangle tool'}>
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='16'
-                height='16'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'>
-                <rect x='3' y='3' width='18' height='18' rx='2' ry='2'></rect>
-              </svg>
+              <RectangleIcon />
             </button>
 
             <button
               className={`${classes.toolButton} ${drawingMode === 'extensionLine' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('extensionLine')}
               title={drawingMode === 'extensionLine' ? 'Disable extension line tool' : 'Enable extension line tool'}>
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='16'
-                height='16'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'>
-                <polyline points='5,19 17,17 19,5' />
-                <polyline points='16 3 19 5 16 7' />
-              </svg>
+              <ExtensionLineIcon />
             </button>
 
             <button
               className={`${classes.toolButton} ${drawingMode === 'line' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('line')}
               title={drawingMode === 'line' ? 'Disable line tool' : 'Enable line tool'}>
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='16'
-                height='16'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'>
-                <line x1='5' y1='19' x2='19' y2='5'></line>
-              </svg>
+              <LineIcon />
             </button>
 
             <button
               className={`${classes.toolButton} ${drawingMode === 'textArea' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('textArea')}
               title={drawingMode === 'textArea' ? 'Disable text area tool' : 'Enable text area tool'}>
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='16'
-                height='16'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'>
-                <rect x='3' y='3' width='18' height='18' rx='2' ry='2'></rect>
-                <line x1='8' y1='8' x2='16' y2='8'></line>
-                <line x1='8' y1='12' x2='16' y2='12'></line>
-                <line x1='8' y1='16' x2='12' y2='16'></line>
-              </svg>
+              <TextAreaIcon />
             </button>
 
             <button
               className={`${classes.toolButton} ${drawingMode === 'image' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('image')}
               title={drawingMode === 'image' ? 'Cancel adding image' : 'Add image'}>
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='16'
-                height='16'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'>
-                <rect x='3' y='3' width='18' height='18' rx='2' ry='2'></rect>
-                <circle cx='8.5' cy='8.5' r='1.5'></circle>
-                <polyline points='21 15 16 10 5 21'></polyline>
-              </svg>
+              <ImageIcon />
             </button>
           </div>
 
@@ -681,58 +478,19 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
               className={`${classes.toolButton} ${drawingMode === 'drawArea' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('drawArea')}
               title={drawingMode === 'drawArea' ? 'Disable draw area tool' : 'Enable draw area tool'}>
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='16'
-                height='16'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'>
-                <rect x='3' y='3' width='18' height='18' rx='2' ry='2'></rect>
-                <path d='M9 3v18'></path>
-                <path d='M14 3v18'></path>
-                <path d='M21 9H3'></path>
-                <path d='M21 14H3'></path>
-              </svg>
+              <DrawAreaIcon />
             </button>
             <button
               className={`${classes.toolButton} ${drawingMode === 'RectSelection' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('RectSelection')}
               title={drawingMode === 'RectSelection' ? 'Disable rect selection tool' : 'Enable rect selection tool'}>
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='16'
-                height='16'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                strokeDasharray='4 4'>
-                <rect x='3' y='3' width='18' height='18' rx='2' ry='2'></rect>
-              </svg>
+              <RectSelectionIcon />
             </button>
             <button
               className={`${classes.toolButton} ${drawingMode === 'PinSelection' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('PinSelection')}
               title={drawingMode === 'PinSelection' ? 'Disable pin selection tool' : 'Enable pin selection tool'}>
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='16'
-                height='16'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'>
-                <path d='M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z'></path>
-                <circle cx='12' cy='10' r='3'></circle>
-              </svg>
+              <PinSelectionIcon />
             </button>
           </div>
         </div>
