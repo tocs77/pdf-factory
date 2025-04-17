@@ -1,27 +1,19 @@
 .drawingMenuContainer {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: fixed;
+  top: 100px;
+  /* Position below ViewerMenu's page navigation area */
+  left: 0;
+  width: 100%;
+  height: 48px;
   background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  padding: 12px 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  padding: 0 16px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  z-index: 1000;
-  width: auto;
-  min-width: 300px;
-}
-
-.toolTitle {
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 4px;
-  text-align: center;
+  z-index: 90;
+  /* Below ViewerMenu z-index */
+  border-bottom: 1px solid #eee;
+  box-sizing: border-box;
 }
 
 .drawingOptions {
@@ -29,13 +21,15 @@
   align-items: center;
   gap: 16px;
   width: 100%;
-  justify-content: space-around;
+  justify-content: flex-start;
+  height: 100%;
 }
 
 .colorPicker {
   display: flex;
   align-items: center;
   gap: 8px;
+  height: 100%;
 
   span {
     font-size: 14px;
@@ -47,6 +41,7 @@
 .colorOptions {
   display: flex;
   gap: 6px;
+  align-items: center;
 }
 
 .colorOption {
@@ -71,6 +66,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  height: 100%;
 
   span {
     font-size: 14px;
@@ -82,6 +78,7 @@
 .lineWidthOptions {
   display: flex;
   gap: 6px;
+  align-items: center;
 }
 
 .lineWidthOption {
@@ -109,13 +106,16 @@
 .actionButtons {
   display: flex;
   gap: 8px;
+  align-items: center;
+  height: 100%;
+  margin-right: 16px;
 }
 
 .actionButton {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 16px;
+  padding: 6px 12px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -123,6 +123,7 @@
   font-size: 14px;
   transition: all 0.2s ease;
   gap: 6px;
+  height: 32px;
 
   svg {
     stroke-width: 2px;

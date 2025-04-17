@@ -46,36 +46,40 @@ const DrawingMenu: React.FC<DrawingMenuProps> = () => {
   // Line width options
   const lineWidthOptions = [1, 2, 3, 5, 8];
 
-  // Show the appropriate tool title based on drawing mode
-  const getToolTitle = () => {
-    switch (drawingMode) {
-      case 'freehand':
-        return 'Freehand Drawing';
-      case 'rectangle':
-        return 'Rectangle Drawing';
-      case 'extensionLine':
-        return 'Extension Line';
-      case 'line':
-        return 'Line Drawing';
-      case 'textArea':
-        return 'Text Area';
-      case 'textHighlight':
-        return 'Text Highlight';
-      case 'textUnderline':
-        return 'Text Underline';
-      case 'textCrossedOut':
-        return 'Text Strikethrough';
-      case 'image':
-        return 'Image Placement';
-      default:
-        return 'Drawing Tools';
-    }
-  };
-
   return (
     <div className={styles.drawingMenuContainer}>
-      <div className={styles.toolTitle}>{getToolTitle()}</div>
       <div className={styles.drawingOptions}>
+        <div className={styles.actionButtons}>
+          <button
+            className={styles.actionButton}
+            onClick={handleFinishClick}
+            title='Finish Drawing'
+            style={{
+              backgroundColor: drawingColor,
+              color: isLightColor(drawingColor) ? '#333' : 'white',
+            }}>
+            <svg
+              xmlns='http://www.w3.org/2000/svg'
+              width='16'
+              height='16'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='currentColor'
+              strokeWidth='3'
+              strokeLinecap='round'
+              strokeLinejoin='round'>
+              <polyline points='20 6 9 17 4 12'></polyline>
+            </svg>
+            <span>Finish</span>
+          </button>
+          <button className={`${styles.actionButton} ${styles.cancelButton}`} onClick={handleCancelClick} title='Cancel Drawing'>
+            <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor'>
+              <line x1='18' y1='6' x2='6' y2='18'></line>
+              <line x1='6' y1='6' x2='18' y2='18'></line>
+            </svg>
+            <span>Cancel</span>
+          </button>
+        </div>
         <div className={styles.colorPicker}>
           <span>Color:</span>
           <div className={styles.colorOptions}>
@@ -106,37 +110,6 @@ const DrawingMenu: React.FC<DrawingMenuProps> = () => {
             ))}
           </div>
         </div>
-      </div>
-      <div className={styles.actionButtons}>
-        <button
-          className={styles.actionButton}
-          onClick={handleFinishClick}
-          title='Finish Drawing'
-          style={{
-            backgroundColor: drawingColor,
-            color: isLightColor(drawingColor) ? '#333' : 'white',
-          }}>
-          <svg
-            xmlns='http://www.w3.org/2000/svg'
-            width='16'
-            height='16'
-            viewBox='0 0 24 24'
-            fill='none'
-            stroke='currentColor'
-            strokeWidth='3'
-            strokeLinecap='round'
-            strokeLinejoin='round'>
-            <polyline points='20 6 9 17 4 12'></polyline>
-          </svg>
-          <span>Finish</span>
-        </button>
-        <button className={`${styles.actionButton} ${styles.cancelButton}`} onClick={handleCancelClick} title='Cancel Drawing'>
-          <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor'>
-            <line x1='18' y1='6' x2='6' y2='18'></line>
-            <line x1='6' y1='6' x2='18' y2='18'></line>
-          </svg>
-          <span>Cancel</span>
-        </button>
       </div>
     </div>
   );
