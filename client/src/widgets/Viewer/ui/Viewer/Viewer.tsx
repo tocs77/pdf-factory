@@ -357,11 +357,6 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
               e.stopPropagation();
             }
           }}>
-          {isDragToScrollEnabled && !isDragging && (
-            <div className={classes.dragIndicator}>
-              <span>Click and drag to scroll</span>
-            </div>
-          )}
           <div className={classes.pdfContentWrapper}>{renderPages()}</div>
 
           {drawingMode !== 'none' && <DrawingMenu />}
