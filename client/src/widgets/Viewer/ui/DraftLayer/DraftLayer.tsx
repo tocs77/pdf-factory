@@ -1,4 +1,4 @@
-import { useContext, useState, useRef } from 'react';
+import { useContext, useState, useRef, useEffect } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { Drawing, DrawingMisc } from '../../model/types/viewerSchema';
 import { LineDrawingLayer } from '../LineDrawingLayer/LineDrawingLayer';
@@ -6,7 +6,6 @@ import TextAreaDrawingLayer from '../TextAreaDrawingLayer/TextAreaDrawingLayer';
 import { FreeHandLayer } from '../FreeHandLayer/FreeHandLayer';
 import DrawRect from '../DrawRect/DrawRect';
 import CompleteDrawings from '../CompleteDrawings/CompleteDrawings';
-import classes from './DraftLayer.module.scss'; // Import styles
 import { transformCoordinates } from '../../utils/rotationUtils';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
 import { ExtensionLineDrawingComponent } from '../ExtensionLineDrawingComponent/ExtensionLineDrawingComponent';
@@ -21,8 +20,8 @@ interface DraftLayerProps {
 export const DraftLayer = (props: DraftLayerProps) => {
   const { pageNumber, onDrawingCreated, pdfCanvasRef } = props;
   const completeDrawingsCanvasRef = useRef<HTMLCanvasElement>(null); // Ref for CompleteDrawings canvas
-  const { state, dispatch } = useContext(ViewerContext); // Get dispatch
-  const { drawingMode, currentDrawingPage } = state;
+  const { state, dispatch } = useContext(ViewerContext);
+  const { drawingMode, currentDrawingPage, requestFinishDrawing, requestCancelDrawing } = state;
 
   const [draftDrawing, setDraftDrawing] = useState<DrawingMisc>({
     id: '',
@@ -36,6 +35,19 @@ export const DraftLayer = (props: DraftLayerProps) => {
     pageNumber: pageNumber,
     boundingBox: { left: 0, top: 0, right: 0, bottom: 0 },
   });
+
+  // Handle finish and cancel drawing requests
+  useEffect(() => {
+    if (requestFinishDrawing && (currentDrawingPage === pageNumber || currentDrawingPage === 0)) {
+      handleFinish();
+    }
+  }, [requestFinishDrawing]);
+
+  useEffect(() => {
+    if (requestCancelDrawing && (currentDrawingPage === pageNumber || currentDrawingPage === 0)) {
+      handleCancel();
+    }
+  }, [requestCancelDrawing]);
 
   const handleDrawingAdded = (drawing: Drawing) => {
     switch (drawing.type) {
@@ -234,24 +246,6 @@ export const DraftLayer = (props: DraftLayerProps) => {
 
   return (
     <>
-      {/* Add Finish and Cancel buttons like in DrawingComponent */}
-      {currentDrawingPage === pageNumber && (
-        <div className={classes.finishButtonContainer}>
-          <button className={classes.finishButton} onClick={handleFinish}>
-            <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor'>
-              <polyline points='20 6 9 17 4 12'></polyline>
-            </svg>
-            <span>Finish</span>
-          </button>
-          <button className={`${classes.finishButton} ${classes.cancelButton}`} onClick={handleCancel}>
-            <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor'>
-              <line x1='18' y1='6' x2='6' y2='18'></line>
-              <line x1='6' y1='6' x2='18' y2='18'></line>
-            </svg>
-            <span>Cancel</span>
-          </button>
-        </div>
-      )}
       {drawingMode === 'freehand' && (
         <FreeHandLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingAdded} pdfCanvasRef={pdfCanvasRef} draftMode />
       )}
@@ -280,7 +274,6 @@ export const DraftLayer = (props: DraftLayerProps) => {
       {drawingMode === 'image' && (
         <ImageLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingAdded} pdfCanvasRef={pdfCanvasRef} draftMode />
       )}
-      {/* Removed temporary canvas */}
       <CompleteDrawings ref={completeDrawingsCanvasRef} pageNumber={pageNumber} drawings={[draftDrawing]} />
     </>
   );

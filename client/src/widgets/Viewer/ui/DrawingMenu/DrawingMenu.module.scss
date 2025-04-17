@@ -1,0 +1,143 @@
+.drawingMenuContainer {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  z-index: 1000;
+  width: auto;
+  min-width: 300px;
+}
+
+.toolTitle {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.drawingOptions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  justify-content: space-around;
+}
+
+.colorPicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  span {
+    font-size: 14px;
+    color: #555;
+    font-weight: 500;
+  }
+}
+
+.colorOptions {
+  display: flex;
+  gap: 6px;
+}
+
+.colorOption {
+  width: 20px;
+  height: 20px;
+  border: 1px solid #ddd;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover {
+    transform: scale(1.1);
+  }
+
+  &.active {
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px #333;
+  }
+}
+
+.lineWidthPicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  span {
+    font-size: 14px;
+    color: #555;
+    font-weight: 500;
+  }
+}
+
+.lineWidthOptions {
+  display: flex;
+  gap: 6px;
+}
+
+.lineWidthOption {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+
+  &:hover {
+    background-color: #f5f5f5;
+  }
+
+  &.active {
+    background-color: #f0f0f0;
+    border-color: #aaa;
+  }
+}
+
+.actionButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  gap: 6px;
+
+  svg {
+    stroke-width: 2px;
+  }
+
+  &:hover {
+    opacity: 0.9;
+  }
+}
+
+.cancelButton {
+  background-color: #f5f5f5;
+  color: #555;
+
+  &:hover {
+    background-color: #e5e5e5;
+  }
+}

@@ -12,6 +12,7 @@ import { Drawing, RotationAngle } from '../../model/types/viewerSchema';
 import { useZoomToMouse } from '../../hooks/useZoomToMouse';
 import { useDragToScroll } from '../../hooks/useDragToScroll';
 import { useScrollToDraw } from '../../hooks/useScrollToDraw';
+import DrawingMenu from '../DrawingMenu/DrawingMenu';
 import classes from './Viewer.module.scss';
 
 // Define the ref type for scrollToDraw function
@@ -347,24 +348,23 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
         <div
           className={classNames(classes.pdfContainer, {
-            // Draggable if no drawing tool AND no compare mode active
             [classes.draggable]: isDragToScrollEnabled,
-            [classes.dragging]: isDragging, // Use isDragging from the hook
+            [classes.dragging]: isDragging,
           })}
           ref={pdfContainerRef}
           onMouseDown={(e) => {
-            // If slider is being dragged, prevent drag-to-scroll
             if (isSliderBeingDragged() || document.body.classList.contains('slider-dragging')) {
               e.stopPropagation();
             }
           }}>
-          {/* Show drag indicator only if draggable */}
           {isDragToScrollEnabled && !isDragging && (
             <div className={classes.dragIndicator}>
               <span>Click and drag to scroll</span>
             </div>
           )}
           <div className={classes.pdfContentWrapper}>{renderPages()}</div>
+
+          {drawingMode !== 'none' && <DrawingMenu />}
         </div>
       </div>
     </div>

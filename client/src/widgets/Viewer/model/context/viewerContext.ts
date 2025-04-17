@@ -22,6 +22,8 @@ export const initialViewerState: ViewerSchema = {
   rulerEnabled: false,
   currentDrawingPage: -1,
   compareMode: 'none', // Initialize new compareMode state
+  requestFinishDrawing: false, // Initialize finish drawing request
+  requestCancelDrawing: false, // Initialize cancel drawing request
 };
 
 // Create the context with default values
@@ -133,6 +135,16 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
         rulerEnabled: newCompareMode !== 'none' ? false : state.rulerEnabled,
       };
     }
+    case 'requestFinishDrawing':
+      return {
+        ...state,
+        requestFinishDrawing: action.payload,
+      };
+    case 'requestCancelDrawing':
+      return {
+        ...state,
+        requestCancelDrawing: action.payload,
+      };
     default:
       return state;
   }

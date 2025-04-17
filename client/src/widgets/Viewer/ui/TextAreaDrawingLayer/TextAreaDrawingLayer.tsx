@@ -28,7 +28,7 @@ interface Rectangle {
 export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
   const { pageNumber, onDrawingCreated, pdfCanvasRef, draftMode = false } = props;
   const { state } = useContext(ViewerContext);
-  const { drawingColor, drawingLineWidth, scale } = state;
+  const { drawingColor, drawingLineWidth, scale, requestFinishDrawing, requestCancelDrawing } = state;
   const rotation = state.pageRotations[pageNumber] || 0;
 
   // Refs
@@ -438,6 +438,20 @@ export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
     document.addEventListener('mousemove', handleResizeMove);
     document.addEventListener('mouseup', handleResizeEnd);
   };
+
+  // Handle finish drawing request
+  useEffect(() => {
+    if (requestFinishDrawing && showTextInput) {
+      handleFinishDrawing();
+    }
+  }, [requestFinishDrawing]);
+
+  // Handle cancel drawing request
+  useEffect(() => {
+    if (requestCancelDrawing && (isDrawing || showTextInput)) {
+      resetDrawingState();
+    }
+  }, [requestCancelDrawing]);
 
   return (
     <div className={classes.textAreaDrawingLayer}>

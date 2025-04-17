@@ -51,7 +51,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
   onComparePageChange,
 }) => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, drawingMode, showThumbnails, pageRotations, rulerEnabled, compareMode } = state;
+  const { scale, drawingMode, showThumbnails, pageRotations, rulerEnabled, compareMode } = state;
 
   const [pageInputValue, setPageInputValue] = useState<string>(currentPage.toString());
   const mainPageDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -147,14 +147,6 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
     } else {
       dispatch({ type: 'setDrawingMode', payload: mode });
     }
-  };
-
-  const changeDrawingColor = (color: string) => {
-    dispatch({ type: 'setDrawingColor', payload: color });
-  };
-
-  const changeLineWidth = (width: number) => {
-    dispatch({ type: 'setDrawingLineWidth', payload: width });
   };
 
   const toggleTextHighlight = () => {
@@ -319,86 +311,6 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
       )}
 
       <div className={classes.toolPanel}>
-        {(drawingMode === 'freehand' ||
-          drawingMode === 'rectangle' ||
-          drawingMode === 'extensionLine' ||
-          drawingMode === 'line' ||
-          drawingMode === 'drawArea' ||
-          drawingMode === 'textArea' ||
-          drawingMode === 'textHighlight' ||
-          drawingMode === 'textUnderline' ||
-          drawingMode === 'textCrossedOut' ||
-          drawingMode === 'PinSelection') && (
-          <div className={classes.drawingOptions}>
-            <div className={classes.colorPicker}>
-              <span>Color:</span>
-              <div className={classes.colorOptions}>
-                <button
-                  className={`${classes.colorOption} ${drawingColor === '#2196f3' ? classes.active : ''}`}
-                  style={{ backgroundColor: '#2196f3' }}
-                  onClick={() => changeDrawingColor('#2196f3')}
-                  title='Blue'
-                />
-                <button
-                  className={`${classes.colorOption} ${drawingColor === '#4caf50' ? classes.active : ''}`}
-                  style={{ backgroundColor: '#4caf50' }}
-                  onClick={() => changeDrawingColor('#4caf50')}
-                  title='Green'
-                />
-                <button
-                  className={`${classes.colorOption} ${drawingColor === '#f44336' ? classes.active : ''}`}
-                  style={{ backgroundColor: '#f44336' }}
-                  onClick={() => changeDrawingColor('#f44336')}
-                  title='Red'
-                />
-                <button
-                  className={`${classes.colorOption} ${drawingColor === '#ff9800' ? classes.active : ''}`}
-                  style={{ backgroundColor: '#ff9800' }}
-                  onClick={() => changeDrawingColor('#ff9800')}
-                  title='Orange'
-                />
-                <button
-                  className={`${classes.colorOption} ${drawingColor === '#000000' ? classes.active : ''}`}
-                  style={{ backgroundColor: '#000000' }}
-                  onClick={() => changeDrawingColor('#000000')}
-                  title='Black'
-                />
-              </div>
-            </div>
-
-            {(drawingMode === 'freehand' ||
-              drawingMode === 'rectangle' ||
-              drawingMode === 'line' ||
-              drawingMode === 'drawArea' ||
-              drawingMode === 'textUnderline' ||
-              drawingMode === 'textCrossedOut') && (
-              <div className={classes.lineWidthPicker}>
-                <span>Width:</span>
-                <div className={classes.lineWidthOptions}>
-                  <button
-                    className={`${classes.lineWidthOption} ${drawingLineWidth === 1 ? classes.active : ''}`}
-                    onClick={() => changeLineWidth(1)}
-                    title='Thin'>
-                    <div className={classes.lineWidthPreview} style={{ height: '1px' }} />
-                  </button>
-                  <button
-                    className={`${classes.lineWidthOption} ${drawingLineWidth === 2 ? classes.active : ''}`}
-                    onClick={() => changeLineWidth(2)}
-                    title='Medium'>
-                    <div className={classes.lineWidthPreview} style={{ height: '2px' }} />
-                  </button>
-                  <button
-                    className={`${classes.lineWidthOption} ${drawingLineWidth === 4 ? classes.active : ''}`}
-                    onClick={() => changeLineWidth(4)}
-                    title='Thick'>
-                    <div className={classes.lineWidthPreview} style={{ height: '4px' }} />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
         {drawingMode !== 'none' && drawingMode !== 'zoomArea' && drawingMode !== 'ruler' && drawingMode !== 'PinSelection' && (
           <div className={classes.separator}></div>
         )}

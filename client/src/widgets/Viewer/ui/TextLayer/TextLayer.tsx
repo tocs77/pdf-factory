@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useContext } from 'react';
 import type { PDFPageProxy } from 'pdfjs-dist';
 import classes from './TextLayer.module.scss';
-import TextAreaTools from '../TextAreaTools/TextAreaTools';
 import { Drawing, TextHighlight, TextUnderline, TextCrossedOut } from '../../model/types/viewerSchema';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { renderTextLayer } from '../../utils/renderTextLayer';
@@ -25,12 +24,65 @@ export const TextLayer = (props: TextLayerProps) => {
 
   // Get drawing color and line width from the ViewerContext
   const { state, dispatch } = useContext(ViewerContext);
-  const { drawingColor, drawingLineWidth } = state;
+  const { drawingColor, drawingLineWidth, requestFinishDrawing, requestCancelDrawing } = state;
 
   // Helper function to hide tools after applying
   const hideToolsAfterApplying = () => {
     setHasSelection(false);
   };
+
+  // Handle text selection changes
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const selection = window.getSelection();
+      if (selection && textLayerRef.current) {
+        const hasText = selection.toString().trim() !== '';
+        setHasSelection(hasText);
+      }
+    };
+
+    // Add event listener for text selection
+    document.addEventListener('selectionchange', handleSelectionChange);
+
+    // Clean up event listener on unmount
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, []);
+
+  // Handle document clicks to detect clicks outside the selection
+  useEffect(() => {
+    const handleDocumentClick = () => {
+      setTimeout(() => {
+        const selection = window.getSelection();
+        if (!selection || selection.toString().trim() === '') {
+          setHasSelection(false);
+        } else {
+          const pageContainer = document.querySelector(`[data-page-number="${pageNumber}"]`);
+          if (pageContainer) {
+            let selectionInCurrentPage = false;
+
+            for (let i = 0; i < selection.rangeCount; i++) {
+              const range = selection.getRangeAt(i);
+              if (pageContainer.contains(range.commonAncestorContainer)) {
+                selectionInCurrentPage = true;
+                break;
+              }
+            }
+
+            if (!selectionInCurrentPage) {
+              setHasSelection(false);
+            }
+          }
+        }
+      }, 10);
+    };
+
+    document.addEventListener('click', handleDocumentClick);
+    return () => {
+      document.removeEventListener('click', handleDocumentClick);
+    };
+  }, [pageNumber]);
 
   // Create text underline drawing
   const createTextUnderline = () => {
@@ -224,27 +276,6 @@ export const TextLayer = (props: TextLayerProps) => {
     hideToolsAfterApplying();
   };
 
-  // Handle text selection
-  useEffect(() => {
-    const handleSelectionChange = () => {
-      const selection = window.getSelection();
-      if (selection && textLayerRef.current) {
-        const hasText = selection.toString().trim() !== '';
-
-        // Set flags based on selection state
-        setHasSelection(hasText);
-      }
-    };
-
-    // Add event listener for text selection
-    document.addEventListener('selectionchange', handleSelectionChange);
-
-    // Clean up event listener on unmount
-    return () => {
-      document.removeEventListener('selectionchange', handleSelectionChange);
-    };
-  }, []);
-
   // Initial rendering of text layer
   useEffect(() => {
     const handleRenderTextLayer = async () => {
@@ -284,6 +315,7 @@ export const TextLayer = (props: TextLayerProps) => {
     // No rotation transforms needed as PDF.js viewport already handles rotation
   }, [rotation, viewport]);
 
+  // Handle finish click, will be triggered by the DrawingMenu
   const handleFinishClick = () => {
     switch (state.drawingMode) {
       case 'textUnderline':
@@ -302,33 +334,23 @@ export const TextLayer = (props: TextLayerProps) => {
     dispatch({ type: 'setDrawingMode', payload: 'none' });
   };
 
+  // Handle finish drawing request from DrawingMenu
+  useEffect(() => {
+    if (requestFinishDrawing && hasSelection) {
+      handleFinishClick();
+    }
+  }, [requestFinishDrawing]);
+
+  // Handle cancel drawing request from DrawingMenu
+  useEffect(() => {
+    if (requestCancelDrawing && hasSelection) {
+      setHasSelection(false);
+      dispatch({ type: 'setDrawingMode', payload: 'none' });
+    }
+  }, [requestCancelDrawing]);
+
   return (
     <>
-      {/* Add text tools menu when text is selected */}
-      {hasSelection && (
-        <div
-          className={classes.textSelectionToolbar}
-          style={{
-            position: 'fixed',
-            top: '120px',
-            right: '20px',
-            zIndex: 1000,
-            width: '160px', // Slightly narrower to better fit content
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-            borderRadius: '4px',
-            backgroundColor: 'white',
-            padding: '10px',
-          }}>
-          <TextAreaTools
-            pageNumber={pageNumber}
-            onFinishClick={handleFinishClick}
-            onHideTools={() => {
-              setHasSelection(false);
-            }}
-            textLayerElement={textLayerRef.current}
-          />
-        </div>
-      )}
       <div className={classes.textLayer} ref={textLayerRef} data-page-number={pageNumber}></div>
     </>
   );

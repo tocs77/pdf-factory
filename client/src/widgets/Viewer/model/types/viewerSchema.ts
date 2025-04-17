@@ -284,6 +284,8 @@ export interface ViewerSchema {
   rulerEnabled?: boolean;
   currentDrawingPage: number; //-1 means no current drawing page   0 means all pages
   compareMode: 'none' | 'diff' | 'sideBySide'; // Type of comparison mode active
+  requestFinishDrawing: boolean; // Request to finish current drawing
+  requestCancelDrawing: boolean; // Request to cancel current drawing
 }
 
 // Action types using discriminated unions
@@ -300,6 +302,8 @@ type ToggleRulerAction = { type: 'toggleRuler' };
 // type ToggleCompareModeAction = { type: 'toggleCompareMode' }; // Obsolete
 type SetCurrentDrawingPageAction = { type: 'setCurrentDrawingPage'; payload: number };
 type SetCompareModeAction = { type: 'setCompareMode'; payload: 'none' | 'diff' | 'sideBySide' }; // New action type
+type RequestFinishDrawingAction = { type: 'requestFinishDrawing'; payload: boolean };
+type RequestCancelDrawingAction = { type: 'requestCancelDrawing'; payload: boolean };
 
 export type IsDraftDrawing = boolean;
 // Remove obsolete toggleCompareMode action type
@@ -315,4 +319,6 @@ export type Action =
   | ToggleTextLayerAction
   | ToggleRulerAction
   | SetCurrentDrawingPageAction
-  | SetCompareModeAction; // Added new action
+  | SetCompareModeAction
+  | RequestFinishDrawingAction
+  | RequestCancelDrawingAction; // Added new actions
