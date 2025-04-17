@@ -94,6 +94,50 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     [pages, selectedPage],
   );
 
+  // Named function to handle compare page changes
+  const handleComparePageChange = useCallback(
+    (newComparePageNumInput: number) => {
+      const isValidInput =
+        typeof newComparePageNumInput === 'number' &&
+        newComparePageNumInput >= 1 &&
+        newComparePageNumInput <= comparePages.length;
+
+      const newComparePageNum = isValidInput ? newComparePageNumInput : null;
+
+      setPageOverrides((prevOverrides) => {
+        const oldComparePageForSelected = prevOverrides[selectedPage] ?? selectedPage;
+
+        let shift = 0;
+        const newOverrides = { ...prevOverrides };
+
+        if (newComparePageNum !== null) {
+          shift = newComparePageNum - oldComparePageForSelected;
+          newOverrides[selectedPage] = newComparePageNum;
+        } else {
+          shift = -(oldComparePageForSelected - selectedPage);
+          delete newOverrides[selectedPage];
+        }
+
+        if (shift !== 0) {
+          for (let pageNum = selectedPage + 1; pageNum <= pages.length; pageNum++) {
+            const currentComparePage = newOverrides[pageNum] ?? pageNum;
+
+            const shiftedComparePage = currentComparePage + shift;
+
+            if (shiftedComparePage >= 1 && shiftedComparePage <= comparePages.length) {
+              newOverrides[pageNum] = shiftedComparePage;
+            } else {
+              delete newOverrides[pageNum];
+            }
+          }
+        }
+
+        return newOverrides;
+      });
+    },
+    [comparePages.length, pages.length, selectedPage],
+  );
+
   // Callback for child components to notify when they become visible
   const handlePageBecameVisible = useCallback((visiblePageNumber: number) => {
     // Always update the ref to reflect the latest visible page reported
@@ -311,45 +355,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
           hasCompare={!!compareUrl}
           comparePage={currentComparePageNum}
           totalComparePages={comparePages.length}
-          onComparePageChange={(newComparePageNumInput) => {
-            const isValidInput =
-              typeof newComparePageNumInput === 'number' &&
-              newComparePageNumInput >= 1 &&
-              newComparePageNumInput <= comparePages.length;
-
-            const newComparePageNum = isValidInput ? (newComparePageNumInput as number) : null;
-
-            setPageOverrides((prevOverrides) => {
-              const oldComparePageForSelected = prevOverrides[selectedPage] ?? selectedPage;
-
-              let shift = 0;
-              const newOverrides = { ...prevOverrides };
-
-              if (newComparePageNum !== null) {
-                shift = newComparePageNum - oldComparePageForSelected;
-                newOverrides[selectedPage] = newComparePageNum;
-              } else {
-                shift = -(oldComparePageForSelected - selectedPage);
-                delete newOverrides[selectedPage];
-              }
-
-              if (shift !== 0) {
-                for (let pageNum = selectedPage + 1; pageNum <= pages.length; pageNum++) {
-                  const currentComparePage = newOverrides[pageNum] ?? pageNum;
-
-                  const shiftedComparePage = currentComparePage + shift;
-
-                  if (shiftedComparePage >= 1 && shiftedComparePage <= comparePages.length) {
-                    newOverrides[pageNum] = shiftedComparePage;
-                  } else {
-                    delete newOverrides[pageNum];
-                  }
-                }
-              }
-
-              return newOverrides;
-            });
-          }}
+          onComparePageChange={handleComparePageChange}
         />
 
         <div
