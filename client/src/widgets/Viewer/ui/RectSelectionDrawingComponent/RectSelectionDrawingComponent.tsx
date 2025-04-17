@@ -16,7 +16,7 @@ const CAPTURE_PADDING = 10; // Padding around the selection for image capture
 const RectSelectionDrawingComponent = (props: RectSelectionDrawingComponentProps) => {
   const { pageNumber, onDrawingCreated, pdfCanvasRef } = props;
   const { state } = useContext(ViewerContext);
-  const { scale, drawingMode, pageRotations } = state;
+  const { scale, drawingMode, pageRotations, drawingColor, drawingLineWidth } = state;
 
   const rotation = pageRotations[pageNumber] || 0;
 
@@ -182,6 +182,10 @@ const RectSelectionDrawingComponent = (props: RectSelectionDrawingComponentProps
         top: normalizedStartPoint.y,
         right: normalizedEndPoint.x,
         bottom: normalizedEndPoint.y,
+      },
+      style: {
+        strokeColor: drawingColor,
+        strokeWidth: drawingLineWidth / scale, // Use context.drawingLineWidth for the final rectangle
       },
     };
 

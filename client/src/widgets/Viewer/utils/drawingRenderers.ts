@@ -8,6 +8,7 @@ import {
   TextHighlight,
   TextArea,
   PinSelection,
+  RectSelection,
 } from '../model/types/viewerSchema';
 import { transformCoordinates } from './rotationUtils';
 
@@ -143,7 +144,7 @@ export const renderLine = (
  */
 export const renderDrawArea = (
   ctx: CanvasRenderingContext2D,
-  drawing: DrawArea,
+  drawing: DrawArea | RectSelection,
   canvasWidth: number,
   canvasHeight: number,
   scale: number,
@@ -170,6 +171,33 @@ export const renderDrawArea = (
 
   const areaWidth = areaEndX - areaStartX;
   const areaHeight = areaEndY - areaStartY;
+
+  // Set fill style with the same color but 0.3 opacity
+  const strokeColor = drawing.style.strokeColor;
+
+  // Convert hex color to rgba if it's a hex color
+  let fillColor;
+  if (strokeColor.startsWith('#')) {
+    // Parse the hex color to get RGB values
+    const r = parseInt(strokeColor.slice(1, 3), 16);
+    const g = parseInt(strokeColor.slice(3, 5), 16);
+    const b = parseInt(strokeColor.slice(5, 7), 16);
+    fillColor = `rgba(${r}, ${g}, ${b}, 0.3)`;
+  } else {
+    // If not hex, assume it's already rgba and try to modify the alpha
+    fillColor = strokeColor.replace(/rgba?\(([^)]+)\)/, (match, params) => {
+      const values = params.split(',');
+      if (values.length >= 3) {
+        return `rgba(${values[0]},${values[1]},${values[2]}, 0.3)`;
+      }
+      return match;
+    });
+  }
+
+  ctx.fillStyle = fillColor;
+
+  // Fill the rectangle first
+  ctx.fillRect(areaStartX, areaStartY, areaWidth, areaHeight);
 
   // Draw border only (no fill) with the line width from the context
   ctx.strokeStyle = drawing.style.strokeColor;

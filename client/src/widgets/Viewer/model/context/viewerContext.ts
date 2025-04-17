@@ -12,8 +12,8 @@ const DEFAULT_DRAWING_COLOR = '#2196f3';
 
 // Define the initial state
 export const initialViewerState: ViewerSchema = {
-  scale: 1.5, // Initial zoom level
-  drawingColor: DEFAULT_DRAWING_COLOR, // Red
+  scale: 1.5,
+  drawingColor: DEFAULT_DRAWING_COLOR,
   drawingLineWidth: 3,
   drawingMode: 'none',
   showThumbnails: false,
@@ -21,9 +21,9 @@ export const initialViewerState: ViewerSchema = {
   textLayerEnabled: true,
   rulerEnabled: false,
   currentDrawingPage: -1,
-  compareMode: 'none', // Initialize new compareMode state
-  requestFinishDrawing: false, // Initialize finish drawing request
-  requestCancelDrawing: false, // Initialize cancel drawing request
+  compareMode: 'none',
+  requestFinishDrawing: false,
+  requestCancelDrawing: false,
 };
 
 // Create the context with default values

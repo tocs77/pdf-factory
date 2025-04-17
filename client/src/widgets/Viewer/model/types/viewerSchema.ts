@@ -185,16 +185,9 @@ export interface TextArea extends BaseDrawing {
 
 export interface RectSelection extends BaseDrawing {
   type: 'rectSelection';
-  /**
-   * Start point (top-left) of the selection rectangle
-   * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
-   */
   startPoint: { x: number; y: number };
-  /**
-   * End point (bottom-right) of the selection rectangle
-   * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
-   */
   endPoint: { x: number; y: number };
+  style: DrawingStyle;
 }
 
 export interface PinSelection extends BaseDrawing {

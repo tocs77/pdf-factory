@@ -502,25 +502,7 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
               break;
 
             case 'rectSelection':
-              // Render rectSelection as a simple dashed blue rectangle
-              // Need to provide a style object as rectSelection doesn't have one
-              if (drawing.startPoint && drawing.endPoint) {
-                renderRectangle(
-                  ctx,
-                  {
-                    ...drawing,
-                    style: {
-                      strokeColor: '#0000FF', // Blue
-                      strokeWidth: 1 / currentScale, // Normalize width
-                      lineDash: [4, 4], // Dashed line
-                    },
-                  } as any, // Cast to satisfy renderRectangle, which expects a style prop
-                  canvas.width,
-                  canvas.height,
-                  currentScale,
-                  currentRotation,
-                );
-              }
+              renderDrawArea(ctx, drawing, canvas.width, canvas.height, currentScale, currentRotation);
               break;
 
             case 'pinSelection':
