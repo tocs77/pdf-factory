@@ -74,6 +74,26 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     pageRotations: state.pageRotations,
   });
 
+  // Named function to handle page changes
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      if (newPage >= 1 && newPage <= pages.length) {
+        setSelectedPage(newPage);
+        // Add scrolling behavior
+        requestAnimationFrame(() => {
+          scrollToPage({
+            newPage,
+            currentPage: selectedPage,
+            totalPages: pages.length,
+            containerRef: pdfContainerRef,
+            pages,
+          });
+        });
+      }
+    },
+    [pages, selectedPage],
+  );
+
   // Callback for child components to notify when they become visible
   const handlePageBecameVisible = useCallback((visiblePageNumber: number) => {
     // Always update the ref to reflect the latest visible page reported
@@ -207,17 +227,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   }, [pdfRef, comparePdfRef, loadPages]);
 
   const handleThumbnailClick = (pageNumber: number) => {
-    setSelectedPage(pageNumber);
-    // Delay scrolling slightly
-    requestAnimationFrame(() => {
-      scrollToPage({
-        newPage: pageNumber,
-        currentPage: selectedPage, // Pass previous selectedPage for calculation
-        totalPages: pages.length,
-        containerRef: pdfContainerRef,
-        pages,
-      });
-    });
+    handlePageChange(pageNumber);
   };
 
   // Set pdfRendered to true when pages are loaded
@@ -297,11 +307,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
         <ViewerMenu
           currentPage={selectedPage}
           totalPages={pages.length}
-          onPageChange={(newPage) => {
-            if (newPage >= 1 && newPage <= pages.length) {
-              setSelectedPage(newPage);
-            }
-          }}
+          onPageChange={handlePageChange}
           hasCompare={!!compareUrl}
           comparePage={currentComparePageNum}
           totalComparePages={comparePages.length}
