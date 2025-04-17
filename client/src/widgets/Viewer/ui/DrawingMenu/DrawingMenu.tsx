@@ -53,7 +53,7 @@ const DrawingMenu: React.FC<DrawingMenuProps> = () => {
           <button
             className={styles.actionButton}
             onClick={handleFinishClick}
-            title='Finish Drawing'
+            title='Завершить рисование'
             style={{
               backgroundColor: drawingColor,
               color: isLightColor(drawingColor) ? '#333' : 'white',
@@ -70,18 +70,21 @@ const DrawingMenu: React.FC<DrawingMenuProps> = () => {
               strokeLinejoin='round'>
               <polyline points='20 6 9 17 4 12'></polyline>
             </svg>
-            <span>Finish</span>
+            <span>Готово</span>
           </button>
-          <button className={`${styles.actionButton} ${styles.cancelButton}`} onClick={handleCancelClick} title='Cancel Drawing'>
+          <button
+            className={`${styles.actionButton} ${styles.cancelButton}`}
+            onClick={handleCancelClick}
+            title='Отменить рисование'>
             <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor'>
               <line x1='18' y1='6' x2='6' y2='18'></line>
               <line x1='6' y1='6' x2='18' y2='18'></line>
             </svg>
-            <span>Cancel</span>
+            <span>Отмена</span>
           </button>
         </div>
         <div className={styles.colorPicker}>
-          <span>Color:</span>
+          <span>Цвет:</span>
           <div className={styles.colorOptions}>
             {colorOptions.map((color) => (
               <button
@@ -89,22 +92,22 @@ const DrawingMenu: React.FC<DrawingMenuProps> = () => {
                 className={`${styles.colorOption} ${color === drawingColor ? styles.active : ''}`}
                 style={{ backgroundColor: color }}
                 onClick={() => changeDrawingColor(color)}
-                title={`Set color to ${color}`}
-                aria-label={`Set color to ${color}`}
+                title={`Установить цвет: ${color}`}
+                aria-label={`Установить цвет: ${color}`}
               />
             ))}
           </div>
         </div>
         <div className={styles.lineWidthPicker}>
-          <span>Width:</span>
+          <span>Толщина:</span>
           <div className={styles.lineWidthOptions}>
             {lineWidthOptions.map((width) => (
               <button
                 key={width}
                 className={`${styles.lineWidthOption} ${width === drawingLineWidth ? styles.active : ''}`}
                 onClick={() => changeLineWidth(width)}
-                title={`Set line width to ${width}`}
-                aria-label={`Set line width to ${width}`}>
+                title={`Установить толщину линии: ${width}`}
+                aria-label={`Установить толщину линии: ${width}`}>
                 <div style={{ height: `${width}px`, width: '14px', backgroundColor: '#333' }}></div>
               </button>
             ))}

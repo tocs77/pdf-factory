@@ -117,7 +117,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       return await loadingTask.promise;
     } catch (err) {
       console.error('Error loading PDF:', err);
-      setError('Failed to load PDF. Please check the URL and try again.');
+      setError('Не удалось загрузить PDF. Пожалуйста, проверьте URL и попробуйте снова.');
       setIsLoading(false);
       return null;
     }
@@ -135,7 +135,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
         return await loadingTask.promise;
       } catch (err) {
         console.error('Error loading comparison PDF:', err);
-        setError('Failed to load comparison PDF. Please check the URL and try again.');
+        setError('Не удалось загрузить PDF для сравнения. Пожалуйста, проверьте URL и попробуйте снова.');
         return null;
       }
     },
@@ -171,7 +171,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
         return loadedPagesArray;
       } catch (err) {
         console.error('Error loading pages:', err);
-        setError('Failed to load PDF pages. Please try again.');
+        setError('Не удалось загрузить страницы PDF. Пожалуйста, попробуйте снова.');
         setIsLoading(false);
         return [];
       }
@@ -274,7 +274,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       <div className={classes.loadingContainer}>
         {isLoading ? (
           <div className={classes.loadingBox}>
-            <div className={classes.loadingTitle}>Loading PDF...</div>
+            <div className={classes.loadingTitle}>Загрузка PDF...</div>
             <div className={classes.spinner}></div>
           </div>
         ) : (

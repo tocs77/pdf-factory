@@ -187,7 +187,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
   return (
     <div className={classes.zoomControls}>
       <div className={classes.pageControls}>
-        <button className={classes.pageButton} onClick={goToPreviousPage} disabled={currentPage <= 1} title='Previous page'>
+        <button className={classes.pageButton} onClick={goToPreviousPage} disabled={currentPage <= 1} title='Предыдущая страница'>
           <ChevronLeftIcon />
         </button>
         <div className={classes.pageInputContainer}>
@@ -202,7 +202,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
                 navigateToEnteredPage();
               }}
               className={classes.pageInput}
-              title='Enter main page number'
+              title='Введите номер основной страницы'
               aria-label='Current main page'
             />
             <span>/{totalPages}</span>
@@ -222,7 +222,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
                     navigateToEnteredComparePage();
                   }}
                   className={classes.pageInput}
-                  title='Enter comparison page number'
+                  title='Введите номер страницы для сравнения'
                   aria-label='Current comparison page'
                   disabled={!onComparePageChange}
                 />
@@ -231,7 +231,11 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
             </>
           )}
         </div>
-        <button className={classes.pageButton} onClick={goToNextPage} disabled={currentPage >= totalPages} title='Next page'>
+        <button
+          className={classes.pageButton}
+          onClick={goToNextPage}
+          disabled={currentPage >= totalPages}
+          title='Следующая страница'>
           <ChevronRightIcon />
         </button>
       </div>
@@ -239,25 +243,25 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
       <button
         className={classNames(classes.thumbnailToggle, { [classes.active]: showThumbnails }, [])}
         onClick={() => dispatch({ type: 'toggleThumbnails' })}
-        title={showThumbnails ? 'Hide thumbnails' : 'Show thumbnails'}>
+        title={showThumbnails ? 'Скрыть миниатюры' : 'Показать миниатюры'}>
         <ThumbnailToggleIcon />
       </button>
 
       <div className={classes.rotationControls}>
-        <button onClick={rotatePageCounterClockwise} className={classes.rotationButton} title='Rotate counter-clockwise'>
+        <button onClick={rotatePageCounterClockwise} className={classes.rotationButton} title='Повернуть против часовой стрелки'>
           <RotateCcwIcon />
         </button>
         <span className={classes.rotationInfo}>{currentRotation}°</span>
-        <button onClick={rotatePageClockwise} className={classes.rotationButton} title='Rotate clockwise'>
+        <button onClick={rotatePageClockwise} className={classes.rotationButton} title='Повернуть по часовой стрелке'>
           <RotateCwIcon />
         </button>
       </div>
 
-      <button onClick={zoomOut} className={classes.zoomButton} title='Zoom out'>
+      <button onClick={zoomOut} className={classes.zoomButton} title='Уменьшить масштаб'>
         <ZoomOutIcon />
       </button>
       <span className={classes.zoomPercentage}>{Math.round(scale * 100)}%</span>
-      <button onClick={zoomIn} className={classes.zoomButton} title='Zoom in'>
+      <button onClick={zoomIn} className={classes.zoomButton} title='Увеличить масштаб'>
         <ZoomInIcon />
       </button>
 
@@ -265,7 +269,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
         onClick={() => changeDrawingMode('zoomArea')}
         className={`${classes.zoomButton} ${drawingMode === 'zoomArea' ? classes.active : ''}`}
         style={{ padding: '4px' }}
-        title='Zoom to selected area'>
+        title='Увеличить выбранную область'>
         <ZoomAreaIcon />
       </button>
 
@@ -273,12 +277,12 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
         onClick={toggleRuler}
         className={`${classes.zoomButton} ${rulerEnabled ? classes.active : ''}`}
         style={{ padding: '4px' }}
-        title='Ruler tool'>
+        title='Инструмент линейка'>
         <RulerIcon />
       </button>
 
-      <button onClick={resetZoom} className={classes.zoomButton} title='Reset zoom'>
-        Reset
+      <button onClick={resetZoom} className={classes.zoomButton} title='Сбросить масштаб'>
+        Сбросить
       </button>
 
       {hasCompare && (
@@ -292,7 +296,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
               })
             }
             className={`${classes.zoomButton} ${compareMode === 'diff' ? classes.active : ''}`}
-            title={compareMode === 'diff' ? 'Disable Diff Compare' : 'Enable Diff Compare'}>
+            title={compareMode === 'diff' ? 'Отключить сравнение изменений' : 'Включить сравнение изменений'}>
             <CompareDiffIcon />
           </button>
           {/* Side-by-Side Compare Button */}
@@ -304,7 +308,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
               })
             }
             className={`${classes.zoomButton} ${compareMode === 'sideBySide' ? classes.active : ''}`}
-            title={compareMode === 'sideBySide' ? 'Disable Side-by-Side Compare' : 'Enable Side-by-Side Compare'}>
+            title={compareMode === 'sideBySide' ? 'Отключить сравнение бок о бок' : 'Включить сравнение бок о бок'}>
             <CompareSideBySideIcon />
           </button>
         </>
@@ -320,19 +324,19 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
             <button
               className={`${classes.toolButton} ${drawingMode === 'textHighlight' ? classes.active : ''}`}
               onClick={toggleTextHighlight}
-              title={drawingMode === 'textHighlight' ? 'Disable text highlight' : 'Enable text highlight'}>
+              title={drawingMode === 'textHighlight' ? 'Отключить выделение текста' : 'Включить выделение текста'}>
               <TextHighlightIcon />
             </button>
             <button
               className={`${classes.toolButton} ${drawingMode === 'textUnderline' ? classes.active : ''}`}
               onClick={toggleTextUnderline}
-              title={drawingMode === 'textUnderline' ? 'Disable text underline' : 'Enable text underline'}>
+              title={drawingMode === 'textUnderline' ? 'Отключить подчеркивание текста' : 'Включить подчеркивание текста'}>
               <TextUnderlineIcon />
             </button>
             <button
               className={`${classes.toolButton} ${drawingMode === 'textCrossedOut' ? classes.active : ''}`}
               onClick={toggleTextCrossedOut}
-              title={drawingMode === 'textCrossedOut' ? 'Disable text crossed out' : 'Enable text crossed out'}>
+              title={drawingMode === 'textCrossedOut' ? 'Отключить зачеркивание текста' : 'Включить зачеркивание текста'}>
               <TextStrikethroughIcon />
             </button>
           </div>
@@ -343,42 +347,42 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
             <button
               className={`${classes.toolButton} ${drawingMode === 'freehand' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('freehand')}
-              title={drawingMode === 'freehand' ? 'Disable freehand drawing' : 'Enable freehand drawing'}>
+              title={drawingMode === 'freehand' ? 'Отключить рисование от руки' : 'Включить рисование от руки'}>
               <PencilIcon />
             </button>
 
             <button
               className={`${classes.toolButton} ${drawingMode === 'rectangle' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('rectangle')}
-              title={drawingMode === 'rectangle' ? 'Disable rectangle tool' : 'Enable rectangle tool'}>
+              title={drawingMode === 'rectangle' ? 'Отключить инструмент прямоугольник' : 'Включить инструмент прямоугольник'}>
               <RectangleIcon />
             </button>
 
             <button
               className={`${classes.toolButton} ${drawingMode === 'extensionLine' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('extensionLine')}
-              title={drawingMode === 'extensionLine' ? 'Disable extension line tool' : 'Enable extension line tool'}>
+              title={drawingMode === 'extensionLine' ? 'Отключить инструмент выноска' : 'Включить инструмент выноска'}>
               <ExtensionLineIcon />
             </button>
 
             <button
               className={`${classes.toolButton} ${drawingMode === 'line' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('line')}
-              title={drawingMode === 'line' ? 'Disable line tool' : 'Enable line tool'}>
+              title={drawingMode === 'line' ? 'Отключить инструмент линия' : 'Включить инструмент линия'}>
               <LineIcon />
             </button>
 
             <button
               className={`${classes.toolButton} ${drawingMode === 'textArea' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('textArea')}
-              title={drawingMode === 'textArea' ? 'Disable text area tool' : 'Enable text area tool'}>
+              title={drawingMode === 'textArea' ? 'Отключить инструмент область текста' : 'Включить инструмент область текста'}>
               <TextAreaIcon />
             </button>
 
             <button
               className={`${classes.toolButton} ${drawingMode === 'image' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('image')}
-              title={drawingMode === 'image' ? 'Cancel adding image' : 'Add image'}>
+              title={drawingMode === 'image' ? 'Отменить добавление изображения' : 'Добавить изображение'}>
               <ImageIcon />
             </button>
           </div>
@@ -389,19 +393,25 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
             <button
               className={`${classes.toolButton} ${drawingMode === 'drawArea' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('drawArea')}
-              title={drawingMode === 'drawArea' ? 'Disable draw area tool' : 'Enable draw area tool'}>
+              title={
+                drawingMode === 'drawArea' ? 'Отключить инструмент область рисования' : 'Включить инструмент область рисования'
+              }>
               <DrawAreaIcon />
             </button>
             <button
               className={`${classes.toolButton} ${drawingMode === 'RectSelection' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('RectSelection')}
-              title={drawingMode === 'RectSelection' ? 'Disable rect selection tool' : 'Enable rect selection tool'}>
+              title={
+                drawingMode === 'RectSelection'
+                  ? 'Отключить инструмент выделения прямоугольником'
+                  : 'Включить инструмент выделения прямоугольником'
+              }>
               <RectSelectionIcon />
             </button>
             <button
               className={`${classes.toolButton} ${drawingMode === 'PinSelection' ? classes.active : ''}`}
               onClick={() => changeDrawingMode('PinSelection')}
-              title={drawingMode === 'PinSelection' ? 'Disable pin selection tool' : 'Enable pin selection tool'}>
+              title={drawingMode === 'PinSelection' ? 'Отключить инструмент выбора пином' : 'Включить инструмент выбора пином'}>
               <PinSelectionIcon />
             </button>
           </div>
