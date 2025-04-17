@@ -405,9 +405,9 @@ export const renderTextArea = (
 };
 
 /**
- * Renders a map-style pin icon on the canvas for PinSelection
+ * Renders a map-style pin icon on the canvas for pinSelection
  */
-export const renderPinSelection = (
+export const renderpinSelection = (
   ctx: CanvasRenderingContext2D,
   drawing: PinSelection,
   canvasWidth: number,

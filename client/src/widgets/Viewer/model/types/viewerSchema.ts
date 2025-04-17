@@ -184,7 +184,7 @@ export interface TextArea extends BaseDrawing {
 }
 
 export interface RectSelection extends BaseDrawing {
-  type: 'RectSelection';
+  type: 'rectSelection';
   /**
    * Start point (top-left) of the selection rectangle
    * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
@@ -198,7 +198,7 @@ export interface RectSelection extends BaseDrawing {
 }
 
 export interface PinSelection extends BaseDrawing {
-  type: 'PinSelection';
+  type: 'pinSelection';
   /**
    * Position of the pin
    * Coordinates are normalized to scale=1 for consistent rendering across different zoom levels.
@@ -252,20 +252,23 @@ export type Drawing =
 
 export type DrawingMode =
   | 'none' // No tool active
+  // Text tools
+  | 'textHighlight'
+  | 'textUnderline'
+  | 'textCrossedOut'
+  // Drawing tools
   | 'freehand'
   | 'rectangle'
   | 'extensionLine'
   | 'line'
-  | 'textArea'
-  | 'drawArea'
+  | 'image'
   | 'zoomArea'
-  | 'textHighlight'
-  | 'textUnderline'
-  | 'textCrossedOut'
+  | 'textArea'
+  // Selection tools
   | 'ruler'
-  | 'RectSelection'
-  | 'PinSelection'
-  | 'image';
+  | 'rectSelection'
+  | 'pinSelection'
+  | 'drawArea';
 
 // Valid rotation angles: 0, 90, 180, 270 degrees
 export type RotationAngle = 0 | 90 | 180 | 270;

@@ -5,7 +5,7 @@ interface IconProps extends React.SVGProps<SVGSVGElement> {
   color?: string;
 }
 
-export const RectangleIcon: React.FC<IconProps> = ({ size = 16, color = 'currentColor', ...rest }) => {
+export const RectangleIcon: React.FC<IconProps> = ({ size = 16, color = 'black', ...rest }) => {
   return (
     <svg xmlns='http://www.w3.org/2000/svg' width={size} height={size} viewBox='0 0 24 24' fill={color} stroke='none' {...rest}>
       <path

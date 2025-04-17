@@ -5,7 +5,7 @@ interface IconProps extends React.SVGProps<SVGSVGElement> {
   color?: string;
 }
 
-export const CompareSideBySideIcon: React.FC<IconProps> = ({ size = 16, color = 'currentColor', ...rest }) => {
+export const CompareSideBySideIcon: React.FC<IconProps> = ({ size = 16, color = 'black', ...rest }) => {
   return (
     <svg
       xmlns='http://www.w3.org/2000/svg'

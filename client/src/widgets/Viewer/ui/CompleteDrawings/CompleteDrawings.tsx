@@ -10,7 +10,7 @@ import {
   renderTextCrossedOut,
   renderTextHighlight,
   renderTextArea,
-  renderPinSelection,
+  renderpinSelection,
 } from '../../utils/drawingRenderers';
 import { renderExtensionLine } from '../../utils/extensionLineRenderer';
 import { Drawing, ImageAnnotation, DrawingMisc } from '../../model/types/viewerSchema';
@@ -127,8 +127,8 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
         d.type !== 'image' &&
         // Verify we preserve these specific types
         (d.type === 'rectangle' ||
-          d.type === 'RectSelection' ||
-          d.type === 'PinSelection' ||
+          d.type === 'rectSelection' ||
+          d.type === 'pinSelection' ||
           d.type === 'drawArea' ||
           d.type === 'freehand' ||
           d.type === 'extensionLine' ||
@@ -300,8 +300,8 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
           d.type !== 'image' &&
           // Explicitly include these types
           (d.type === 'rectangle' ||
-            d.type === 'RectSelection' ||
-            d.type === 'PinSelection' ||
+            d.type === 'rectSelection' ||
+            d.type === 'pinSelection' ||
             d.type === 'drawArea' ||
             d.type === 'freehand' ||
             d.type === 'extensionLine' ||
@@ -482,8 +482,6 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
               break;
 
             case 'drawArea':
-              // Render drawArea without specific property checks
-              // The renderer function will handle validation internally
               renderDrawArea(ctx, drawing, canvas.width, canvas.height, currentScale, currentRotation);
               break;
 
@@ -503,9 +501,9 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
               renderTextArea(ctx, drawing, canvas.width, canvas.height, currentScale, currentRotation);
               break;
 
-            case 'RectSelection':
-              // Render RectSelection as a simple dashed blue rectangle
-              // Need to provide a style object as RectSelection doesn't have one
+            case 'rectSelection':
+              // Render rectSelection as a simple dashed blue rectangle
+              // Need to provide a style object as rectSelection doesn't have one
               if (drawing.startPoint && drawing.endPoint) {
                 renderRectangle(
                   ctx,
@@ -525,9 +523,9 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
               }
               break;
 
-            case 'PinSelection':
+            case 'pinSelection':
               if (drawing.position) {
-                renderPinSelection(ctx, drawing, canvas.width, canvas.height, currentScale, currentRotation);
+                renderpinSelection(ctx, drawing, canvas.width, canvas.height, currentScale, currentRotation);
               }
               break;
 

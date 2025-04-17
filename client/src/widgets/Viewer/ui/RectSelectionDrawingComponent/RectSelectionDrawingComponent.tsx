@@ -59,7 +59,7 @@ const RectSelectionDrawingComponent = (props: RectSelectionDrawingComponentProps
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (e.button !== 0 || drawingMode !== 'RectSelection') return; // Only left button and correct mode
+    if (e.button !== 0 || drawingMode !== 'rectSelection') return; // Only left button and correct mode
     const point = getRawCoordinates(e.clientX, e.clientY);
     setIsDrawing(true);
     setStartPoint(point);
@@ -67,7 +67,7 @@ const RectSelectionDrawingComponent = (props: RectSelectionDrawingComponentProps
   };
 
   const drawSelectionRectangle = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !startPoint || drawingMode !== 'RectSelection') return;
+    if (!isDrawing || !startPoint || drawingMode !== 'rectSelection') return;
 
     const point = getRawCoordinates(e.clientX, e.clientY);
     setEndPoint(point);
@@ -90,7 +90,7 @@ const RectSelectionDrawingComponent = (props: RectSelectionDrawingComponentProps
   };
 
   const endDrawing = () => {
-    if (!isDrawing || drawingMode !== 'RectSelection' || !startPoint || !endPoint) {
+    if (!isDrawing || drawingMode !== 'rectSelection' || !startPoint || !endPoint) {
       setIsDrawing(false);
       setStartPoint(null);
       setEndPoint(null);
@@ -169,10 +169,10 @@ const RectSelectionDrawingComponent = (props: RectSelectionDrawingComponentProps
       rotation,
     );
 
-    // Create the new RectSelection object
+    // Create the new rectSelection object
     const newSelection: RectSelection = {
       id: '',
-      type: 'RectSelection',
+      type: 'rectSelection',
       startPoint: normalizedStartPoint,
       endPoint: normalizedEndPoint,
       pageNumber,

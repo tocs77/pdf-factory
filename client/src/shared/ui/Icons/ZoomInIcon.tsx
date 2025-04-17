@@ -5,7 +5,7 @@ interface IconProps extends React.SVGProps<SVGSVGElement> {
   color?: string;
 }
 
-export const ZoomInIcon: React.FC<IconProps> = ({ size = 16, color = 'currentColor', ...rest }) => {
+export const ZoomInIcon: React.FC<IconProps> = ({ size = 16, color = 'black', ...rest }) => {
   // Original SVG was just a plus sign. Replicating with simple paths.
   // The Figma version had path d="M17 15V7H15V15H7V17H15V25H17V17H25V15H17Z" in 32x32 viewbox
   return (

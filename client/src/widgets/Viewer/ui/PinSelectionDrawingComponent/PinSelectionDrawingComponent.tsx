@@ -49,7 +49,7 @@ const PinSelectionDrawingComponent = (props: PinSelectionDrawingComponentProps) 
   };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (e.button !== 0 || drawingMode !== 'PinSelection' || !canvasRef.current || !pdfCanvasRef?.current) {
+    if (e.button !== 0 || drawingMode !== 'pinSelection' || !canvasRef.current || !pdfCanvasRef?.current) {
       return; // Only left button, correct mode, and refs available
     }
 
@@ -109,10 +109,10 @@ const PinSelectionDrawingComponent = (props: PinSelectionDrawingComponentProps) 
       rotation,
     );
 
-    // 7. Create the PinSelection object
-    const newPinSelection: PinSelection = {
+    // 7. Create the pinSelection object
+    const newpinSelection: PinSelection = {
       id: '',
-      type: 'PinSelection',
+      type: 'pinSelection',
       position: normalizedPosition,
       pageNumber,
       image: capturedImage,
@@ -128,7 +128,7 @@ const PinSelectionDrawingComponent = (props: PinSelectionDrawingComponentProps) 
     };
 
     // 8. Call the callback
-    onDrawingCreated(newPinSelection);
+    onDrawingCreated(newpinSelection);
 
     // Note: No need to clear the canvas as nothing was drawn
     // Optionally switch mode back to none

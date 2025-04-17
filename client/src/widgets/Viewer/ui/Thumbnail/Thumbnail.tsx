@@ -8,10 +8,10 @@ interface ThumbnailProps {
   pageNumber: number;
   isSelected: boolean;
   onClick: (pageNumber: number) => void;
-  rotation?: number;
 }
 
-export const Thumbnail = ({ page, pageNumber, isSelected, onClick, rotation = 0 }: ThumbnailProps) => {
+export const Thumbnail = (props: ThumbnailProps) => {
+  const { page, pageNumber, isSelected, onClick } = props;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isRendering, setIsRendering] = useState(false);
@@ -59,7 +59,7 @@ export const Thumbnail = ({ page, pageNumber, isSelected, onClick, rotation = 0 
         const containerHeight = 130; // From CSS
 
         // Get default viewport at scale 1
-        const defaultViewport = page.getViewport({ scale: 1, rotation });
+        const defaultViewport = page.getViewport({ scale: 1, rotation: 0 });
 
         // Calculate scale to fit within container
         const scaleX = containerWidth / defaultViewport.width;
@@ -69,7 +69,7 @@ export const Thumbnail = ({ page, pageNumber, isSelected, onClick, rotation = 0 
         // Create viewport with calculated scale
         const viewport = page.getViewport({
           scale,
-          rotation,
+          rotation: 0,
         });
 
         // Set canvas dimensions
@@ -99,7 +99,7 @@ export const Thumbnail = ({ page, pageNumber, isSelected, onClick, rotation = 0 
     };
 
     renderThumbnail();
-  }, [page, rotation, isVisible, hasRendered]);
+  }, [page, isVisible, hasRendered]);
 
   return (
     <div

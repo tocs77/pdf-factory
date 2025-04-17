@@ -427,8 +427,8 @@ export const ViewPage = ({
 
               {drawingMode === 'ruler' && <RulerDrawingLayer pageNumber={pageNumber} pdfCanvasRef={canvasRef} />}
 
-              {/* Add RectSelection Layer */}
-              {drawingMode === 'RectSelection' && (
+              {/* Add rectSelection Layer */}
+              {drawingMode === 'rectSelection' && (
                 <RectSelectionDrawingComponent
                   pageNumber={pageNumber}
                   onDrawingCreated={handleDrawingCreated}
@@ -436,8 +436,8 @@ export const ViewPage = ({
                 />
               )}
 
-              {/* Add PinSelection Layer */}
-              {drawingMode === 'PinSelection' && (
+              {/* Add pinSelection Layer */}
+              {drawingMode === 'pinSelection' && (
                 <PinSelectionDrawingComponent
                   pageNumber={pageNumber}
                   onDrawingCreated={handleDrawingCreated}

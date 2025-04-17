@@ -41,15 +41,16 @@ interface ViewerMenuProps {
 
 const DEBOUNCE_TIME = 1000;
 
-export const ViewerMenu: React.FC<ViewerMenuProps> = ({
-  currentPage,
-  totalPages = 0,
-  onPageChange,
-  hasCompare,
-  comparePage,
-  totalComparePages = 0,
-  onComparePageChange,
-}) => {
+export const ViewerMenu = (props: ViewerMenuProps) => {
+  const {
+    currentPage,
+    totalPages = 0,
+    onPageChange,
+    hasCompare,
+    comparePage,
+    totalComparePages = 0,
+    onComparePageChange,
+  } = props;
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, drawingMode, showThumbnails, pageRotations, rulerEnabled, compareMode } = state;
 
@@ -315,7 +316,7 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
       )}
 
       <div className={classes.toolPanel}>
-        {drawingMode !== 'none' && drawingMode !== 'zoomArea' && drawingMode !== 'ruler' && drawingMode !== 'PinSelection' && (
+        {drawingMode !== 'none' && drawingMode !== 'zoomArea' && drawingMode !== 'ruler' && drawingMode !== 'pinSelection' && (
           <div className={classes.separator}></div>
         )}
 
@@ -399,19 +400,19 @@ export const ViewerMenu: React.FC<ViewerMenuProps> = ({
               <DrawAreaIcon />
             </button>
             <button
-              className={`${classes.toolButton} ${drawingMode === 'RectSelection' ? classes.active : ''}`}
-              onClick={() => changeDrawingMode('RectSelection')}
+              className={`${classes.toolButton} ${drawingMode === 'rectSelection' ? classes.active : ''}`}
+              onClick={() => changeDrawingMode('rectSelection')}
               title={
-                drawingMode === 'RectSelection'
+                drawingMode === 'rectSelection'
                   ? 'Отключить инструмент выделения прямоугольником'
                   : 'Включить инструмент выделения прямоугольником'
               }>
               <RectSelectionIcon />
             </button>
             <button
-              className={`${classes.toolButton} ${drawingMode === 'PinSelection' ? classes.active : ''}`}
-              onClick={() => changeDrawingMode('PinSelection')}
-              title={drawingMode === 'PinSelection' ? 'Отключить инструмент выбора пином' : 'Включить инструмент выбора пином'}>
+              className={`${classes.toolButton} ${drawingMode === 'pinSelection' ? classes.active : ''}`}
+              onClick={() => changeDrawingMode('pinSelection')}
+              title={drawingMode === 'pinSelection' ? 'Отключить инструмент выбора пином' : 'Включить инструмент выбора пином'}>
               <PinSelectionIcon />
             </button>
           </div>

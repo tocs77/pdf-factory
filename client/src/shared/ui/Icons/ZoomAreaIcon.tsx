@@ -5,7 +5,7 @@ interface IconProps extends React.SVGProps<SVGSVGElement> {
   color?: string;
 }
 
-export const ZoomAreaIcon: React.FC<IconProps> = ({ size = 14, color = 'currentColor', ...rest }) => {
+export const ZoomAreaIcon: React.FC<IconProps> = ({ size = 14, color = 'black', ...rest }) => {
   // Original size was 14x14
   return (
     <svg

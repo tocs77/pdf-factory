@@ -12,7 +12,7 @@ import { Drawing, RotationAngle } from '../../model/types/viewerSchema';
 import { useZoomToMouse } from '../../hooks/useZoomToMouse';
 import { useDragToScroll } from '../../hooks/useDragToScroll';
 import { useScrollToDraw } from '../../hooks/useScrollToDraw';
-import DrawingMenu from '../DrawingMenu/DrawingMenu';
+import { DrawingMenu } from '../DrawingMenu/DrawingMenu';
 import classes from './Viewer.module.scss';
 
 // Define the ref type for scrollToDraw function
@@ -145,8 +145,6 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
     // Update the state for UI changes (e.g., menu page number)
     setSelectedPage(visiblePageNumber);
-
-    // console.log(`[Viewer] Page ${visiblePageNumber} became visible. Updating state and ref.`);
   }, []); // Dependency array remains empty
 
   // Expose scrollToDraw function to parent component

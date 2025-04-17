@@ -3,11 +3,7 @@ import { ViewerContext } from '../../model/context/viewerContext';
 import { isLightColor } from '../../utils/textToolUtils';
 import styles from './DrawingMenu.module.scss';
 
-interface DrawingMenuProps {
-  pageNumber?: number;
-}
-
-const DrawingMenu: React.FC<DrawingMenuProps> = () => {
+export const DrawingMenu = () => {
   const { state, dispatch } = useContext(ViewerContext);
   const { drawingMode, drawingColor, drawingLineWidth } = state;
 
@@ -15,6 +11,9 @@ const DrawingMenu: React.FC<DrawingMenuProps> = () => {
   if (drawingMode === 'none') {
     return null;
   }
+
+  // Check if we're in a selection-only mode
+  const isSelectionMode = drawingMode === 'rectSelection' || drawingMode === 'pinSelection' || drawingMode === 'drawArea';
 
   const handleFinishClick = () => {
     dispatch({ type: 'requestFinishDrawing', payload: true });
@@ -49,40 +48,48 @@ const DrawingMenu: React.FC<DrawingMenuProps> = () => {
   return (
     <div className={styles.drawingMenuContainer}>
       <div className={styles.drawingOptions}>
-        <div className={styles.actionButtons}>
-          <button
-            className={styles.actionButton}
-            onClick={handleFinishClick}
-            title='Завершить рисование'
-            style={{
-              backgroundColor: drawingColor,
-              color: isLightColor(drawingColor) ? '#333' : 'white',
-            }}>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              width='16'
-              height='16'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='3'
-              strokeLinecap='round'
-              strokeLinejoin='round'>
-              <polyline points='20 6 9 17 4 12'></polyline>
-            </svg>
-            <span>Готово</span>
-          </button>
-          <button
-            className={`${styles.actionButton} ${styles.cancelButton}`}
-            onClick={handleCancelClick}
-            title='Отменить рисование'>
-            <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor'>
-              <line x1='18' y1='6' x2='6' y2='18'></line>
-              <line x1='6' y1='6' x2='18' y2='18'></line>
-            </svg>
-            <span>Отмена</span>
-          </button>
-        </div>
+        {!isSelectionMode && (
+          <div className={styles.actionButtons}>
+            <button
+              className={styles.actionButton}
+              onClick={handleFinishClick}
+              title='Завершить рисование'
+              style={{
+                backgroundColor: drawingColor,
+                color: isLightColor(drawingColor) ? '#333' : 'white',
+              }}>
+              <svg
+                xmlns='http://www.w3.org/2000/svg'
+                width='16'
+                height='16'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='3'
+                strokeLinecap='round'
+                strokeLinejoin='round'>
+                <polyline points='20 6 9 17 4 12'></polyline>
+              </svg>
+              <span>Готово</span>
+            </button>
+            <button
+              className={`${styles.actionButton} ${styles.cancelButton}`}
+              onClick={handleCancelClick}
+              title='Отменить рисование'>
+              <svg
+                xmlns='http://www.w3.org/2000/svg'
+                width='16'
+                height='16'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'>
+                <line x1='18' y1='6' x2='6' y2='18'></line>
+                <line x1='6' y1='6' x2='18' y2='18'></line>
+              </svg>
+              <span>Отмена</span>
+            </button>
+          </div>
+        )}
         <div className={styles.colorPicker}>
           <span>Цвет:</span>
           <div className={styles.colorOptions}>
@@ -98,24 +105,24 @@ const DrawingMenu: React.FC<DrawingMenuProps> = () => {
             ))}
           </div>
         </div>
-        <div className={styles.lineWidthPicker}>
-          <span>Толщина:</span>
-          <div className={styles.lineWidthOptions}>
-            {lineWidthOptions.map((width) => (
-              <button
-                key={width}
-                className={`${styles.lineWidthOption} ${width === drawingLineWidth ? styles.active : ''}`}
-                onClick={() => changeLineWidth(width)}
-                title={`Установить толщину линии: ${width}`}
-                aria-label={`Установить толщину линии: ${width}`}>
-                <div style={{ height: `${width}px`, width: '14px', backgroundColor: '#333' }}></div>
-              </button>
-            ))}
+        {!isSelectionMode && (
+          <div className={styles.lineWidthPicker}>
+            <span>Толщина:</span>
+            <div className={styles.lineWidthOptions}>
+              {lineWidthOptions.map((width) => (
+                <button
+                  key={width}
+                  className={`${styles.lineWidthOption} ${width === drawingLineWidth ? styles.active : ''}`}
+                  onClick={() => changeLineWidth(width)}
+                  title={`Установить толщину линии: ${width}`}
+                  aria-label={`Установить толщину линии: ${width}`}>
+                  <div style={{ height: `${width}px`, width: '14px', backgroundColor: '#333' }}></div>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
 };
-
-export default DrawingMenu;
