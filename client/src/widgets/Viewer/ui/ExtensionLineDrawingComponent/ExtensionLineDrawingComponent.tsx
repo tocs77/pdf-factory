@@ -7,6 +7,71 @@ import { Drawing } from '../../model/types/viewerSchema';
 import classes from './ExtensionLineDrawingComponent.module.scss';
 import { renderExtensionLine } from '../../utils/extensionLineRenderer';
 
+interface TextInputDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (text: string) => void;
+}
+
+const TextInputDialog: React.FC<TextInputDialogProps> = ({ isOpen, onClose, onSubmit }) => {
+  const [inputValue, setInputValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus();
+    }
+    // Reset input value when dialog opens
+    if (isOpen) {
+      setInputValue('');
+    }
+  }, [isOpen]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(inputValue);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className={classes.dialogOverlay}>
+      <div className={classes.dialogContent}>
+        <div className={classes.dialogHeader}>
+          <h3>Добавление выноски</h3>
+          <button onClick={onClose} className={classes.closeButton}>
+            ×
+          </button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className={classes.dialogBody}>
+            <label htmlFor='extensionLineText' className={classes.textLabel}>
+              Текст полки выноски
+            </label>
+            <input
+              id='extensionLineText'
+              ref={inputRef}
+              type='text'
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder='Введите текст'
+              className={classes.textInput}
+            />
+          </div>
+          <div className={classes.dialogFooter}>
+            <button type='button' onClick={onClose} className={classes.cancelButton}>
+              Отмена
+            </button>
+            <button type='submit' className={classes.submitButton}>
+              Добавить
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 interface ExtensionLineDrawingComponentProps {
   pageNumber: number;
   onDrawingCreated: (drawing: Drawing) => void;
@@ -27,8 +92,11 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
   // States for tracking the multi-stage drawing process
   const [drawingStage, setDrawingStage] = useState<'initial' | 'positioning' | 'completed'>('initial');
   const [pinPointPosition, setPinPointPosition] = useState<{ x: number; y: number } | null>(null);
-  const [bendPointPosition, setBendPointPosition] = useState<{ x: number; y: number } | null>(null);
   const [currentMousePosition, setCurrentMousePosition] = useState<{ x: number; y: number } | null>(null);
+
+  // Dialog state
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [pendingDrawingData, setPendingDrawingData] = useState<any>(null);
 
   // Set up drawing canvas
   useEffect(() => {
@@ -59,9 +127,9 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
   // Reset drawing state when switching pages or drawing modes
   useEffect(() => {
     setPinPointPosition(null);
-    setBendPointPosition(null);
     setCurrentMousePosition(null);
     setDrawingStage('initial');
+    setIsDialogOpen(false);
   }, [pageNumber, drawingMode]);
 
   // Set cursor to crosshair
@@ -114,7 +182,7 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
       // Draw the pin with the current mouse position as the bend point
       renderExtensionLine(ctx, previewExtensionLine, pinPointPosition.x, pinPointPosition.y);
     }
-  }, [pinPointPosition, bendPointPosition, currentMousePosition, drawingStage, drawingColor, pageNumber]);
+  }, [pinPointPosition, currentMousePosition, drawingStage, drawingColor, pageNumber]);
 
   // Get raw coordinates relative to canvas
   const getRawCoordinates = (clientX: number, clientY: number): { x: number; y: number } => {
@@ -138,6 +206,74 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
     setCurrentMousePosition(getRawCoordinates(e.clientX, e.clientY));
   };
 
+  const finalizeDrawing = (text: string) => {
+    if (!pendingDrawingData) return;
+
+    const { normalizedPinPoint, normalizedBendPoint, normalizedBoundingBox, image } = pendingDrawingData;
+
+    // Create a new extension line object with normalized coordinates
+    const newExtensionLine: Drawing = {
+      id: '',
+      type: 'extensionLine',
+      position: normalizedPinPoint,
+      bendPoint: normalizedBendPoint,
+      text,
+      color: drawingColor,
+      pageNumber,
+      image,
+      boundingBox: normalizedBoundingBox,
+    };
+
+    // Call the callback with the new drawing
+    onDrawingCreated(newExtensionLine);
+
+    // Reset drawing state
+    setPinPointPosition(null);
+    setCurrentMousePosition(null);
+    setDrawingStage('initial');
+    setPendingDrawingData(null);
+
+    // Clear the canvas as the extension line will be rendered by CompleteDrawings
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+  };
+
+  const handleDialogSubmit = (text: string) => {
+    setIsDialogOpen(false);
+    if (text.trim()) {
+      finalizeDrawing(text);
+    } else {
+      // Reset if user submits empty text
+      resetDrawingState();
+    }
+  };
+
+  const resetDrawingState = () => {
+    setPinPointPosition(null);
+    setCurrentMousePosition(null);
+    setDrawingStage('initial');
+    setPendingDrawingData(null);
+
+    // Clear the canvas since we're aborting the drawing
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+  };
+
+  const handleDialogClose = () => {
+    setIsDialogOpen(false);
+    resetDrawingState(); // Reset the drawing state which clears the canvas
+  };
+
   // Handle clicks for pin placement
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     // Only process clicks when in extension line drawing mode
@@ -157,7 +293,7 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
     // If this is the second click, save the bend point position and create extension line
     else if (drawingStage === 'positioning' && pinPointPosition) {
       // Set the bend point position to current mouse position
-      setBendPointPosition(coords);
+      setCurrentMousePosition(coords);
 
       // Normalize the pin and bend points to scale 1 and 0 degrees rotation
       const normalizedPinPoint = normalizeCoordinatesToZeroRotation(
@@ -169,16 +305,6 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
       );
 
       const normalizedBendPoint = normalizeCoordinatesToZeroRotation(coords, canvas.width, canvas.height, scale, rotation);
-
-      // Prompt for extension line text
-      const text = prompt('Enter extension line text:');
-      if (!text) {
-        // Reset if user cancels
-        setPinPointPosition(null);
-        setBendPointPosition(null);
-        setDrawingStage('initial');
-        return;
-      }
 
       // Calculate the bounding box for image capture
       // Expand the area around the extension line
@@ -218,33 +344,16 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
         image = captureDrawingImage(pdfCanvasRef?.current || null, canvas, boundingBox);
       }
 
-      // Create a new extension line object with normalized coordinates
-      const newExtensionLine: Drawing = {
-        id: '',
-        type: 'extensionLine',
-        position: normalizedPinPoint,
-        bendPoint: normalizedBendPoint,
-        text,
-        color: drawingColor,
-        pageNumber,
+      // Store the drawing data temporarily
+      setPendingDrawingData({
+        normalizedPinPoint,
+        normalizedBendPoint,
+        normalizedBoundingBox,
         image,
-        boundingBox: normalizedBoundingBox,
-      };
+      });
 
-      // Call the callback with the new drawing
-      onDrawingCreated(newExtensionLine);
-
-      // Reset drawing state
-      setPinPointPosition(null);
-      setBendPointPosition(null);
-      setCurrentMousePosition(null);
-      setDrawingStage('initial');
-
-      // Clear the canvas as the extension line will be rendered by CompleteDrawings
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
+      // Open the dialog to get text input
+      setIsDialogOpen(true);
     }
   };
 
@@ -258,14 +367,17 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
   };
 
   return (
-    <canvas
-      ref={canvasRef}
-      className={classes.extensionLineCanvas}
-      onClick={handleClick}
-      onMouseMove={handleMouseMove}
-      onKeyDown={handleKeyDown}
-      tabIndex={0} // Make canvas focusable
-      data-testid='extensionLine-drawing-canvas'
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        className={classes.extensionLineCanvas}
+        onClick={handleClick}
+        onMouseMove={handleMouseMove}
+        onKeyDown={handleKeyDown}
+        tabIndex={0} // Make canvas focusable
+        data-testid='extensionLine-drawing-canvas'
+      />
+      <TextInputDialog isOpen={isDialogOpen} onClose={handleDialogClose} onSubmit={handleDialogSubmit} />
+    </>
   );
 };
