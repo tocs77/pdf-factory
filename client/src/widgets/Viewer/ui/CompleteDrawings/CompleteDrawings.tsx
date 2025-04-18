@@ -76,10 +76,14 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
         // Ensure canvas stays visible
         ensureCanvasStyle(canvas);
 
-        // Force a render now with the latest information
-        if (drawings.length > 0 || lastDrawingsRef.current.length > 0) {
-          scheduleRender();
-        }
+        // Delay render to ensure it happens after zoom and scroll adjustments
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (drawings.length > 0 || lastDrawingsRef.current.length > 0) {
+              scheduleRender();
+            }
+          });
+        });
       }
     }
   }, [scale, rotation, drawings]);
