@@ -62,33 +62,28 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef }: UseZoomToMouse
     return bestVisiblePage;
   }, [containerRef]);
 
-  // Function to adjust scroll position after zoom, focusing on the page
+  // Function to adjust scroll position after zoom, keeping the point under the cursor fixed
   const adjustScrollPositionAfterZoomOnPage = useCallback((container: HTMLDivElement, zoomData: ZoomData) => {
-    const { scrollTopBefore, scrollLeftBefore, pageElement, mouseXPercentPage, mouseYPercentPage } = zoomData;
+    const { pageElement, mouseXPercentPage, mouseYPercentPage, pageRect } = zoomData;
 
-    // Get the updated page position after scale change
+    // Get the updated page position and dimensions after scale change
     const updatedPageRect = pageElement.getBoundingClientRect();
 
-    // Calculate the new mouse position on the page
-    const newMouseXOnPage = updatedPageRect.width * mouseXPercentPage;
-    const newMouseYOnPage = updatedPageRect.height * mouseYPercentPage;
+    // Calculate the point's position on the page before zoom (as pixel values relative to page)
+    const pointXOnPageBefore = pageRect.width * mouseXPercentPage;
+    const pointYOnPageBefore = pageRect.height * mouseYPercentPage;
 
-    // Calculate the new mouse position relative to the viewport
-    const newMouseXViewport = updatedPageRect.left + newMouseXOnPage;
-    const newMouseYViewport = updatedPageRect.top + newMouseYOnPage;
+    // Calculate the same point's position after zoom (as pixel values relative to page)
+    const pointXOnPageAfter = updatedPageRect.width * mouseXPercentPage;
+    const pointYOnPageAfter = updatedPageRect.height * mouseYPercentPage;
 
-    // Calculate the new mouse position relative to the container
-    const containerRect = container.getBoundingClientRect();
-    const newMouseXContainer = newMouseXViewport - containerRect.left;
-    const newMouseYContainer = newMouseYViewport - containerRect.top;
+    // Calculate how much the point "moved" due to scaling (in pixels)
+    const deltaX = pointXOnPageAfter - pointXOnPageBefore;
+    const deltaY = pointYOnPageAfter - pointYOnPageBefore;
 
-    // Calculate the new scroll position
-    const newScrollLeft = scrollLeftBefore + (newMouseXContainer - (zoomData.mouseXDoc - scrollLeftBefore));
-    const newScrollTop = scrollTopBefore + (newMouseYContainer - (zoomData.mouseYDoc - scrollTopBefore));
-
-    // Apply the new scroll position
-    container.scrollLeft = newScrollLeft;
-    container.scrollTop = newScrollTop;
+    // Adjust scroll position by this delta to keep the point fixed under the cursor
+    container.scrollLeft += deltaX;
+    container.scrollTop += deltaY;
   }, []);
 
   // Prevent browser zoom on Ctrl+wheel globally
@@ -158,8 +153,11 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef }: UseZoomToMouse
           dispatch({ type: 'setScale', payload: newScale });
 
           // Then adjust the scroll position in the next render cycle
+          // Using multiple animation frames to ensure DOM has updated with new scale
           requestAnimationFrame(() => {
-            adjustScrollPositionAfterZoomOnPage(container, zoomData);
+            requestAnimationFrame(() => {
+              adjustScrollPositionAfterZoomOnPage(container, zoomData);
+            });
           });
         }
 
@@ -257,8 +255,11 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef }: UseZoomToMouse
           dispatch({ type: 'setScale', payload: newScale });
 
           // Then adjust the scroll position in the next render cycle
+          // Using multiple animation frames to ensure DOM has updated with new scale
           requestAnimationFrame(() => {
-            adjustScrollPositionAfterZoomOnPage(container, zoomData);
+            requestAnimationFrame(() => {
+              adjustScrollPositionAfterZoomOnPage(container, zoomData);
+            });
           });
         }
 
