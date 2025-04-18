@@ -170,7 +170,123 @@ export const ViewPage = ({
     return viewportCenter >= pageTop && viewportCenter <= pageBottom;
   };
 
-  // Use Intersection Observer to detect when the page is visible
+  // Simplified rendering approach - updates dimensions and renders content when needed
+  useEffect(() => {
+    let isMounted = true;
+    let currentRenderTask: ReturnType<typeof page.render> | null = null;
+
+    // Direct renderer - simpler approach with fewer potential issues
+    const renderPage = async () => {
+      // Only proceed if canvas exists
+      if (!canvasRef.current) return;
+
+      // Skip if already rendered at current scale
+      if (hasRendered) return;
+
+      // Determine if this page should render:
+      // 1. It's visible, OR
+      // 2. It's the selected page, OR
+      // 3. It's adjacent to the selected page (with a 1-page buffer)
+      const isAdjacent = Math.abs(pageNumber - selectedPage) <= 1;
+      const shouldRenderNow = inView || pageNumber === selectedPage || isAdjacent;
+
+      if (!shouldRenderNow) return;
+
+      try {
+        const canvas = canvasRef.current;
+        const parent = canvas.parentElement;
+        if (!parent) return;
+
+        // Create viewport with rotation
+        const currentViewport = page.getViewport({
+          scale,
+          rotation,
+          dontFlip: false,
+        });
+
+        // Store viewport for other components
+        setViewport(currentViewport);
+
+        // Apply device pixel ratio for high-resolution rendering
+        const pixelRatio = window.devicePixelRatio || 1;
+        const totalScale = pixelRatio;
+
+        // Handle rotation cases
+        const isRotated90or270 = rotation === 90 || rotation === 270;
+
+        // Set display size (css pixels)
+        if (isRotated90or270) {
+          parent.style.width = `${Math.floor(currentViewport.width)}px`;
+          parent.style.height = `${Math.floor(currentViewport.height)}px`;
+          canvas.style.width = `${Math.floor(currentViewport.width)}px`;
+          canvas.style.height = `${Math.floor(currentViewport.height)}px`;
+        } else {
+          canvas.style.width = `${Math.floor(currentViewport.width)}px`;
+          canvas.style.height = `${Math.floor(currentViewport.height)}px`;
+        }
+
+        // Set actual size in memory (scaled to account for device pixel ratio)
+        canvas.width = Math.floor(currentViewport.width * totalScale);
+        canvas.height = Math.floor(currentViewport.height * totalScale);
+
+        // Update canvasWrapper dimensions
+        if (canvasWrapperRef.current) {
+          canvasWrapperRef.current.style.width = canvas.style.width;
+          canvasWrapperRef.current.style.height = canvas.style.height;
+        }
+
+        // Get context and set scale
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        // Reset any previous transformations
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        // Apply scale factor for high DPI displays
+        ctx.scale(totalScale, totalScale);
+
+        // Set up render context
+        const renderContext = {
+          canvasContext: ctx,
+          viewport: currentViewport,
+        };
+
+        // Cancel any ongoing rendering
+        if (currentRenderTask) {
+          currentRenderTask.cancel();
+          currentRenderTask = null;
+        }
+
+        // Start rendering
+        currentRenderTask = page.render(renderContext);
+        setRenderTask(currentRenderTask);
+
+        // Wait for rendering to complete
+        await currentRenderTask.promise;
+
+        if (isMounted) {
+          setHasRendered(true);
+        }
+      } catch (error: any) {
+        // Ignore cancellation errors as they're expected during navigation
+        if (error?.name !== 'RenderingCancelledException' && isMounted) {
+          console.error(`Error rendering page ${pageNumber}:`, error);
+        }
+      }
+    };
+
+    // Execute render
+    renderPage();
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      if (currentRenderTask) {
+        currentRenderTask.cancel();
+      }
+    };
+  }, [page, scale, rotation, pageNumber, selectedPage, inView, hasRendered]);
+
+  // Remove console log from visibility changes
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -220,7 +336,7 @@ export const ViewPage = ({
       }
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [inView, pageNumber, scale]);
+  }, [inView, pageNumber, scale, checkIfPageContainsViewportCenter]);
 
   // Effect to notify parent when page becomes centered
   useEffect(() => {
@@ -229,112 +345,6 @@ export const ViewPage = ({
       onBecameVisible(pageNumber);
     }
   }, [isCentered, hasRendered, pageNumber, onBecameVisible]);
-
-  // Only render when page is visible (or when explicitly set to visible)
-  const shouldRender = inView || hasRendered || scale > 4.0;
-
-  // Set up drawing canvas
-  useEffect(() => {
-    let isMounted = true;
-    let currentRenderTask: ReturnType<typeof page.render> | null = null;
-
-    const renderPage = async () => {
-      if (!canvasRef.current || (pageNumber !== selectedPage && !inView)) {
-        return;
-      }
-      if (hasRendered) return;
-
-      // Create viewport with rotation
-      // For 90/270 degree rotations, we need to ensure the viewport maintains the correct aspect ratio
-      const currentViewport = page.getViewport({
-        scale,
-        rotation,
-        // Enable dontFlip to ensure consistent rendering across different rotations
-        dontFlip: false,
-      });
-
-      // Store the viewport in state for the TextLayer component
-      setViewport(currentViewport);
-
-      const canvas = canvasRef.current;
-
-      // Get the parent container for proper sizing
-      const parent = canvas.parentElement;
-      if (!parent) {
-        console.warn('Canvas parent element not found');
-        return;
-      }
-
-      // Apply quality multiplier to canvas dimensions for higher resolution rendering
-      const outputScale = window.devicePixelRatio || 1;
-      const totalScale = outputScale;
-
-      // Determine if we need to adjust for rotation (90 or 270 degrees)
-      const isRotated90or270 = rotation === 90 || rotation === 270;
-
-      // Set display size based on viewport dimensions
-      // For 90/270 degree rotations, we need to adjust the container to maintain aspect ratio
-      if (isRotated90or270) {
-        // For rotated pages, we need to adjust the container size to maintain aspect ratio
-        // Set the container dimensions to maintain the correct aspect ratio
-        parent.style.width = `${Math.floor(currentViewport.width)}px`;
-        parent.style.height = `${Math.floor(currentViewport.height)}px`;
-
-        // Set canvas dimensions to match viewport
-        canvas.style.width = `${Math.floor(currentViewport.width)}px`;
-        canvas.style.height = `${Math.floor(currentViewport.height)}px`;
-      } else {
-        // For normal orientation, just set dimensions directly
-        canvas.style.width = `${Math.floor(currentViewport.width)}px`;
-        canvas.style.height = `${Math.floor(currentViewport.height)}px`;
-      }
-
-      // Set actual size in memory (scaled to account for device pixel ratio and quality)
-      canvas.width = Math.floor(currentViewport.width * totalScale);
-      canvas.height = Math.floor(currentViewport.height * totalScale);
-
-      // Ensure canvasWrapper has the same dimensions as the canvas
-      if (canvasWrapperRef.current) {
-        canvasWrapperRef.current.style.width = canvas.style.width;
-        canvasWrapperRef.current.style.height = canvas.style.height;
-      }
-
-      // Get context and scale it
-      const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-      ctx.scale(totalScale, totalScale);
-
-      const renderContext = {
-        canvasContext: ctx,
-        viewport: currentViewport,
-      };
-
-      try {
-        currentRenderTask = page.render(renderContext);
-        setRenderTask(currentRenderTask);
-        await currentRenderTask.promise;
-
-        if (isMounted) {
-          setHasRendered(true);
-        }
-      } catch (error: any) {
-        // Don't log cancellation exceptions as errors since they're expected during rotation
-        if (error.name === 'RenderingCancelledException') {
-          console.debug('Rendering cancelled:', error.message);
-        } else {
-          console.error('Error rendering PDF page:', error);
-        }
-      }
-    };
-
-    renderPage();
-
-    return () => {
-      isMounted = false;
-      if (currentRenderTask) {
-        currentRenderTask.cancel();
-      }
-    };
-  }, [page, scale, shouldRender, hasRendered, rotation, pageNumber, inView, selectedPage]);
 
   // Re-render when rotation changes - use ref to compare with previous value
   useEffect(() => {
@@ -347,7 +357,7 @@ export const ViewPage = ({
     }
   }, [pageNumber, pageRotations]);
 
-  // Re-render when scale changes - use ref to compare with previous value
+  // Clean up scale change effect
   useEffect(() => {
     const prevScale = prevScaleRef.current;
 
