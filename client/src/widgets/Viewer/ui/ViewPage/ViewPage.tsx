@@ -31,6 +31,10 @@ interface ViewPageProps {
   selectedPage: number; // current selected page from parent
 }
 
+// Threshold for determining when to re-render at the current scale
+// If scale difference is greater than this, re-render at the current scale
+const SCALE_THRESHOLD = 0.5;
+
 export const ViewPage = ({
   page,
   pageNumber,
@@ -52,12 +56,15 @@ export const ViewPage = ({
   const [hasRendered, setHasRendered] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
-  const [renderTask, setRenderTask] = useState<ReturnType<typeof page.render> | null>(null);
   const [viewport, setViewport] = useState<any>(null);
+  const [baseViewport, setBaseViewport] = useState<any>(null);
 
-  // Refs to track previous scale and rotation to avoid unnecessary re-renders
-  const prevScaleRef = useRef<number>(scale);
+  // Track the scale at which the PDF was last rendered
+  const [baseScale, setBaseScale] = useState<number>(scale);
+
+  // Refs to track previous rotation to avoid unnecessary re-renders
   const prevRotationRef = useRef<number>(pageRotations[pageNumber] || 0);
+  const highQualityCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Track drag state to prevent drawing clicks after drag
   const isDraggingRef = useRef(false);
@@ -170,19 +177,150 @@ export const ViewPage = ({
     return viewportCenter >= pageTop && viewportCenter <= pageBottom;
   };
 
-  // Simplified rendering approach - updates dimensions and renders content when needed
+  // Render the PDF page at the current scale
+  const renderPageAtCurrentScale = async () => {
+    if (!page || !canvasRef.current) return;
+
+    try {
+      // Create viewport with rotation at the current scale
+      const currentViewport = page.getViewport({
+        scale,
+        rotation,
+        dontFlip: false,
+      });
+
+      // Update viewport state
+      setViewport(currentViewport);
+      setBaseViewport(currentViewport);
+
+      // Set canvas dimensions to match viewport
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Set display size of canvas (CSS pixels)
+      const isRotated90or270 = rotation === 90 || rotation === 270;
+
+      if (isRotated90or270) {
+        if (canvasWrapperRef.current) {
+          canvasWrapperRef.current.style.width = `${Math.floor(currentViewport.width)}px`;
+          canvasWrapperRef.current.style.height = `${Math.floor(currentViewport.height)}px`;
+        }
+        canvas.style.width = `${Math.floor(currentViewport.width)}px`;
+        canvas.style.height = `${Math.floor(currentViewport.height)}px`;
+      } else {
+        canvas.style.width = `${Math.floor(currentViewport.width)}px`;
+        canvas.style.height = `${Math.floor(currentViewport.height)}px`;
+        if (canvasWrapperRef.current) {
+          canvasWrapperRef.current.style.width = canvas.style.width;
+          canvasWrapperRef.current.style.height = canvas.style.height;
+        }
+      }
+
+      // Apply device pixel ratio for high-resolution rendering
+      const pixelRatio = window.devicePixelRatio || 1;
+
+      // Set actual size in memory
+      canvas.width = Math.floor(currentViewport.width * pixelRatio);
+      canvas.height = Math.floor(currentViewport.height * pixelRatio);
+
+      // Clear the canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Scale for high DPI displays
+      ctx.scale(pixelRatio, pixelRatio);
+
+      // Set up render context
+      const renderContext = {
+        canvasContext: ctx,
+        viewport: currentViewport,
+      };
+
+      // Render PDF page to the canvas
+      const renderTask = page.render(renderContext);
+      await renderTask.promise;
+
+      // Create a copy of the rendered canvas for future scaling operations
+      const backupCanvas = document.createElement('canvas');
+      backupCanvas.width = canvas.width;
+      backupCanvas.height = canvas.height;
+      const backupCtx = backupCanvas.getContext('2d');
+      if (backupCtx) {
+        backupCtx.drawImage(canvas, 0, 0);
+        highQualityCanvasRef.current = backupCanvas;
+      }
+
+      // Update the base scale
+      setBaseScale(scale);
+      setHasRendered(true);
+    } catch (error: any) {
+      console.error(`Error rendering page ${pageNumber}:`, error);
+    }
+  };
+
+  // Apply scale to the display canvas
+  const updateDisplayCanvas = () => {
+    if (!canvasRef.current || !highQualityCanvasRef.current || !baseViewport) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Calculate the current viewport based on user scale
+    const currentViewport = page.getViewport({
+      scale,
+      rotation,
+      dontFlip: false,
+    });
+
+    // Update viewport state
+    setViewport(currentViewport);
+
+    // Set display size of canvas (CSS pixels)
+    const isRotated90or270 = rotation === 90 || rotation === 270;
+
+    if (isRotated90or270) {
+      if (canvasWrapperRef.current) {
+        canvasWrapperRef.current.style.width = `${Math.floor(currentViewport.width)}px`;
+        canvasWrapperRef.current.style.height = `${Math.floor(currentViewport.height)}px`;
+      }
+      canvas.style.width = `${Math.floor(currentViewport.width)}px`;
+      canvas.style.height = `${Math.floor(currentViewport.height)}px`;
+    } else {
+      canvas.style.width = `${Math.floor(currentViewport.width)}px`;
+      canvas.style.height = `${Math.floor(currentViewport.height)}px`;
+      if (canvasWrapperRef.current) {
+        canvasWrapperRef.current.style.width = canvas.style.width;
+        canvasWrapperRef.current.style.height = canvas.style.height;
+      }
+    }
+
+    // Apply device pixel ratio for high-resolution rendering
+    const pixelRatio = window.devicePixelRatio || 1;
+
+    // Set actual size in memory
+    canvas.width = Math.floor(currentViewport.width * pixelRatio);
+    canvas.height = Math.floor(currentViewport.height * pixelRatio);
+
+    // Clear the canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Apply the scaling
+    ctx.scale(pixelRatio, pixelRatio);
+
+    // Calculate dimensions for drawing
+    const sourceWidth = baseViewport.width * pixelRatio;
+    const sourceHeight = baseViewport.height * pixelRatio;
+    const targetWidth = currentViewport.width;
+    const targetHeight = currentViewport.height;
+
+    // Draw the high quality canvas onto the display canvas with proper scaling
+    ctx.drawImage(highQualityCanvasRef.current, 0, 0, sourceWidth, sourceHeight, 0, 0, targetWidth, targetHeight);
+  };
+
+  // Initial rendering and scale change handling
   useEffect(() => {
-    let isMounted = true;
-    let currentRenderTask: ReturnType<typeof page.render> | null = null;
-
-    // Direct renderer - simpler approach with fewer potential issues
-    const renderPage = async () => {
-      // Only proceed if canvas exists
-      if (!canvasRef.current) return;
-
-      // Skip if already rendered at current scale
-      if (hasRendered) return;
-
+    const handleRenderOrUpdate = async () => {
       // Determine if this page should render:
       // 1. It's visible, OR
       // 2. It's the selected page, OR
@@ -192,99 +330,33 @@ export const ViewPage = ({
 
       if (!shouldRenderNow) return;
 
-      try {
-        const canvas = canvasRef.current;
-        const parent = canvas.parentElement;
-        if (!parent) return;
+      const scaleDifference = Math.abs(scale - baseScale);
 
-        // Create viewport with rotation
-        const currentViewport = page.getViewport({
-          scale,
-          rotation,
-          dontFlip: false,
-        });
-
-        // Store viewport for other components
-        setViewport(currentViewport);
-
-        // Apply device pixel ratio for high-resolution rendering
-        const pixelRatio = window.devicePixelRatio || 1;
-        const totalScale = pixelRatio;
-
-        // Handle rotation cases
-        const isRotated90or270 = rotation === 90 || rotation === 270;
-
-        // Set display size (css pixels)
-        if (isRotated90or270) {
-          parent.style.width = `${Math.floor(currentViewport.width)}px`;
-          parent.style.height = `${Math.floor(currentViewport.height)}px`;
-          canvas.style.width = `${Math.floor(currentViewport.width)}px`;
-          canvas.style.height = `${Math.floor(currentViewport.height)}px`;
-        } else {
-          canvas.style.width = `${Math.floor(currentViewport.width)}px`;
-          canvas.style.height = `${Math.floor(currentViewport.height)}px`;
-        }
-
-        // Set actual size in memory (scaled to account for device pixel ratio)
-        canvas.width = Math.floor(currentViewport.width * totalScale);
-        canvas.height = Math.floor(currentViewport.height * totalScale);
-
-        // Update canvasWrapper dimensions
-        if (canvasWrapperRef.current) {
-          canvasWrapperRef.current.style.width = canvas.style.width;
-          canvasWrapperRef.current.style.height = canvas.style.height;
-        }
-
-        // Get context and set scale
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        // Reset any previous transformations
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        // Apply scale factor for high DPI displays
-        ctx.scale(totalScale, totalScale);
-
-        // Set up render context
-        const renderContext = {
-          canvasContext: ctx,
-          viewport: currentViewport,
-        };
-
-        // Cancel any ongoing rendering
-        if (currentRenderTask) {
-          currentRenderTask.cancel();
-          currentRenderTask = null;
-        }
-
-        // Start rendering
-        currentRenderTask = page.render(renderContext);
-        setRenderTask(currentRenderTask);
-
-        // Wait for rendering to complete
-        await currentRenderTask.promise;
-
-        if (isMounted) {
-          setHasRendered(true);
-        }
-      } catch (error: any) {
-        // Ignore cancellation errors as they're expected during navigation
-        if (error?.name !== 'RenderingCancelledException' && isMounted) {
-          console.error(`Error rendering page ${pageNumber}:`, error);
-        }
+      // For initial render or when scale difference exceeds threshold
+      if (!hasRendered || !highQualityCanvasRef.current || scaleDifference > SCALE_THRESHOLD) {
+        // Render PDF at current scale directly
+        await renderPageAtCurrentScale();
+      } else {
+        // Just update display canvas with scaling
+        updateDisplayCanvas();
       }
     };
 
-    // Execute render
-    renderPage();
+    handleRenderOrUpdate();
+  }, [page, rotation, scale, pageNumber, selectedPage, inView, hasRendered, baseScale]);
 
-    // Cleanup function
-    return () => {
-      isMounted = false;
-      if (currentRenderTask) {
-        currentRenderTask.cancel();
-      }
-    };
-  }, [page, scale, rotation, pageNumber, selectedPage, inView, hasRendered]);
+  // Re-render when rotation changes
+  useEffect(() => {
+    const rotation = pageRotations[pageNumber] || 0;
+    const prevRotation = prevRotationRef.current;
+
+    if (rotation !== prevRotation) {
+      // Need to re-render at new rotation
+      setHasRendered(false);
+      highQualityCanvasRef.current = null;
+      prevRotationRef.current = rotation;
+    }
+  }, [pageNumber, pageRotations]);
 
   // Remove console log from visibility changes
   useEffect(() => {
@@ -346,27 +418,6 @@ export const ViewPage = ({
     }
   }, [isCentered, hasRendered, pageNumber, onBecameVisible]);
 
-  // Re-render when rotation changes - use ref to compare with previous value
-  useEffect(() => {
-    const rotation = pageRotations[pageNumber] || 0;
-    const prevRotation = prevRotationRef.current;
-
-    if (rotation !== prevRotation) {
-      setHasRendered(false);
-      prevRotationRef.current = rotation;
-    }
-  }, [pageNumber, pageRotations]);
-
-  // Clean up scale change effect
-  useEffect(() => {
-    const prevScale = prevScaleRef.current;
-
-    if (scale !== prevScale) {
-      setHasRendered(false);
-      prevScaleRef.current = scale;
-    }
-  }, [scale, pageNumber]);
-
   const handleDrawingCreated = (drawing: Omit<Drawing, 'id'>) => {
     // Call the parent's onDrawingCreated with the enhanced drawing
     if (onDrawingCreated) {
@@ -410,14 +461,12 @@ export const ViewPage = ({
 
           {/* Text Layer - only render when text tool is selected */}
           {(drawingMode === 'textUnderline' || drawingMode === 'textCrossedOut' || drawingMode === 'textHighlight') &&
-            viewport &&
-            renderTask && (
+            viewport && (
               <TextLayer
                 page={page}
                 viewport={viewport}
                 scale={scale}
                 rotation={rotation}
-                renderTask={renderTask}
                 pageNumber={pageNumber}
                 onDrawingCreated={handleDrawingCreated}
                 pdfCanvasRef={canvasRef}

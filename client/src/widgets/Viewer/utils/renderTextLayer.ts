@@ -14,19 +14,11 @@ interface TextItem {
 /**
  * Renders the text layer for a PDF page
  */
-export const renderTextLayer = async (
-  textLayerRef: HTMLDivElement,
-  page: PDFPageProxy,
-  viewport: any,
-  renderTask: any,
-): Promise<void> => {
+export const renderTextLayer = async (textLayerRef: HTMLDivElement, page: PDFPageProxy, viewport: any): Promise<void> => {
   // Clear previous text layer content
   textLayerRef.innerHTML = '';
 
   try {
-    // Wait for canvas rendering to complete first
-    await renderTask.promise;
-
     try {
       // Get text content
       const textContent = await page.getTextContent({

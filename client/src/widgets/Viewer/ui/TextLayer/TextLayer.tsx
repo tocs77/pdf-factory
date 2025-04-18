@@ -11,14 +11,13 @@ interface TextLayerProps {
   viewport: any;
   scale: number;
   rotation: number;
-  renderTask: any;
   pageNumber: number;
   onDrawingCreated: (drawing: Drawing) => void;
   pdfCanvasRef?: React.RefObject<HTMLCanvasElement>;
 }
 
 export const TextLayer = (props: TextLayerProps) => {
-  const { page, viewport, scale, rotation, renderTask, pageNumber, onDrawingCreated, pdfCanvasRef } = props;
+  const { page, viewport, scale, rotation, pageNumber, onDrawingCreated, pdfCanvasRef } = props;
   const textLayerRef = useRef<HTMLDivElement>(null);
   const [hasSelection, setHasSelection] = useState(false);
 
@@ -279,13 +278,13 @@ export const TextLayer = (props: TextLayerProps) => {
   // Initial rendering of text layer
   useEffect(() => {
     const handleRenderTextLayer = async () => {
-      if (textLayerRef.current && viewport && renderTask && page) {
-        await renderTextLayer(textLayerRef.current, page, viewport, renderTask);
+      if (textLayerRef.current && viewport && page) {
+        await renderTextLayer(textLayerRef.current, page, viewport);
       }
     };
 
     handleRenderTextLayer();
-  }, [page, viewport, renderTask]);
+  }, [page, viewport]);
 
   // Ensure text layer is properly positioned when rotation changes
   useEffect(() => {
