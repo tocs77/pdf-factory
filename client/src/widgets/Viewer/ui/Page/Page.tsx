@@ -15,6 +15,7 @@ interface PageProps {
   onBecameVisible: (pageNumber: number) => void;
   onDrawingClicked?: (id: string) => void;
   className?: string;
+  selectedPage: number;
 }
 
 export const Page = (props: PageProps) => {
@@ -28,6 +29,7 @@ export const Page = (props: PageProps) => {
     onBecameVisible,
     onDrawingClicked,
     className,
+    selectedPage,
   } = props;
 
   const pageKey = `page-${pageNumber}`;
@@ -77,6 +79,7 @@ export const Page = (props: PageProps) => {
       onDrawingCreated={drawingCreated}
       onBecameVisible={onBecameVisible}
       onDrawingClicked={onDrawingClicked}
+      selectedPage={selectedPage}
     />
   );
 };

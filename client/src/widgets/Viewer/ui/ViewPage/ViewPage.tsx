@@ -2,17 +2,20 @@ import { useEffect, useRef, useState, useContext } from 'react';
 import type { PDFPageProxy } from 'pdfjs-dist';
 
 import { classNames } from '@/shared/utils';
-import CompleteDrawings from '../CompleteDrawings/CompleteDrawings';
+
 import { ViewerContext } from '../../model/context/viewerContext';
-import { TextLayer } from '../TextLayer/TextLayer';
-import { DrawAreaLayer } from '../DrawAreaLayer/DrawAreaLayer';
-import { ZoomAreaLayer } from '../ZoomAreaLayer/ZoomAreaLayer';
-import { RulerDrawingLayer } from '../RulerDrawingLayer/RulerDrawingLayer';
 import { Drawing } from '../../model/types/viewerSchema';
+import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
+
+import CompleteDrawings from '../CompleteDrawings/CompleteDrawings';
 import { DraftLayer } from '../DraftLayer/DraftLayer';
+import { DrawAreaLayer } from '../DrawAreaLayer/DrawAreaLayer';
+import { RulerDrawingLayer } from '../RulerDrawingLayer/RulerDrawingLayer';
+import { TextLayer } from '../TextLayer/TextLayer';
 import RectSelectionDrawingComponent from '../RectSelectionDrawingComponent/RectSelectionDrawingComponent';
 import PinSelectionDrawingComponent from '../PinSelectionDrawingComponent/PinSelectionDrawingComponent';
-import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
+import { ZoomAreaLayer } from '../ZoomAreaLayer/ZoomAreaLayer';
+
 import classes from './ViewPage.module.scss';
 
 // Page component for rendering a single PDF page
@@ -25,6 +28,7 @@ interface ViewPageProps {
   drawings: Drawing[];
   onDrawingCreated: (drawing: Omit<Drawing, 'id'>) => void;
   onDrawingClicked?: (id: string) => void;
+  selectedPage: number; // current selected page from parent
 }
 
 export const ViewPage = ({
@@ -36,6 +40,7 @@ export const ViewPage = ({
   onDrawingCreated,
   onBecameVisible,
   onDrawingClicked,
+  selectedPage,
 }: ViewPageProps) => {
   const { state } = useContext(ViewerContext);
   const { drawingMode, pageRotations, scale, currentDrawingPage } = state;
@@ -234,15 +239,10 @@ export const ViewPage = ({
     let currentRenderTask: ReturnType<typeof page.render> | null = null;
 
     const renderPage = async () => {
-      // Skip rendering if the page isn't visible
-      if (!canvasRef.current || !shouldRender) {
+      if (!canvasRef.current || (pageNumber !== selectedPage && !inView)) {
         return;
       }
-
-      // If already rendered once, don't re-render
-      if (hasRendered) {
-        return;
-      }
+      if (hasRendered) return;
 
       // Create viewport with rotation
       // For 90/270 degree rotations, we need to ensure the viewport maintains the correct aspect ratio
@@ -334,7 +334,7 @@ export const ViewPage = ({
         currentRenderTask.cancel();
       }
     };
-  }, [page, scale, shouldRender, hasRendered, rotation, pageNumber, inView]);
+  }, [page, scale, shouldRender, hasRendered, rotation, pageNumber, inView, selectedPage]);
 
   // Re-render when rotation changes - use ref to compare with previous value
   useEffect(() => {

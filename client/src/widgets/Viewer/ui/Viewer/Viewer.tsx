@@ -1,10 +1,12 @@
 import { useContext, useEffect, useState, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import { PDFDocumentProxy, PDFPageProxy, getDocument } from 'pdfjs-dist';
-import { classNames } from '@/shared/utils';
-import { isSliderBeingDragged } from '@/shared/utils';
+
+import { classNames, isSliderBeingDragged } from '@/shared/utils';
+
 import { Thumbnail } from '../Thumbnail/Thumbnail';
 import { ViewerMenu } from '../ViewerMenu/ViewerMenu';
 import { Page } from '../Page/Page';
+import { DrawingMenu } from '../DrawingMenu/DrawingMenu';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { ViewerProvider } from '../../model/context/ViewerProvider';
 import { scrollToPage } from '../../utils/pageScrollUtils';
@@ -12,7 +14,7 @@ import { Drawing, RotationAngle } from '../../model/types/viewerSchema';
 import { useZoomToMouse } from '../../hooks/useZoomToMouse';
 import { useDragToScroll } from '../../hooks/useDragToScroll';
 import { useScrollToDraw } from '../../hooks/useScrollToDraw';
-import { DrawingMenu } from '../DrawingMenu/DrawingMenu';
+
 import classes from './Viewer.module.scss';
 
 // Define the ref type for scrollToDraw function
@@ -305,6 +307,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
           onBecameVisible={handlePageBecameVisible}
           onDrawingClicked={onDrawingClicked}
           className={classes.pageItem}
+          selectedPage={selectedPage}
         />
       );
     });

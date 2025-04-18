@@ -64,10 +64,7 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef }: UseZoomToMouse
 
   // Function to adjust scroll position after zoom, focusing on the page
   const adjustScrollPositionAfterZoomOnPage = useCallback((container: HTMLDivElement, zoomData: ZoomData) => {
-    const { oldScale, newScale, scrollTopBefore, scrollLeftBefore, pageElement, mouseXPercentPage, mouseYPercentPage } = zoomData;
-
-    // Calculate the scale ratio
-    const scaleRatio = newScale / oldScale;
+    const { scrollTopBefore, scrollLeftBefore, pageElement, mouseXPercentPage, mouseYPercentPage } = zoomData;
 
     // Get the updated page position after scale change
     const updatedPageRect = pageElement.getBoundingClientRect();
@@ -92,23 +89,6 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef }: UseZoomToMouse
     // Apply the new scroll position
     container.scrollLeft = newScrollLeft;
     container.scrollTop = newScrollTop;
-
-    console.log('Zoom adjusted scroll for page:', {
-      oldScale,
-      newScale,
-      scaleRatio,
-      pageNumber: pageElement.getAttribute('data-page-number'),
-      scrollBefore: { x: scrollLeftBefore, y: scrollTopBefore },
-      scrollAfter: { x: newScrollLeft, y: newScrollTop },
-      horizontalDetails: {
-        mouseXDoc: zoomData.mouseXDoc,
-        mouseXRelativePage: mouseXPercentPage * updatedPageRect.width,
-        newMouseXOnPage,
-        newMouseXViewport,
-        newMouseXContainer,
-        horizontalScrollDelta: newScrollLeft - scrollLeftBefore,
-      },
-    });
   }, []);
 
   // Prevent browser zoom on Ctrl+wheel globally
@@ -130,13 +110,8 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef }: UseZoomToMouse
 
         // Only zoom if the mouse is over a page
         if (!pageElement) {
-          console.log('Zoom prevented: mouse not over a page');
           return false;
         }
-
-        // Get the page number
-        const pageNumber = parseInt(pageElement.getAttribute('data-page-number') || '1', 10);
-        console.log('Zooming on page:', pageNumber);
 
         // Get container dimensions and scroll position before zoom
         const containerRect = container.getBoundingClientRect();
@@ -157,24 +132,6 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef }: UseZoomToMouse
         // Calculate mouse position relative to the document (including scroll)
         const mouseXDoc = e.clientX - containerRect.left + scrollLeftBefore;
         const mouseYDoc = e.clientY - containerRect.top + scrollTopBefore;
-
-        console.log('Wheel zoom event:', {
-          mousePosition: { x: e.clientX, y: e.clientY },
-          containerScroll: { x: scrollLeftBefore, y: scrollTopBefore },
-          mouseRelativeToDoc: { x: mouseXDoc, y: mouseYDoc },
-          mouseRelativeToPage: {
-            x: mouseXPercentPage,
-            y: mouseYPercentPage,
-            pxFromLeft: mouseXRelativePage,
-            pxFromTop: mouseYRelativePage,
-          },
-          pageRect: {
-            left: pageRect.left,
-            top: pageRect.top,
-            width: pageRect.width,
-            height: pageRect.height,
-          },
-        });
 
         // Handle our custom zoom functionality
         const delta = e.deltaY > 0 ? -0.1 : 0.1;
@@ -239,13 +196,10 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef }: UseZoomToMouse
         // Find the most visible page to focus on
         const visiblePage = findVisiblePageElement();
         if (!visiblePage) {
-          console.log('Zoom prevented: no visible page found');
           return false;
         }
 
         const pageElement = visiblePage as HTMLElement;
-        const pageNumber = parseInt(pageElement.getAttribute('data-page-number') || '1', 10);
-        console.log('Zooming on page:', pageNumber);
 
         // Get container dimensions and scroll position before zoom
         const containerRect = container.getBoundingClientRect();
@@ -271,16 +225,8 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef }: UseZoomToMouse
         const centerXDoc = viewportCenterX - containerRect.left + scrollLeftBefore;
         const centerYDoc = viewportCenterY - containerRect.top + scrollTopBefore;
 
-        console.log('Keyboard zoom focus point:', {
-          viewportCenter: { x: viewportCenterX, y: viewportCenterY },
-          pageRelative: { x: relativeX, y: relativeY },
-          docPosition: { x: centerXDoc, y: centerYDoc },
-        });
-
-        const oldScale = scale;
-        let newScale = scale;
-
         // Handle our custom zoom functionality for keyboard shortcuts
+        let newScale = scale;
         if (e.key === '+' || e.key === '=') {
           // Zoom in
           newScale = Math.min(5, scale + 0.1);
@@ -294,7 +240,7 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef }: UseZoomToMouse
 
         // Store the current scroll position and center position for use after the scale change
         const zoomData = {
-          oldScale,
+          oldScale: scale,
           newScale,
           mouseXDoc: centerXDoc,
           mouseYDoc: centerYDoc,
@@ -331,120 +277,91 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef }: UseZoomToMouse
   }, [scale, dispatch, findVisiblePageElement, adjustScrollPositionAfterZoomOnPage, containerRef]);
 
   // Function to handle scale changes and preserve scroll position
-  const handleScaleChange = useCallback(
-    (prevScale: number) => {
-      if (!containerRef.current) return;
+  const handleScaleChange = useCallback(() => {
+    if (!containerRef.current) return;
 
-      const container = containerRef.current;
+    const container = containerRef.current;
 
-      // Find the most visible page and its relative position
-      const visiblePage = findVisiblePageElement();
+    // Find the most visible page and its relative position
+    const visiblePage = findVisiblePageElement();
 
-      if (!visiblePage) {
-        // Fallback to simple ratio-based scrolling if no visible page found
-        const scrollTop = container.scrollTop;
-        const scrollLeft = container.scrollLeft;
-        const scrollHeight = container.scrollHeight;
-        const scrollWidth = container.scrollWidth;
-        const containerHeight = container.clientHeight;
-        const containerWidth = container.clientWidth;
+    if (!visiblePage) {
+      // Fallback to simple ratio-based scrolling if no visible page found
+      const scrollTop = container.scrollTop;
+      const scrollLeft = container.scrollLeft;
+      const scrollHeight = container.scrollHeight;
+      const scrollWidth = container.scrollWidth;
+      const containerHeight = container.clientHeight;
+      const containerWidth = container.clientWidth;
 
-        // Calculate vertical and horizontal scroll ratios
-        const verticalScrollRatio = scrollTop / Math.max(1, scrollHeight - containerHeight);
-        const horizontalScrollRatio = scrollLeft / Math.max(1, scrollWidth - containerWidth);
-
-        console.log(`No visible page found. Using ratios:`, {
-          vertical: verticalScrollRatio,
-          horizontal: horizontalScrollRatio,
-          scrollBefore: { x: scrollLeft, y: scrollTop },
-        });
-
-        // Apply new scroll position after DOM update
-        setTimeout(() => {
-          if (!container) return;
-          const newScrollHeight = container.scrollHeight;
-          const newScrollWidth = container.scrollWidth;
-          const newContainerHeight = container.clientHeight;
-          const newContainerWidth = container.clientWidth;
-
-          const newScrollTop = verticalScrollRatio * Math.max(1, newScrollHeight - newContainerHeight);
-          const newScrollLeft = horizontalScrollRatio * Math.max(1, newScrollWidth - newContainerWidth);
-
-          container.scrollTop = newScrollTop;
-          container.scrollLeft = newScrollLeft;
-
-          console.log('Applied ratio-based scroll:', {
-            scrollAfter: { x: newScrollLeft, y: newScrollTop },
-            newDimensions: {
-              width: newScrollWidth,
-              height: newScrollHeight,
-              containerWidth: newContainerWidth,
-              containerHeight: newContainerHeight,
-            },
-          });
-        }, 100);
-
-        return;
-      }
-
-      // Get the page number and position
-      const pageElement = visiblePage as HTMLElement;
-      const pageNumber = parseInt(pageElement.getAttribute('data-page-number') || '1', 10);
-      const pageRect = pageElement.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-
-      // Calculate the visible center of the page
-      const visibleTop = Math.max(pageRect.top, containerRect.top);
-      const visibleBottom = Math.min(pageRect.bottom, containerRect.bottom);
-      const visibleLeft = Math.max(pageRect.left, containerRect.left);
-      const visibleRight = Math.min(pageRect.right, containerRect.right);
-
-      const visibleCenterY = (visibleTop + visibleBottom) / 2;
-      const visibleCenterX = (visibleLeft + visibleRight) / 2;
-
-      // Calculate the position as a percentage of the page dimensions
-      const percentX = (visibleCenterX - pageRect.left) / pageRect.width;
-      const percentY = (visibleCenterY - pageRect.top) / pageRect.height;
-
-      console.log(
-        `Scale changed from ${prevScale} to ${scale}. Adjusting scroll for page ${pageNumber} at position ${percentX.toFixed(2)}, ${percentY.toFixed(2)}`,
-      );
+      // Calculate vertical and horizontal scroll ratios
+      const verticalScrollRatio = scrollTop / Math.max(1, scrollHeight - containerHeight);
+      const horizontalScrollRatio = scrollLeft / Math.max(1, scrollWidth - containerWidth);
 
       // Apply new scroll position after DOM update
       setTimeout(() => {
-        if (!containerRef.current) return;
+        if (!container) return;
+        const newScrollHeight = container.scrollHeight;
+        const newScrollWidth = container.scrollWidth;
+        const newContainerHeight = container.clientHeight;
+        const newContainerWidth = container.clientWidth;
 
-        // Get the updated page element
-        const updatedPageElement = containerRef.current.querySelector(`[data-page-number="${pageNumber}"]`);
-        if (!updatedPageElement) return;
+        const newScrollTop = verticalScrollRatio * Math.max(1, newScrollHeight - newContainerHeight);
+        const newScrollLeft = horizontalScrollRatio * Math.max(1, newScrollWidth - newContainerWidth);
 
-        const updatedPageRect = updatedPageElement.getBoundingClientRect();
-        const updatedContainerRect = containerRef.current.getBoundingClientRect();
-
-        // Calculate the new center position
-        const newCenterX = updatedPageRect.left + updatedPageRect.width * percentX;
-        const newCenterY = updatedPageRect.top + updatedPageRect.height * percentY;
-
-        // Calculate the scroll needed to center this point
-        const scrollLeftNeeded =
-          newCenterX - updatedContainerRect.left - updatedContainerRect.width / 2 + containerRef.current.scrollLeft;
-        const scrollTopNeeded =
-          newCenterY - updatedContainerRect.top - updatedContainerRect.height / 2 + containerRef.current.scrollTop;
-
-        // Apply the scroll
-        containerRef.current.scrollLeft = scrollLeftNeeded;
-        containerRef.current.scrollTop = scrollTopNeeded;
-
-        console.log('Applied page-based scroll adjustment:', {
-          page: pageNumber,
-          position: { x: percentX, y: percentY },
-          newCenter: { x: newCenterX, y: newCenterY },
-          newScroll: { x: scrollLeftNeeded, y: scrollTopNeeded },
-        });
+        container.scrollTop = newScrollTop;
+        container.scrollLeft = newScrollLeft;
       }, 100);
-    },
-    [findVisiblePageElement, containerRef, scale],
-  );
+
+      return;
+    }
+
+    // Get the page number and position
+    const pageElement = visiblePage as HTMLElement;
+    const pageRect = pageElement.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+
+    // Calculate the visible center of the page
+    const visibleTop = Math.max(pageRect.top, containerRect.top);
+    const visibleBottom = Math.min(pageRect.bottom, containerRect.bottom);
+    const visibleLeft = Math.max(pageRect.left, containerRect.left);
+    const visibleRight = Math.min(pageRect.right, containerRect.right);
+
+    const visibleCenterY = (visibleTop + visibleBottom) / 2;
+    const visibleCenterX = (visibleLeft + visibleRight) / 2;
+
+    // Calculate the position as a percentage of the page dimensions
+    const percentX = (visibleCenterX - pageRect.left) / pageRect.width;
+    const percentY = (visibleCenterY - pageRect.top) / pageRect.height;
+
+    // Apply new scroll position after DOM update
+    setTimeout(() => {
+      if (!containerRef.current) return;
+
+      // Get the updated page element
+      const updatedPageElement = containerRef.current.querySelector(
+        `[data-page-number="${pageElement.getAttribute('data-page-number')}"]`,
+      );
+      if (!updatedPageElement) return;
+
+      const updatedPageRect = updatedPageElement.getBoundingClientRect();
+      const updatedContainerRect = containerRef.current.getBoundingClientRect();
+
+      // Calculate the new center position
+      const newCenterX = updatedPageRect.left + updatedPageRect.width * percentX;
+      const newCenterY = updatedPageRect.top + updatedPageRect.height * percentY;
+
+      // Calculate the scroll needed to center this point
+      const scrollLeftNeeded =
+        newCenterX - updatedContainerRect.left - updatedContainerRect.width / 2 + containerRef.current.scrollLeft;
+      const scrollTopNeeded =
+        newCenterY - updatedContainerRect.top - updatedContainerRect.height / 2 + containerRef.current.scrollTop;
+
+      // Apply the scroll
+      containerRef.current.scrollLeft = scrollLeftNeeded;
+      containerRef.current.scrollTop = scrollTopNeeded;
+    }, 100);
+  }, [findVisiblePageElement, containerRef, scale]);
 
   return {
     findVisiblePageElement,
