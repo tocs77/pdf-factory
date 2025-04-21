@@ -380,32 +380,40 @@ export const captureTextAnnotationImage = (
   );
 
   // Adjust annotation coordinates to be relative to the crop area
-  if (annotationType === 'highlight') {
-    const highlightData = { ...(annotationData as TextHighlight) };
-    highlightData.rects = highlightData.rects.map((rect) => ({
-      x: rect.x - minX,
-      y: rect.y - minY,
-      width: rect.width,
-      height: rect.height,
-    }));
+  let adjustedAnnotation: TextHighlight | TextUnderline | TextCrossedOut;
+  switch (annotationType) {
+    case 'highlight': {
+      adjustedAnnotation = { ...(annotationData as TextHighlight) };
+      (adjustedAnnotation as TextHighlight).rects = (adjustedAnnotation as TextHighlight).rects.map((rect) => ({
+        x: rect.x - minX,
+        y: rect.y - minY,
+        width: rect.width,
+        height: rect.height,
+      }));
 
-    renderTextHighlight(ctx, highlightData, canvasWidth, canvasHeight, 1, 0);
-  } else if (annotationType === 'underline') {
-    const underlineData = { ...(annotationData as TextUnderline) };
-    underlineData.lines = underlineData.lines.map((line) => ({
-      start: { x: line.start.x - minX, y: line.start.y - minY },
-      end: { x: line.end.x - minX, y: line.end.y - minY },
-    }));
+      renderTextHighlight(ctx, adjustedAnnotation as TextHighlight, canvasWidth, canvasHeight, 1, 0);
+      break;
+    }
+    case 'underline': {
+      adjustedAnnotation = { ...(annotationData as TextUnderline) };
+      (adjustedAnnotation as TextUnderline).lines = (adjustedAnnotation as TextUnderline).lines.map((line) => ({
+        start: { x: line.start.x - minX, y: line.start.y - minY },
+        end: { x: line.end.x - minX, y: line.end.y - minY },
+      }));
 
-    renderTextUnderline(ctx, underlineData, canvasWidth, canvasHeight, 1, 0);
-  } else if (annotationType === 'crossedout') {
-    const crossedOutData = { ...(annotationData as TextCrossedOut) };
-    crossedOutData.lines = crossedOutData.lines.map((line) => ({
-      start: { x: line.start.x - minX, y: line.start.y - minY },
-      end: { x: line.end.x - minX, y: line.end.y - minY },
-    }));
+      renderTextUnderline(ctx, adjustedAnnotation as TextUnderline, canvasWidth, canvasHeight, 1, 0);
+      break;
+    }
+    case 'crossedout': {
+      adjustedAnnotation = { ...(annotationData as TextCrossedOut) };
+      (adjustedAnnotation as TextCrossedOut).lines = (adjustedAnnotation as TextCrossedOut).lines.map((line) => ({
+        start: { x: line.start.x - minX, y: line.start.y - minY },
+        end: { x: line.end.x - minX, y: line.end.y - minY },
+      }));
 
-    renderTextCrossedOut(ctx, crossedOutData, canvasWidth, canvasHeight, 1, 0);
+      renderTextCrossedOut(ctx, adjustedAnnotation as TextCrossedOut, canvasWidth, canvasHeight, 1, 0);
+      break;
+    }
   }
 
   // Return the image data
