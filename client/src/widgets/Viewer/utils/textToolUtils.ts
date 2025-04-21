@@ -64,6 +64,258 @@ export const getSelectedElements = (selection: Selection | null, container: HTML
 };
 
 /**
+ * Processes a selection range to create line segments based on the range client rects
+ */
+export const processRangeClientRects = (
+  range: Range,
+  pageRect: DOMRect,
+  pageWidth: number,
+  pageHeight: number,
+  scale: number,
+  rotation: number,
+  isVerticalText: boolean,
+): { start: { x: number; y: number }; end: { x: number; y: number } }[] => {
+  const lines: { start: { x: number; y: number }; end: { x: number; y: number } }[] = [];
+  const clientRects = range.getClientRects();
+
+  for (let j = 0; j < clientRects.length; j++) {
+    const rect = clientRects[j];
+    // Skip very thin rects
+    if (rect.height < 5) continue;
+
+    // Calculate coordinates relative to the page
+    if (isVerticalText) {
+      // For vertical text (90° or 270° rotation), create vertical lines
+      const x = (rect.left - pageRect.left + rect.width / 2) / scale; // Middle of the text horizontally
+      const startY = (rect.top - pageRect.top) / scale;
+      const endY = (rect.bottom - pageRect.top) / scale;
+
+      // Normalize coordinates based on rotation
+      if (rotation > 0) {
+        // Fix for linter - check if rotation is non-zero
+        const startPoint = normalizeCoordinatesToZeroRotation(
+          { x, y: startY },
+          pageWidth / scale,
+          pageHeight / scale,
+          1,
+          rotation,
+        );
+
+        const endPoint = normalizeCoordinatesToZeroRotation({ x, y: endY }, pageWidth / scale, pageHeight / scale, 1, rotation);
+
+        lines.push({
+          start: startPoint,
+          end: endPoint,
+        });
+      } else {
+        lines.push({
+          start: { x, y: startY },
+          end: { x, y: endY },
+        });
+      }
+    } else {
+      // For horizontal text (0° or 180° rotation), create horizontal lines
+      const startX = (rect.left - pageRect.left) / scale;
+      const endX = (rect.right - pageRect.left) / scale;
+      const y = (rect.bottom - pageRect.top - 2) / scale;
+
+      // Normalize coordinates based on rotation
+      if (rotation > 0) {
+        // Fix for linter - check if rotation is non-zero
+        const startPoint = normalizeCoordinatesToZeroRotation(
+          { x: startX, y },
+          pageWidth / scale,
+          pageHeight / scale,
+          1,
+          rotation,
+        );
+
+        const endPoint = normalizeCoordinatesToZeroRotation({ x: endX, y }, pageWidth / scale, pageHeight / scale, 1, rotation);
+
+        lines.push({
+          start: startPoint,
+          end: endPoint,
+        });
+      } else {
+        lines.push({
+          start: { x: startX, y },
+          end: { x: endX, y },
+        });
+      }
+    }
+  }
+
+  return lines;
+};
+
+/**
+ * Groups text elements into lines or columns based on their position
+ */
+export const groupElementsByPosition = (selectedElements: HTMLElement[], isVerticalText: boolean): HTMLElement[][] => {
+  const groups: HTMLElement[][] = [];
+  let currentGroup: HTMLElement[] = [];
+  let lastPosition = -1;
+
+  selectedElements.forEach((element) => {
+    const rect = element.getBoundingClientRect();
+
+    // Different grouping based on rotation
+    let currentPosition;
+    if (isVerticalText) {
+      // For vertical text, group by x-coordinate
+      currentPosition = rect.left;
+    } else {
+      // For horizontal text, group by y-coordinate
+      currentPosition = rect.top;
+    }
+
+    // If this element is on a new line/column
+    if (lastPosition >= 0 && Math.abs(currentPosition - lastPosition) > 5) {
+      if (currentGroup.length > 0) {
+        groups.push(currentGroup);
+        currentGroup = [];
+      }
+    }
+
+    currentGroup.push(element);
+    lastPosition = currentPosition;
+  });
+
+  // Add the last group if not empty
+  if (currentGroup.length > 0) {
+    groups.push(currentGroup);
+  }
+
+  return groups;
+};
+
+/**
+ * Creates a vertical line segment for a group of elements
+ */
+export const createVerticalLineSegment = (
+  lineElements: HTMLElement[],
+  pageRect: DOMRect,
+  pageWidth: number,
+  pageHeight: number,
+  scale: number,
+  rotation: number,
+): { start: { x: number; y: number }; end: { x: number; y: number } } | null => {
+  if (lineElements.length === 0) return null;
+
+  // For vertical text (90° or 270° rotation), sort by y-coordinate
+  lineElements.sort((a, b) => {
+    return a.getBoundingClientRect().top - b.getBoundingClientRect().top;
+  });
+
+  // Get topmost and bottommost elements
+  const firstElement = lineElements[0];
+  const lastElement = lineElements[lineElements.length - 1];
+
+  const firstRect = firstElement.getBoundingClientRect();
+  const lastRect = lastElement.getBoundingClientRect();
+
+  // Create a vertical line segment for the entire column
+  const x = (firstRect.left - pageRect.left + firstRect.width / 2) / scale; // Middle of the text horizontally
+  const startY = (firstRect.top - pageRect.top) / scale;
+  const endY = (lastRect.bottom - pageRect.top) / scale;
+
+  // Normalize coordinates based on rotation
+  if (rotation > 0) {
+    // Fix for linter - check if rotation is non-zero
+    const startPoint = normalizeCoordinatesToZeroRotation({ x, y: startY }, pageWidth / scale, pageHeight / scale, 1, rotation);
+
+    const endPoint = normalizeCoordinatesToZeroRotation({ x, y: endY }, pageWidth / scale, pageHeight / scale, 1, rotation);
+
+    return {
+      start: startPoint,
+      end: endPoint,
+    };
+  } else {
+    return {
+      start: { x, y: startY },
+      end: { x, y: endY },
+    };
+  }
+};
+
+/**
+ * Creates a horizontal line segment for a group of elements
+ */
+export const createHorizontalLineSegment = (
+  lineElements: HTMLElement[],
+  pageRect: DOMRect,
+  pageWidth: number,
+  pageHeight: number,
+  scale: number,
+  rotation: number,
+): { start: { x: number; y: number }; end: { x: number; y: number } } | null => {
+  if (lineElements.length === 0) return null;
+
+  // For horizontal text (0° or 180° rotation), sort by x-coordinate
+  lineElements.sort((a, b) => {
+    return a.getBoundingClientRect().left - b.getBoundingClientRect().left;
+  });
+
+  // Get leftmost and rightmost elements
+  const firstElement = lineElements[0];
+  const lastElement = lineElements[lineElements.length - 1];
+
+  const firstRect = firstElement.getBoundingClientRect();
+  const lastRect = lastElement.getBoundingClientRect();
+
+  // Create a single line segment for the entire line
+  const startX = (firstRect.left - pageRect.left) / scale;
+  const endX = (lastRect.right - pageRect.left) / scale;
+  const y = (firstRect.bottom - pageRect.top - 2) / scale; // Position slightly below text
+
+  // Normalize coordinates based on rotation
+  if (rotation > 0) {
+    const startPoint = normalizeCoordinatesToZeroRotation({ x: startX, y }, pageWidth / scale, pageHeight / scale, 1, rotation);
+
+    const endPoint = normalizeCoordinatesToZeroRotation({ x: endX, y }, pageWidth / scale, pageHeight / scale, 1, rotation);
+
+    return {
+      start: startPoint,
+      end: endPoint,
+    };
+  } else {
+    return {
+      start: { x: startX, y },
+      end: { x: endX, y },
+    };
+  }
+};
+
+/**
+ * Creates line segments from element groups
+ */
+export const createLineSegmentsFromGroups = (
+  lineGroups: HTMLElement[][],
+  pageRect: DOMRect,
+  pageWidth: number,
+  pageHeight: number,
+  scale: number,
+  rotation: number,
+  isVerticalText: boolean,
+): { start: { x: number; y: number }; end: { x: number; y: number } }[] => {
+  const lines: { start: { x: number; y: number }; end: { x: number; y: number } }[] = [];
+
+  lineGroups.forEach((lineElements) => {
+    if (lineElements.length === 0) return;
+
+    const lineSegment = isVerticalText
+      ? createVerticalLineSegment(lineElements, pageRect, pageWidth, pageHeight, scale, rotation)
+      : createHorizontalLineSegment(lineElements, pageRect, pageWidth, pageHeight, scale, rotation);
+
+    if (lineSegment) {
+      lines.push(lineSegment);
+    }
+  });
+
+  return lines;
+};
+
+/**
  * Function to calculate line segments for multiple lines of text
  */
 export const getLineSegments = (
@@ -95,211 +347,17 @@ export const getLineSegments = (
   if (selectedElements.length === 0) {
     for (let i = 0; i < selection.rangeCount; i++) {
       const range = selection.getRangeAt(i);
-      const clientRects = range.getClientRects();
-
-      for (let j = 0; j < clientRects.length; j++) {
-        const rect = clientRects[j];
-        // Skip very thin rects
-        if (rect.height < 5) continue;
-
-        // Calculate coordinates relative to the page
-        if (isVerticalText) {
-          // For vertical text (90° or 270° rotation), create vertical lines
-          const x = (rect.left - pageRect.left + rect.width / 2) / scale; // Middle of the text horizontally
-          const startY = (rect.top - pageRect.top) / scale;
-          const endY = (rect.bottom - pageRect.top) / scale;
-
-          // Normalize coordinates based on rotation
-          if (rotation > 0) {
-            // Fix for linter - check if rotation is non-zero
-            const startPoint = normalizeCoordinatesToZeroRotation(
-              { x, y: startY },
-              pageWidth / scale,
-              pageHeight / scale,
-              1,
-              rotation,
-            );
-
-            const endPoint = normalizeCoordinatesToZeroRotation(
-              { x, y: endY },
-              pageWidth / scale,
-              pageHeight / scale,
-              1,
-              rotation,
-            );
-
-            lines.push({
-              start: startPoint,
-              end: endPoint,
-            });
-          } else {
-            lines.push({
-              start: { x, y: startY },
-              end: { x, y: endY },
-            });
-          }
-        } else {
-          // For horizontal text (0° or 180° rotation), create horizontal lines
-          const startX = (rect.left - pageRect.left) / scale;
-          const endX = (rect.right - pageRect.left) / scale;
-          const y = (rect.bottom - pageRect.top - 2) / scale;
-
-          // Normalize coordinates based on rotation
-          if (rotation > 0) {
-            // Fix for linter - check if rotation is non-zero
-            const startPoint = normalizeCoordinatesToZeroRotation(
-              { x: startX, y },
-              pageWidth / scale,
-              pageHeight / scale,
-              1,
-              rotation,
-            );
-
-            const endPoint = normalizeCoordinatesToZeroRotation(
-              { x: endX, y },
-              pageWidth / scale,
-              pageHeight / scale,
-              1,
-              rotation,
-            );
-
-            lines.push({
-              start: startPoint,
-              end: endPoint,
-            });
-          } else {
-            lines.push({
-              start: { x: startX, y },
-              end: { x: endX, y },
-            });
-          }
-        }
-      }
+      const rangeLines = processRangeClientRects(range, pageRect, pageWidth, pageHeight, scale, rotation, isVerticalText);
+      lines.push(...rangeLines);
     }
   } else {
-    // Group elements by line (based on y-coordinate)
-    const lineGroups: HTMLElement[][] = [];
-    let currentLine: HTMLElement[] = [];
-    let lastPosition = -1;
+    // Group elements by line or column
+    const lineGroups = groupElementsByPosition(selectedElements, isVerticalText);
 
-    selectedElements.forEach((element) => {
-      const rect = element.getBoundingClientRect();
+    // Create line segments from the groups
+    const groupLines = createLineSegmentsFromGroups(lineGroups, pageRect, pageWidth, pageHeight, scale, rotation, isVerticalText);
 
-      // Different grouping based on rotation
-      let currentPosition;
-      if (isVerticalText) {
-        // For vertical text, group by x-coordinate
-        currentPosition = rect.left;
-      } else {
-        // For horizontal text, group by y-coordinate
-        currentPosition = rect.top;
-      }
-
-      // If this element is on a new line/column
-      if (lastPosition >= 0 && Math.abs(currentPosition - lastPosition) > 5) {
-        if (currentLine.length > 0) {
-          lineGroups.push(currentLine);
-          currentLine = [];
-        }
-      }
-
-      currentLine.push(element);
-      lastPosition = currentPosition;
-    });
-
-    // Add the last line if not empty
-    if (currentLine.length > 0) {
-      lineGroups.push(currentLine);
-    }
-
-    // Process each line group to create a single line segment per line
-    lineGroups.forEach((lineElements) => {
-      if (lineElements.length === 0) return;
-
-      if (isVerticalText) {
-        // For vertical text (90° or 270° rotation), sort by y-coordinate
-        lineElements.sort((a, b) => {
-          return a.getBoundingClientRect().top - b.getBoundingClientRect().top;
-        });
-
-        // Get topmost and bottommost elements
-        const firstElement = lineElements[0];
-        const lastElement = lineElements[lineElements.length - 1];
-
-        const firstRect = firstElement.getBoundingClientRect();
-        const lastRect = lastElement.getBoundingClientRect();
-
-        // Create a vertical line segment for the entire column
-        const x = (firstRect.left - pageRect.left + firstRect.width / 2) / scale; // Middle of the text horizontally
-        const startY = (firstRect.top - pageRect.top) / scale;
-        const endY = (lastRect.bottom - pageRect.top) / scale;
-
-        // Normalize coordinates based on rotation
-        if (rotation > 0) {
-          // Fix for linter - check if rotation is non-zero
-          const startPoint = normalizeCoordinatesToZeroRotation(
-            { x, y: startY },
-            pageWidth / scale,
-            pageHeight / scale,
-            1,
-            rotation,
-          );
-
-          const endPoint = normalizeCoordinatesToZeroRotation({ x, y: endY }, pageWidth / scale, pageHeight / scale, 1, rotation);
-
-          lines.push({
-            start: startPoint,
-            end: endPoint,
-          });
-        } else {
-          lines.push({
-            start: { x, y: startY },
-            end: { x, y: endY },
-          });
-        }
-      } else {
-        // For horizontal text (0° or 180° rotation), sort by x-coordinate
-        lineElements.sort((a, b) => {
-          return a.getBoundingClientRect().left - b.getBoundingClientRect().left;
-        });
-
-        // Get leftmost and rightmost elements
-        const firstElement = lineElements[0];
-        const lastElement = lineElements[lineElements.length - 1];
-
-        const firstRect = firstElement.getBoundingClientRect();
-        const lastRect = lastElement.getBoundingClientRect();
-
-        // Create a single line segment for the entire line
-        const startX = (firstRect.left - pageRect.left) / scale;
-        const endX = (lastRect.right - pageRect.left) / scale;
-        const y = (firstRect.bottom - pageRect.top - 2) / scale; // Position slightly below text
-
-        // Normalize coordinates based on rotation
-        if (rotation > 0) {
-          // Fix for linter - check if rotation is non-zero
-          const startPoint = normalizeCoordinatesToZeroRotation(
-            { x: startX, y },
-            pageWidth / scale,
-            pageHeight / scale,
-            1,
-            rotation,
-          );
-
-          const endPoint = normalizeCoordinatesToZeroRotation({ x: endX, y }, pageWidth / scale, pageHeight / scale, 1, rotation);
-
-          lines.push({
-            start: startPoint,
-            end: endPoint,
-          });
-        } else {
-          lines.push({
-            start: { x: startX, y },
-            end: { x: endX, y },
-          });
-        }
-      }
-    });
+    lines.push(...groupLines);
   }
 
   return lines;

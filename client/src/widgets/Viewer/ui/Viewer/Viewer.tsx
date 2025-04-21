@@ -142,11 +142,14 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
   // Callback for child components to notify when they become visible
   const handlePageBecameVisible = useCallback((visiblePageNumber: number) => {
-    // Always update the ref to reflect the latest visible page reported
-    selectedPageRef.current = visiblePageNumber;
+    // Only update if this is different from the current page to avoid unnecessary rerenders
+    if (selectedPageRef.current !== visiblePageNumber) {
+      // Always update the ref to reflect the latest visible page reported
+      selectedPageRef.current = visiblePageNumber;
 
-    // Update the state for UI changes (e.g., menu page number)
-    setSelectedPage(visiblePageNumber);
+      // Update the state for UI changes (e.g., menu page number)
+      setSelectedPage(visiblePageNumber);
+    }
   }, []); // Dependency array remains empty
 
   // Expose scrollToDraw function to parent component

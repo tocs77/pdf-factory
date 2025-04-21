@@ -6,7 +6,6 @@ import { classNames } from '@/shared/utils';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { Drawing } from '../../model/types/viewerSchema';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
-
 import CompleteDrawings from '../CompleteDrawings/CompleteDrawings';
 import { DraftLayer } from '../DraftLayer/DraftLayer';
 import { DrawAreaLayer } from '../DrawAreaLayer/DrawAreaLayer';
@@ -410,13 +409,58 @@ export const ViewPage = ({
     };
   }, [inView, pageNumber, scale, checkIfPageContainsViewportCenter]);
 
-  // Effect to notify parent when page becomes centered
+  // In the part where hasRendered is updated
+  useEffect(() => {
+    setHasRendered(false); // Reset rendering state
+
+    if (page) {
+      let renderTimeout: NodeJS.Timeout;
+
+      // Mark as rendered after a short delay to ensure canvas has fully drawn
+      renderTimeout = setTimeout(() => {
+        setHasRendered(true);
+      }, 500);
+
+      return () => {
+        clearTimeout(renderTimeout);
+      };
+    }
+  }, [page, pageNumber, scale, rotation]);
+
+  // Track when page becomes both visible and rendered
   useEffect(() => {
     // Only notify if page is centered AND has rendered its content
     if (isCentered && hasRendered && onBecameVisible) {
       onBecameVisible(pageNumber);
     }
   }, [isCentered, hasRendered, pageNumber, onBecameVisible]);
+
+  // Track when the page is centered in the viewport
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          // Consider page "centered" when it's more than 50% visible
+          const newIsCentered = entry.isIntersecting && entry.intersectionRatio >= 0.5;
+
+          if (newIsCentered !== isCentered) {
+            setIsCentered(newIsCentered);
+          }
+        });
+      },
+      {
+        threshold: [0, 0.1, 0.5, 0.9], // Check multiple thresholds for better precision
+      },
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [pageNumber, isCentered]);
 
   const handleDrawingCreated = (drawing: Omit<Drawing, 'id'>) => {
     // Call the parent's onDrawingCreated with the enhanced drawing
