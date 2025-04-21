@@ -85,16 +85,16 @@ export const TextLayer = (props: TextLayerProps) => {
 
   // Create text underline drawing
   const createTextUnderline = () => {
-    // Get line segments for the underline
+    // Get line segments for the underline with rotation awareness
     const selection = window.getSelection();
-    const lines = getLineSegments(selection, pageNumber, scale, textLayerRef.current || undefined);
+    const lines = getLineSegments(selection, pageNumber, scale, textLayerRef.current || undefined, rotation);
     if (lines.length === 0) return;
 
-    // Also get highlight rectangles to determine the correct text bounds
-    const textRects = getHighlightRects(selection, pageNumber, scale, textLayerRef.current || undefined);
+    // Also get highlight rectangles to determine the correct text bounds, with rotation awareness
+    const textRects = getHighlightRects(selection, pageNumber, scale, textLayerRef.current || undefined, rotation);
     if (textRects.length === 0) return;
 
-    // Create drawing object
+    // Create drawing object with normalized coordinates
     const underline: TextUnderline = {
       id: '',
       type: 'textUnderline',
@@ -112,10 +112,9 @@ export const TextLayer = (props: TextLayerProps) => {
       },
     };
 
-    // Capture image using both the underline data for rendering
-    // and text rectangles for determining proper capture area
+    // Capture image using both the underline data for rendering and text rectangles for determining proper capture area
     const image = pdfCanvasRef
-      ? captureTextAnnotationImage('underline', underline, pageNumber, scale, pdfCanvasRef, textRects)
+      ? captureTextAnnotationImage('underline', underline, pageNumber, scale, pdfCanvasRef, textRects, rotation)
       : null;
     if (image) {
       underline.image = image;
@@ -130,75 +129,45 @@ export const TextLayer = (props: TextLayerProps) => {
 
   // Create text crossed out drawing (strikethrough)
   const createTextCrossedOut = () => {
-    // Get line segments for the cross-out
+    // Get line segments for the cross-out with rotation awareness
     const selection = window.getSelection();
-    const lineSegments = getLineSegments(selection, pageNumber, scale, textLayerRef.current || undefined);
+    const lineSegments = getLineSegments(selection, pageNumber, scale, textLayerRef.current || undefined, rotation);
     if (lineSegments.length === 0) return;
 
-    // Also get highlight rectangles to determine the correct text bounds
-    const textRects = getHighlightRects(selection, pageNumber, scale, textLayerRef.current || undefined);
+    // Also get highlight rectangles to determine the correct text bounds, with rotation awareness
+    const textRects = getHighlightRects(selection, pageNumber, scale, textLayerRef.current || undefined, rotation);
     if (textRects.length === 0) return;
 
-    // Create a map of lines by y-position (rounded to nearest integer) for grouping
-    const textRectsByY = new Map();
+    // For crossed-out text, we want to create lines through the middle of each line of text
+    // We'll use the line segments directly and just adjust their position
+    // to go through the middle of the text instead of custom positioning
 
-    // Group text rectangles by their y-position (approximately)
-    textRects.forEach((rect) => {
-      // Use the middle of the rectangle for y position grouping
-      const yKey = Math.floor(rect.y + rect.height / 2);
-      if (!textRectsByY.has(yKey)) {
-        textRectsByY.set(yKey, []);
-      }
-      textRectsByY.get(yKey).push(rect);
-    });
+    const isVerticalText = rotation === 90 || rotation === 270;
 
-    // Process the line segments to create crossed-out lines in the center of text
     const crossedOutLines = lineSegments.map((line) => {
-      // Try to find matching text rectangles for this line based on y position
-      const lineY = Math.floor(line.start.y); // Bottom of the text line
+      // For crossed-out lines, we want to position them in the middle of the text height
+      // We'll use the existing line segments as reference
 
-      // Find the nearest group of text rectangles
-      let nearestY = lineY;
-      let minDistance = Infinity;
+      if (isVerticalText) {
+        // For vertical text, the line should go through the middle of text width
+        // The lineSegments already calculated this correctly in getLineSegments
+        return line;
+      } else {
+        // For horizontal text, shift line up to the middle of text height
+        // Estimate text height (typically around 14px)
+        const estimatedTextHeight = 14 / scale;
 
-      for (const [y] of textRectsByY.entries()) {
-        const distance = Math.abs(y - lineY);
-        if (distance < minDistance) {
-          minDistance = distance;
-          nearestY = y;
-        }
-      }
-
-      // Get the text rectangles for this line
-      const rectsForLine = textRectsByY.get(nearestY) || [];
-
-      if (rectsForLine.length > 0) {
-        // Calculate average height of text for this line
-        const avgHeight =
-          rectsForLine.reduce((sum: number, rect: { height: number }) => sum + rect.height, 0) / rectsForLine.length;
-
-        // Find the top-most position for this line
-        const topY = Math.min(...rectsForLine.map((rect: { y: number }) => rect.y));
-
-        // Calculate middle of text (approximately 50% from top for most fonts)
-        const middleY = topY + avgHeight * 0.5;
-
-        // Create a new line with adjusted y position for center of text
         return {
-          start: { x: line.start.x, y: middleY },
-          end: { x: line.end.x, y: middleY },
+          start: {
+            x: line.start.x,
+            y: line.start.y - estimatedTextHeight * 0.5,
+          },
+          end: {
+            x: line.end.x,
+            y: line.end.y - estimatedTextHeight * 0.5,
+          },
         };
       }
-
-      // If no matching text rectangles found, make an educated guess
-      // Move the line up by approximately 50% of the typical line height
-      const estimatedLineHeight = 14 / scale; // Typical line height
-      const estimatedMiddleY = line.start.y - estimatedLineHeight * 0.5;
-
-      return {
-        start: { x: line.start.x, y: estimatedMiddleY },
-        end: { x: line.end.x, y: estimatedMiddleY },
-      };
     });
 
     // Create drawing object
@@ -219,10 +188,9 @@ export const TextLayer = (props: TextLayerProps) => {
       },
     };
 
-    // Capture image using both the cross-out data for rendering
-    // and text rectangles for determining proper capture area
+    // Capture image with rotation awareness
     const image = pdfCanvasRef
-      ? captureTextAnnotationImage('crossedout', crossedOut, pageNumber, scale, pdfCanvasRef, textRects)
+      ? captureTextAnnotationImage('crossedout', crossedOut, pageNumber, scale, pdfCanvasRef, textRects, rotation)
       : null;
     if (image) {
       crossedOut.image = image;
@@ -239,7 +207,7 @@ export const TextLayer = (props: TextLayerProps) => {
   const createTextHighlight = () => {
     // Get rectangles for highlighting
     const selection = window.getSelection();
-    const highlightRects = getHighlightRects(selection, pageNumber, scale, textLayerRef.current || undefined);
+    const highlightRects = getHighlightRects(selection, pageNumber, scale, textLayerRef.current || undefined, rotation);
 
     if (highlightRects.length === 0) return;
 
@@ -263,7 +231,9 @@ export const TextLayer = (props: TextLayerProps) => {
     };
 
     // Capture image
-    const image = pdfCanvasRef ? captureTextAnnotationImage('highlight', highlight, pageNumber, scale, pdfCanvasRef) : null;
+    const image = pdfCanvasRef
+      ? captureTextAnnotationImage('highlight', highlight, pageNumber, scale, pdfCanvasRef, undefined, rotation)
+      : null;
     if (image) {
       highlight.image = image;
     }
