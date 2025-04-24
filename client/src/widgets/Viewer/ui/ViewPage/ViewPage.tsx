@@ -413,18 +413,18 @@ export const ViewPage = ({
   useEffect(() => {
     setHasRendered(false); // Reset rendering state
 
-    if (page) {
-      let renderTimeout: NodeJS.Timeout;
+    if (!page) return undefined;
 
-      // Mark as rendered after a short delay to ensure canvas has fully drawn
-      renderTimeout = setTimeout(() => {
-        setHasRendered(true);
-      }, 500);
+    let renderTimeout: NodeJS.Timeout;
 
-      return () => {
-        clearTimeout(renderTimeout);
-      };
-    }
+    // Mark as rendered after a short delay to ensure canvas has fully drawn
+    renderTimeout = setTimeout(() => {
+      setHasRendered(true);
+    }, 500);
+
+    return () => {
+      clearTimeout(renderTimeout);
+    };
   }, [page, pageNumber, scale, rotation]);
 
   // Track when page becomes both visible and rendered
