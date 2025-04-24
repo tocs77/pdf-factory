@@ -4,10 +4,6 @@
   /* Position below ViewerMenu's page navigation area */
   left: 50%;
   transform: translateX(-50%);
-  width: calc(100% - 250px);
-  /* Adjust for thumbnails sidebar if present */
-  max-width: 1200px;
-  /* Reasonable max width */
   height: 48px;
   background-color: white;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);

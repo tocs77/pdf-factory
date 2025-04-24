@@ -276,8 +276,6 @@ export interface ViewerSchema {
   pageRotations: Record<number, RotationAngle>;
   // Whether the text layer is enabled
   textLayerEnabled?: boolean;
-  // Whether the ruler tool is enabled
-  rulerEnabled?: boolean;
   currentDrawingPage: number; //-1 means no current drawing page   0 means all pages
   compareMode: 'none' | 'diff' | 'sideBySide'; // Type of comparison mode active
   requestFinishDrawing: boolean; // Request to finish current drawing

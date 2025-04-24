@@ -52,7 +52,7 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
     onComparePageChange,
   } = props;
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingMode, showThumbnails, pageRotations, rulerEnabled, compareMode } = state;
+  const { scale, drawingMode, showThumbnails, pageRotations, compareMode } = state;
 
   const [pageInputValue, setPageInputValue] = useState<string>(currentPage.toString());
   const mainPageDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -276,7 +276,7 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
 
       <button
         onClick={toggleRuler}
-        className={`${classes.zoomButton} ${rulerEnabled ? classes.active : ''}`}
+        className={`${classes.zoomButton} ${drawingMode === 'ruler' ? classes.active : ''}`}
         style={{ padding: '4px' }}
         title='Инструмент линейка'>
         <RulerIcon />

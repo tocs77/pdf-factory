@@ -375,7 +375,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
           }}>
           <div className={classes.pdfContentWrapper}>{renderPages()}</div>
 
-          {drawingMode !== 'none' && <DrawingMenu />}
+          {drawingMode !== 'none' && drawingMode !== 'zoomArea' && <DrawingMenu />}
         </div>
       </div>
     </div>

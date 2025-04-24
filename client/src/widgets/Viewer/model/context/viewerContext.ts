@@ -19,7 +19,6 @@ export const initialViewerState: ViewerSchema = {
   showThumbnails: false,
   pageRotations: {},
   textLayerEnabled: true,
-  rulerEnabled: false,
   currentDrawingPage: -1,
   compareMode: 'none',
   requestFinishDrawing: false,
@@ -87,9 +86,7 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
     case 'toggleRuler':
       return {
         ...state,
-        rulerEnabled: !state.rulerEnabled,
-        drawingMode: !state.rulerEnabled ? 'ruler' : 'none',
-        compareMode: !state.rulerEnabled ? 'none' : state.compareMode, // Turn off compare when ruler active
+        drawingMode: state.drawingMode === 'ruler' ? 'none' : 'ruler',
       };
     case 'rotatePageClockwise':
       return {
@@ -131,8 +128,6 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
         ...state,
         compareMode: newCompareMode,
         drawingMode: newDrawingMode,
-        // Optionally reset other states like ruler
-        rulerEnabled: newCompareMode !== 'none' ? false : state.rulerEnabled,
       };
     }
     case 'requestFinishDrawing':

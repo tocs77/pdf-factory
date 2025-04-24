@@ -2,6 +2,7 @@ import { useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { isLightColor } from '../../utils/textToolUtils';
 import styles from './DrawingMenu.module.scss';
+import { DrawingMode } from '../../model/types/viewerSchema';
 
 export const DrawingMenu = () => {
   const { state, dispatch } = useContext(ViewerContext);
@@ -13,7 +14,8 @@ export const DrawingMenu = () => {
   }
 
   // Check if we're in a selection-only mode
-  const isSelectionMode = drawingMode === 'rectSelection' || drawingMode === 'pinSelection' || drawingMode === 'drawArea';
+  const selectionModes: DrawingMode[] = ['rectSelection', 'pinSelection', 'drawArea', 'ruler'];
+  const isSelectionMode = selectionModes.includes(drawingMode);
 
   const handleFinishClick = () => {
     dispatch({ type: 'requestFinishDrawing', payload: true });

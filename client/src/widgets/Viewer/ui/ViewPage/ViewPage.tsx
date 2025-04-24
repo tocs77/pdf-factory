@@ -194,7 +194,7 @@ export const ViewPage = ({
 
       // Set canvas dimensions to match viewport
       const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
       if (!ctx) return;
 
       // Set display size of canvas (CSS pixels)
@@ -243,7 +243,7 @@ export const ViewPage = ({
       const backupCanvas = document.createElement('canvas');
       backupCanvas.width = canvas.width;
       backupCanvas.height = canvas.height;
-      const backupCtx = backupCanvas.getContext('2d');
+      const backupCtx = backupCanvas.getContext('2d', { willReadFrequently: true });
       if (backupCtx) {
         backupCtx.drawImage(canvas, 0, 0);
         highQualityCanvasRef.current = backupCanvas;
@@ -262,7 +262,7 @@ export const ViewPage = ({
     if (!canvasRef.current || !highQualityCanvasRef.current || !baseViewport) return;
 
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
     // Calculate the current viewport based on user scale
