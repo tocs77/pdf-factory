@@ -266,6 +266,12 @@ export type DrawingMode =
 // Valid rotation angles: 0, 90, 180, 270 degrees
 export type RotationAngle = 0 | 90 | 180 | 270;
 
+// Interface for ruler calibration settings
+export interface CalibrationSettings {
+  pixelsPerUnit: number;
+  unitName: string;
+}
+
 export interface ViewerSchema {
   scale: number;
   drawingColor: string;
@@ -280,6 +286,8 @@ export interface ViewerSchema {
   compareMode: 'none' | 'diff' | 'sideBySide'; // Type of comparison mode active
   requestFinishDrawing: boolean; // Request to finish current drawing
   requestCancelDrawing: boolean; // Request to cancel current drawing
+  // Ruler calibration settings
+  calibration: CalibrationSettings;
 }
 
 // Action types using discriminated unions
@@ -299,6 +307,24 @@ type SetCompareModeAction = { type: 'setCompareMode'; payload: 'none' | 'diff' |
 type RequestFinishDrawingAction = { type: 'requestFinishDrawing'; payload: boolean };
 type RequestCancelDrawingAction = { type: 'requestCancelDrawing'; payload: boolean };
 
+type SetCalibrationAction = {
+  type: 'setCalibration';
+  payload: CalibrationSettings;
+};
+
+type ApplyCalibrationAction = {
+  type: 'applyCalibration';
+  payload: {
+    actualSize: number;
+    unitName: string;
+    pixelDistance: number;
+  };
+};
+
+type ResetCalibrationAction = {
+  type: 'resetCalibration';
+};
+
 export type IsDraftDrawing = boolean;
 // Remove obsolete toggleCompareMode action type
 export type Action =
@@ -315,4 +341,7 @@ export type Action =
   | SetCurrentDrawingPageAction
   | SetCompareModeAction
   | RequestFinishDrawingAction
-  | RequestCancelDrawingAction; // Added new actions
+  | RequestCancelDrawingAction
+  | SetCalibrationAction
+  | ApplyCalibrationAction
+  | ResetCalibrationAction; // Added new calibration-related actions

@@ -23,6 +23,10 @@ export const initialViewerState: ViewerSchema = {
   compareMode: 'none',
   requestFinishDrawing: false,
   requestCancelDrawing: false,
+  calibration: {
+    pixelsPerUnit: 1,
+    unitName: 'px',
+  },
 };
 
 // Create the context with default values
@@ -139,6 +143,32 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
       return {
         ...state,
         requestCancelDrawing: action.payload,
+      };
+    case 'setCalibration':
+      return {
+        ...state,
+        calibration: action.payload,
+      };
+    case 'applyCalibration': {
+      const { actualSize, unitName, pixelDistance } = action.payload;
+      // Calculate pixels per unit
+      const pixelsPerUnit = pixelDistance / actualSize;
+
+      return {
+        ...state,
+        calibration: {
+          pixelsPerUnit,
+          unitName: unitName || '',
+        },
+      };
+    }
+    case 'resetCalibration':
+      return {
+        ...state,
+        calibration: {
+          pixelsPerUnit: 1,
+          unitName: 'px',
+        },
       };
     default:
       return state;

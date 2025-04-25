@@ -28,17 +28,10 @@ interface Ruler {
   angle: number;
 }
 
-// Interface for calibration settings
-interface CalibrationSettings {
-  isCalibrated: boolean;
-  pixelsPerUnit: number;
-  unitName: string;
-}
-
 export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
   const { pageNumber, pdfCanvasRef } = props;
-  const { state } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations } = state;
+  const { state, dispatch } = useContext(ViewerContext);
+  const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations, calibration } = state;
 
   // Get the rotation angle for this page - used in dependency array for redraw
   const rotation = pageRotations[pageNumber] || 0;
@@ -53,13 +46,6 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
   const SNAP_UPDATE_DELAY = 100; // Delay in ms between snap point updates
   const MOUSE_MOVE_THRESHOLD = 8; // Minimum mouse movement in pixels to trigger snap point update
   const MARKER_SELECTION_RADIUS = 15; // Radius in pixels to detect clicks on markers
-
-  // Add state for calibration
-  const [calibration, setCalibration] = useState<CalibrationSettings>({
-    isCalibrated: false,
-    pixelsPerUnit: 1, // Default 1:1 ratio (pixels to unit)
-    unitName: 'px', // Default unit is pixels
-  });
 
   // Add state for calibration dialog
   const [showCalibrationDialog, setShowCalibrationDialog] = useState(false);
@@ -1208,23 +1194,60 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
     };
   }, []);
 
-  // Function to apply calibration
-  const applyCalibration = (actualSize: number, unitName: string, pixelDistance: number) => {
-    // Calculate pixels per unit
-    const pixelsPerUnit = pixelDistance / actualSize;
+  // Function to handle calibration dialog submission
+  const handleCalibrationSubmit = () => {
+    if (selectedRulerForCalibration === null) return;
 
-    setCalibration({
-      isCalibrated: true,
-      pixelsPerUnit,
-      unitName,
+    const actualSize = parseFloat(calibrationActualSize);
+    if (isNaN(actualSize) || actualSize <= 0) {
+      alert('Please enter a valid positive number for the actual size');
+      return;
+    }
+
+    // Get the pixel distance of the selected ruler
+    const pixelDistance = rulers[selectedRulerForCalibration].distance;
+
+    // Apply the calibration using the dispatch method
+    dispatch({
+      type: 'applyCalibration',
+      payload: {
+        actualSize,
+        unitName: calibrationUnit.trim() || '',
+        pixelDistance,
+      },
     });
 
-    console.log(`Calibration applied: ${pixelsPerUnit} pixels per ${unitName}`);
+    // Close the dialog
+    setShowCalibrationDialog(false);
+    setSelectedRulerForCalibration(null);
+  };
+
+  // Function to cancel calibration
+  const handleCalibrationCancel = () => {
+    setShowCalibrationDialog(false);
+    setSelectedRulerForCalibration(null);
+  };
+
+  // Function to reset calibration - update to use dispatch
+  const resetCalibration = () => {
+    dispatch({ type: 'resetCalibration' });
+  };
+
+  // Function to handle click on ruler distance label
+  const handleRulerLabelClick = (e: React.MouseEvent, rulerIndex: number) => {
+    e.stopPropagation(); // Prevent event from reaching canvas
+    e.preventDefault();
+
+    // You can add additional functionality here for single clicks
+    console.log(`Ruler ${rulerIndex} label clicked`);
   };
 
   // Function to format distance using calibration
   const formatDistance = (pixelDistance: number): string => {
-    if (!calibration.isCalibrated) {
+    // Determine if default calibration (no calibration) is being used
+    const isDefaultCalibration = calibration.pixelsPerUnit === 1 && calibration.unitName === 'px';
+
+    if (isDefaultCalibration) {
       return `${Math.round(pixelDistance)} px`;
     }
 
@@ -1244,51 +1267,6 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
     setCalibrationActualSize('');
     setCalibrationUnit('');
     setShowCalibrationDialog(true);
-  };
-
-  // Function to handle calibration dialog submission
-  const handleCalibrationSubmit = () => {
-    if (selectedRulerForCalibration === null) return;
-
-    const actualSize = parseFloat(calibrationActualSize);
-    if (isNaN(actualSize) || actualSize <= 0) {
-      alert('Please enter a valid positive number for the actual size');
-      return;
-    }
-
-    // Get the pixel distance of the selected ruler
-    const pixelDistance = rulers[selectedRulerForCalibration].distance;
-
-    // Apply the calibration - use empty string if no unit provided
-    applyCalibration(actualSize, calibrationUnit.trim() || '', pixelDistance);
-
-    // Close the dialog
-    setShowCalibrationDialog(false);
-    setSelectedRulerForCalibration(null);
-  };
-
-  // Function to cancel calibration
-  const handleCalibrationCancel = () => {
-    setShowCalibrationDialog(false);
-    setSelectedRulerForCalibration(null);
-  };
-
-  // Function to reset calibration
-  const resetCalibration = () => {
-    setCalibration({
-      isCalibrated: false,
-      pixelsPerUnit: 1,
-      unitName: 'px',
-    });
-  };
-
-  // Function to handle click on ruler distance label
-  const handleRulerLabelClick = (e: React.MouseEvent, rulerIndex: number) => {
-    e.stopPropagation(); // Prevent event from reaching canvas
-    e.preventDefault();
-
-    // You can add additional functionality here for single clicks
-    console.log(`Ruler ${rulerIndex} label clicked`);
   };
 
   return (
@@ -1746,7 +1724,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
                 }}>
                 Отмена
               </button>
-              {calibration.isCalibrated && (
+              {(calibration.pixelsPerUnit !== 1 || calibration.unitName !== 'px') && (
                 <button
                   onClick={resetCalibration}
                   style={{
