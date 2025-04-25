@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useContext, useCallback } from 'react';
+import { transformCoordinates, normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import { ViewerContext } from '../../model/context/viewerContext';
 import styles from './RulerDrawingLayer.module.scss';
 
@@ -38,8 +39,10 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
   const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations } = state;
 
   // Get the rotation angle for this page - used in dependency array for redraw
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const rotation = pageRotations[pageNumber] || 0;
+
+  // Track previous rotation for detecting changes
+  const prevRotationRef = useRef<number>(rotation);
 
   // Constants for snap detection
   const SNAP_DETECTION_RADIUS = 25; // Radius in pixels to search for snap points
@@ -52,7 +55,6 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [rulers, setRulers] = useState<Ruler[]>([]);
   const [nextRulerId, setNextRulerId] = useState(1);
-  const [activeRulerIndex, setActiveRulerIndex] = useState<number | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   // Use a ref to track the drawing state more reliably
   const isDrawingRef = useRef(false);
@@ -69,6 +71,8 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
   const [highlightedPointIndex, setHighlightedPointIndex] = useState<number | null>(null);
   const [snapTarget, setSnapTarget] = useState<{ index: number; distance: number } | null>(null);
   const [isMouseButtonDown, setIsMouseButtonDown] = useState(false);
+  // Add draggingRulerIndex to track which ruler is being dragged
+  const [draggingRulerIndex, setDraggingRulerIndex] = useState<number | null>(null);
 
   // Refs to track the last position where snap points were updated
   const lastUpdatePositionRef = useRef<{ x: number; y: number } | null>(null);
@@ -108,6 +112,48 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     return ctx;
   };
 
+  // Ensure canvas dimensions update when page rotation changes
+  useEffect(() => {
+    // Wait a bit for parent container to adjust to new rotation
+    const timer = setTimeout(() => {
+      const ctx = initializeCanvas();
+      if (ctx) {
+        // Force recalculation of DOM markers after rotation
+        updateRulerPositions();
+        drawRuler();
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [rotation]);
+
+  // Handle scale changes specifically
+  useEffect(() => {
+    // Reinitialize canvas and redraw when scale changes
+    const ctx = initializeCanvas();
+    if (ctx) {
+      // Force redraw of rulers with new scale
+      drawRuler();
+      // Force a state update to recalculate DOM markers
+      updateRulerPositions();
+    }
+  }, [scale]);
+
+  // Update DOM positions of all ruler elements
+  const updateRulerPositions = useCallback(() => {
+    if (!canvasRef.current) return;
+
+    // Force a redraw of the markers by triggering state update
+    // This will cause React to recalculate all the marker positions
+    setRulers((prevRulers) => [...prevRulers]);
+
+    // Force immediate redraw
+    drawRuler();
+
+    // Schedule a delayed redraw to ensure everything is in place after React rerender
+    setTimeout(() => drawRuler(), 50);
+  }, [rotation, scale]);
+
   // Draw the ruler line on the canvas
   const drawRuler = (forceNoPreview = false) => {
     if (!canvasRef.current) return;
@@ -115,28 +161,77 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     const ctx = canvasRef.current.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
+    const canvasWidth = canvasRef.current.width;
+    const canvasHeight = canvasRef.current.height;
+
     // Clear canvas completely before redrawing to prevent old lines
-    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
     // Draw all existing rulers
-    rulers.forEach((ruler, index) => {
-      const isActive = activeRulerIndex === index;
+    rulers.forEach((ruler) => {
+      // All rulers are drawn with the active style
+      const isActive = true; // Previously was checking draggingRulerIndex === index
+
+      // Transform points based on current scale and rotation
+      const transformedStartPoint = transformCoordinates(
+        ruler.startPoint.x,
+        ruler.startPoint.y,
+        canvasWidth,
+        canvasHeight,
+        scale,
+        rotation,
+      );
+
+      const transformedEndPoint = transformCoordinates(
+        ruler.endPoint.x,
+        ruler.endPoint.y,
+        canvasWidth,
+        canvasHeight,
+        scale,
+        rotation,
+      );
+
       ctx.beginPath();
-      ctx.moveTo(ruler.startPoint.x, ruler.startPoint.y);
-      ctx.lineTo(ruler.endPoint.x, ruler.endPoint.y);
+      ctx.moveTo(transformedStartPoint.x, transformedStartPoint.y);
+      ctx.lineTo(transformedEndPoint.x, transformedEndPoint.y);
       ctx.strokeStyle = isActive ? 'rgba(255, 165, 0, 0.9)' : drawingColor; // Highlight active ruler
       ctx.lineWidth = isActive ? drawingLineWidth + 1 : drawingLineWidth;
       ctx.stroke();
 
-      // Draw markers at endpoints
+      // Draw markers at endpoints - use fixed size instead of scale-dependent size
+      const markerSize = 10; // Increased from 8 to 10 for better visibility
+      const innerSize = 4; // Increased from 3 to 4 for better visibility
+
+      // Draw start point marker with white center and blue ring
+      // First draw the outer blue circle
       ctx.beginPath();
-      ctx.arc(ruler.startPoint.x, ruler.startPoint.y, 4, 0, 2 * Math.PI);
-      ctx.fillStyle = isActive ? 'rgba(255, 165, 0, 0.9)' : 'rgba(33, 150, 243, 0.7)';
+      ctx.arc(transformedStartPoint.x, transformedStartPoint.y, markerSize, 0, 2 * Math.PI);
+      ctx.fillStyle = 'rgba(33, 150, 243, 0.9)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Then draw the inner white circle
+      ctx.beginPath();
+      ctx.arc(transformedStartPoint.x, transformedStartPoint.y, innerSize, 0, 2 * Math.PI);
+      ctx.fillStyle = 'white';
       ctx.fill();
 
+      // Draw end point marker with white center and blue ring
+      // First draw the outer blue circle
       ctx.beginPath();
-      ctx.arc(ruler.endPoint.x, ruler.endPoint.y, 4, 0, 2 * Math.PI);
-      ctx.fillStyle = isActive ? 'rgba(255, 165, 0, 0.9)' : 'rgba(33, 150, 243, 0.7)';
+      ctx.arc(transformedEndPoint.x, transformedEndPoint.y, markerSize, 0, 2 * Math.PI);
+      ctx.fillStyle = 'rgba(33, 150, 243, 0.9)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Then draw the inner white circle
+      ctx.beginPath();
+      ctx.arc(transformedEndPoint.x, transformedEndPoint.y, innerSize, 0, 2 * Math.PI);
+      ctx.fillStyle = 'white';
       ctx.fill();
     });
 
@@ -145,22 +240,90 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     if (!forceNoPreview && startPointRef.current && endPointRef.current && isDrawingRef.current) {
       ctx.beginPath();
       ctx.setLineDash([5, 3]); // Dashed line for in-progress ruler
-      ctx.moveTo(startPointRef.current.x, startPointRef.current.y);
-      ctx.lineTo(endPointRef.current.x, endPointRef.current.y);
+
+      // For the preview during drawing, we need to make the drawing match the
+      // final position the ruler will appear in. First, we need to get screen coordinates
+      // and then transform them.
+
+      // Create transformation consistent with where the ruler will be when finalized
+      // Instead of dividing by scale, we use the coordinates directly since the ruler preview
+      // should match where the ruler will appear when released.
+      const normalizedStartPoint = normalizeCoordinatesToZeroRotation(
+        startPointRef.current,
+        canvasWidth,
+        canvasHeight,
+        scale,
+        rotation,
+      );
+
+      const normalizedEndPoint = normalizeCoordinatesToZeroRotation(
+        endPointRef.current,
+        canvasWidth,
+        canvasHeight,
+        scale,
+        rotation,
+      );
+
+      // Then transform them back to get the correct preview position
+      const transformedStartPoint = transformCoordinates(
+        normalizedStartPoint.x,
+        normalizedStartPoint.y,
+        canvasWidth,
+        canvasHeight,
+        scale,
+        rotation,
+      );
+
+      const transformedEndPoint = transformCoordinates(
+        normalizedEndPoint.x,
+        normalizedEndPoint.y,
+        canvasWidth,
+        canvasHeight,
+        scale,
+        rotation,
+      );
+
+      ctx.moveTo(transformedStartPoint.x, transformedStartPoint.y);
+      ctx.lineTo(transformedEndPoint.x, transformedEndPoint.y);
       ctx.strokeStyle = 'rgba(33, 150, 243, 0.9)';
       ctx.lineWidth = drawingLineWidth;
       ctx.stroke();
       ctx.setLineDash([]); // Reset to solid line
 
-      // Draw markers at endpoints
+      // Draw markers at endpoints - use fixed size instead of scale-dependent size
+      const markerSize = 10; // Increased from 8 to 10 for better visibility
+      const innerSize = 4; // Increased from 3 to 4 for better visibility
+
+      // Draw start point marker with white center and blue ring
+      // First draw the outer blue circle
       ctx.beginPath();
-      ctx.arc(startPointRef.current.x, startPointRef.current.y, 4, 0, 2 * Math.PI);
+      ctx.arc(transformedStartPoint.x, transformedStartPoint.y, markerSize, 0, 2 * Math.PI);
       ctx.fillStyle = 'rgba(33, 150, 243, 0.9)';
       ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
 
+      // Then draw the inner white circle
       ctx.beginPath();
-      ctx.arc(endPointRef.current.x, endPointRef.current.y, 4, 0, 2 * Math.PI);
+      ctx.arc(transformedStartPoint.x, transformedStartPoint.y, innerSize, 0, 2 * Math.PI);
+      ctx.fillStyle = 'white';
+      ctx.fill();
+
+      // Draw end point marker with white center and blue ring
+      // First draw the outer blue circle
+      ctx.beginPath();
+      ctx.arc(transformedEndPoint.x, transformedEndPoint.y, markerSize, 0, 2 * Math.PI);
       ctx.fillStyle = 'rgba(33, 150, 243, 0.9)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Then draw the inner white circle
+      ctx.beginPath();
+      ctx.arc(transformedEndPoint.x, transformedEndPoint.y, innerSize, 0, 2 * Math.PI);
+      ctx.fillStyle = 'white';
       ctx.fill();
     }
 
@@ -202,11 +365,11 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
 
       // Draw regular points
       ctx.beginPath();
-      ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
-      ctx.fillStyle = 'rgba(0, 255, 255, 0.5)';
-      ctx.strokeStyle = 'rgba(0, 200, 200, 0.7)';
+      ctx.arc(point.x, point.y, 6, 0, 2 * Math.PI);
+      ctx.fillStyle = 'rgba(0, 255, 255, 0.7)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
       ctx.fill();
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.5;
       ctx.stroke();
     });
 
@@ -221,36 +384,44 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
 
       // Draw highlighted point bigger and greener for better visibility
       ctx.beginPath();
-      ctx.arc(point.x, point.y, 9, 0, 2 * Math.PI);
+      ctx.arc(point.x, point.y, 10, 0, 2 * Math.PI);
       ctx.fillStyle = 'rgba(0, 220, 0, 0.9)';
-      ctx.strokeStyle = 'rgba(0, 180, 0, 1.0)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.fill();
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 2;
       ctx.stroke();
     });
 
     // Calculate distance (in pixels at the current zoom level) for the current ruler
     if (startPointRef.current && endPointRef.current && isDrawingRef.current) {
-      const pixelDistance = Math.sqrt(
-        Math.pow(endPointRef.current.x - startPointRef.current.x, 2) +
-          Math.pow(endPointRef.current.y - startPointRef.current.y, 2),
+      // Get canvas for calculations
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      // First normalize the coordinates to account for rotation
+      const normalizedStartPoint = normalizeCoordinatesToZeroRotation(
+        startPointRef.current,
+        canvas.width,
+        canvas.height,
+        scale,
+        rotation,
       );
 
-      // Adjust for zoom level to get the actual distance
-      const actualDistance = pixelDistance / scale;
+      const normalizedEndPoint = normalizeCoordinatesToZeroRotation(
+        endPointRef.current,
+        canvas.width,
+        canvas.height,
+        scale,
+        rotation,
+      );
+
+      // Calculate distance using normalized points to get correct measurement regardless of rotation
+      const actualDistance = calculateDistance(normalizedStartPoint, normalizedEndPoint);
       setDistance(actualDistance);
 
-      // Calculate angle in degrees
-      const dx = endPointRef.current.x - startPointRef.current.x;
-      const dy = endPointRef.current.y - startPointRef.current.y;
-      let angleInDegrees = Math.atan2(dy, dx) * (180 / Math.PI);
-
-      // Normalize angle to 0-360 range
-      if (angleInDegrees < 0) {
-        angleInDegrees += 360;
-      }
-
-      setAngle(angleInDegrees);
+      // Calculate angle in degrees using normalized points
+      const angle = calculateAngle(normalizedStartPoint, normalizedEndPoint);
+      setAngle(angle);
     }
   };
 
@@ -595,10 +766,28 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     const ctx = initializeCanvas();
     if (!ctx) return;
 
-    if (startPoint && endPoint) {
-      drawRuler();
+    // Check if rotation has changed
+    const rotationChanged = prevRotationRef.current !== rotation;
+    prevRotationRef.current = rotation;
+
+    // Force a clean redraw when scale or rotation changes to ensure old artifacts are removed
+    if (rotationChanged) {
+      console.log('Page rotation changed, redrawing rulers');
+      // Force complete redraw on rotation change
+      drawRuler(true);
+      // Delay by a small amount and redraw again to ensure all artifacts are removed
+      setTimeout(() => drawRuler(), 50);
+    } else if (startPoint && endPoint) {
+      // No need to reset ruler state when we're actively drawing
+      // Just redraw with current points
+      drawRuler(false);
+      // Delay by a small amount and redraw again to ensure all artifacts are removed
+      setTimeout(() => drawRuler(false), 50);
     } else if (rulers.length > 0) {
-      drawRuler();
+      // Force a complete redraw of all rulers
+      drawRuler(true);
+      // Delay by a small amount and redraw again to ensure all artifacts are removed
+      setTimeout(() => drawRuler(), 50);
     }
   }, [
     scale,
@@ -611,7 +800,7 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     pointsOfInterest,
     highlightedPointIndex,
     rulers,
-    activeRulerIndex,
+    draggingRulerIndex,
   ]);
 
   // Hide the canvas when ruler tool is not enabled
@@ -641,6 +830,7 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     setPointsOfInterest([]);
     setHighlightedPointIndex(null);
     setSnapTarget(null);
+    setDraggingRulerIndex(null);
   };
 
   // Find points of interest in the PDF near a given coordinate
@@ -708,23 +898,39 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
 
     if (nearestMarker) {
       // Set active ruler and initiate dragging
-      setActiveRulerIndex(nearestMarker.rulerIndex);
+      setDraggingRulerIndex(nearestMarker.rulerIndex);
       if (nearestMarker.isStart) {
         setIsDraggingStart(true);
-        const startPt = rulers[nearestMarker.rulerIndex].startPoint;
-        const endPt = rulers[nearestMarker.rulerIndex].endPoint;
-        setStartPoint(startPt);
-        setEndPoint(endPt);
-        startPointRef.current = startPt;
-        endPointRef.current = endPt;
+        const ruler = rulers[nearestMarker.rulerIndex];
+        // Use scaled coordinates for UI interactions
+        const scaledStartPoint = {
+          x: ruler.startPoint.x * scale,
+          y: ruler.startPoint.y * scale,
+        };
+        const scaledEndPoint = {
+          x: ruler.endPoint.x * scale,
+          y: ruler.endPoint.y * scale,
+        };
+        setStartPoint(scaledStartPoint);
+        setEndPoint(scaledEndPoint);
+        startPointRef.current = scaledStartPoint;
+        endPointRef.current = scaledEndPoint;
       } else {
         setIsDraggingEnd(true);
-        const startPt = rulers[nearestMarker.rulerIndex].startPoint;
-        const endPt = rulers[nearestMarker.rulerIndex].endPoint;
-        setStartPoint(startPt);
-        setEndPoint(endPt);
-        startPointRef.current = startPt;
-        endPointRef.current = endPt;
+        const ruler = rulers[nearestMarker.rulerIndex];
+        // Use scaled coordinates for UI interactions
+        const scaledStartPoint = {
+          x: ruler.startPoint.x * scale,
+          y: ruler.startPoint.y * scale,
+        };
+        const scaledEndPoint = {
+          x: ruler.endPoint.x * scale,
+          y: ruler.endPoint.y * scale,
+        };
+        setStartPoint(scaledStartPoint);
+        setEndPoint(scaledEndPoint);
+        startPointRef.current = scaledStartPoint;
+        endPointRef.current = scaledEndPoint;
       }
       // Find points of interest around the clicked marker
       const points = findPointsOfInterest(x, y);
@@ -732,8 +938,14 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
       return;
     }
 
+    // Clear any previous drawing state
+    setStartPoint(null);
+    setEndPoint(null);
+    startPointRef.current = null;
+    endPointRef.current = null;
+
     // Start a new measurement with dragging mode
-    updateIsDrawing(true);
+    updateIsDrawing(true); // This must update both state and ref
 
     const newStartPoint = { x, y };
     const newEndPoint = { x, y };
@@ -741,11 +953,14 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     setEndPoint(newEndPoint);
     startPointRef.current = newStartPoint;
     endPointRef.current = newEndPoint;
-    setActiveRulerIndex(null); // No active ruler when creating new
+    setDraggingRulerIndex(null); // No active ruler when creating new
 
     // Find points of interest around the start point
     const points = findPointsOfInterest(x, y);
     setPointsOfInterest(points);
+
+    // Make sure everything's drawn correctly
+    drawRuler();
   };
 
   // Handle mouse move event on canvas
@@ -784,18 +999,30 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
       return;
     }
 
-    if (isDraggingStart && endPointRef.current && activeRulerIndex !== null) {
+    // Get canvas for possible normalization
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    if (isDraggingStart && endPointRef.current && draggingRulerIndex !== null) {
       const newStartPoint = { x, y };
       setStartPoint(newStartPoint);
       startPointRef.current = newStartPoint;
-      updateRuler(activeRulerIndex, newStartPoint);
+
+      // Normalize the point for updating the ruler
+      const normalizedPoint = normalizeCoordinatesToZeroRotation(newStartPoint, canvas.width, canvas.height, scale, rotation);
+
+      updateRuler(draggingRulerIndex, normalizedPoint);
       drawRuler(); // Redraw immediately to clear old lines
       // Let the useEffect handle finding points
-    } else if (isDraggingEnd && startPointRef.current && activeRulerIndex !== null) {
+    } else if (isDraggingEnd && startPointRef.current && draggingRulerIndex !== null) {
       const newEndPoint = { x, y };
       setEndPoint(newEndPoint);
       endPointRef.current = newEndPoint;
-      updateRuler(activeRulerIndex, undefined, newEndPoint);
+
+      // Normalize the point for updating the ruler
+      const normalizedPoint = normalizeCoordinatesToZeroRotation(newEndPoint, canvas.width, canvas.height, scale, rotation);
+
+      updateRuler(draggingRulerIndex, undefined, normalizedPoint);
       drawRuler(); // Redraw immediately to clear old lines
       // Let the useEffect handle finding points
     } else if (isDrawingRef.current && startPointRef.current && isMouseButtonDown) {
@@ -826,19 +1053,53 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
 
       if (distance > 20) {
         // Increased minimum distance to prevent ruler creation on simple clicks
-        // Create a new ruler
+        // Get canvas dimensions for normalization
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        // Normalize the screen coordinates to account for rotation and scale
+        // First convert screen coordinates to canvas-relative coordinates
+        const screenStartPoint = {
+          x: currentStartPoint.x,
+          y: currentStartPoint.y,
+        };
+
+        const screenEndPoint = {
+          x: currentEndPoint.x,
+          y: currentEndPoint.y,
+        };
+
+        // Normalize coordinates to account for current rotation and scale
+        const normalizedStartPoint = normalizeCoordinatesToZeroRotation(
+          screenStartPoint,
+          canvas.width,
+          canvas.height,
+          scale,
+          rotation,
+        );
+
+        const normalizedEndPoint = normalizeCoordinatesToZeroRotation(
+          screenEndPoint,
+          canvas.width,
+          canvas.height,
+          scale,
+          rotation,
+        );
+
+        // Create a new ruler with normalized coordinates
         const newRuler: Ruler = {
           id: nextRulerId,
-          startPoint: { ...currentStartPoint },
-          endPoint: { ...currentEndPoint },
-          distance: distance / scale,
-          angle: angle || calculateAngle(currentStartPoint, currentEndPoint),
+          // Store normalized coordinates
+          startPoint: normalizedStartPoint,
+          endPoint: normalizedEndPoint,
+          distance: calculateDistance(normalizedStartPoint, normalizedEndPoint),
+          angle: calculateAngle(normalizedStartPoint, normalizedEndPoint),
         };
 
         setRulers((prevRulers) => {
           const updatedRulers = [...prevRulers, newRuler];
           // Set active ruler index based on the new length
-          setActiveRulerIndex(updatedRulers.length - 1);
+          setDraggingRulerIndex(updatedRulers.length - 1);
           return updatedRulers;
         });
 
@@ -859,25 +1120,35 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
       setTimeout(() => {
         drawRuler(true); // Force redraw with no preview to ensure the preview is cleared
       }, 300);
-    } else if ((isDraggingStart || isDraggingEnd) && activeRulerIndex !== null) {
+    } else if ((isDraggingStart || isDraggingEnd) && draggingRulerIndex !== null) {
       // Update the ruler if we were dragging
+      // Get canvas dimensions for normalization
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
       if (snapTarget !== null && pointsOfInterest[snapTarget.index]) {
         const snapPoint = pointsOfInterest[snapTarget.index];
+        // Normalize snap point coordinates
+        const normalizedPoint = normalizeCoordinatesToZeroRotation(snapPoint, canvas.width, canvas.height, scale, rotation);
+
         if (isDraggingStart) {
           setStartPoint({ x: snapPoint.x, y: snapPoint.y });
-          updateRuler(activeRulerIndex, { x: snapPoint.x, y: snapPoint.y });
+          updateRuler(draggingRulerIndex, normalizedPoint);
         } else {
           setEndPoint({ x: snapPoint.x, y: snapPoint.y });
-          updateRuler(activeRulerIndex, undefined, { x: snapPoint.x, y: snapPoint.y });
+          updateRuler(draggingRulerIndex, undefined, normalizedPoint);
         }
       } else if (highlightedPointIndex !== null && pointsOfInterest[highlightedPointIndex]) {
         const point = pointsOfInterest[highlightedPointIndex];
+        // Normalize point coordinates
+        const normalizedPoint = normalizeCoordinatesToZeroRotation(point, canvas.width, canvas.height, scale, rotation);
+
         if (isDraggingStart) {
           setStartPoint({ x: point.x, y: point.y });
-          updateRuler(activeRulerIndex, { x: point.x, y: point.y });
+          updateRuler(draggingRulerIndex, normalizedPoint);
         } else {
           setEndPoint({ x: point.x, y: point.y });
-          updateRuler(activeRulerIndex, undefined, { x: point.x, y: point.y });
+          updateRuler(draggingRulerIndex, undefined, normalizedPoint);
         }
       }
     }
@@ -924,14 +1195,40 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     e.preventDefault();
     e.stopPropagation();
     setIsDraggingStart(true);
-    setActiveRulerIndex(rulerIndex);
-    setStartPoint(rulers[rulerIndex].startPoint);
-    setEndPoint(rulers[rulerIndex].endPoint);
+    setDraggingRulerIndex(rulerIndex);
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Get the transformed screen position of the marker
+    const transformedStartPoint = transformCoordinates(
+      rulers[rulerIndex].startPoint.x,
+      rulers[rulerIndex].startPoint.y,
+      canvas.width,
+      canvas.height,
+      scale,
+      rotation,
+    );
+
+    const transformedEndPoint = transformCoordinates(
+      rulers[rulerIndex].endPoint.x,
+      rulers[rulerIndex].endPoint.y,
+      canvas.width,
+      canvas.height,
+      scale,
+      rotation,
+    );
+
+    // Use the screen positions for the UI state
+    setStartPoint(transformedStartPoint);
+    setEndPoint(transformedEndPoint);
+    startPointRef.current = transformedStartPoint;
+    endPointRef.current = transformedEndPoint;
 
     // Delay point detection for smoother initial drag
     setTimeout(() => {
-      if (rulers[rulerIndex] && rulers[rulerIndex].startPoint) {
-        const points = findPointsOfInterest(rulers[rulerIndex].startPoint.x, rulers[rulerIndex].startPoint.y);
+      if (rulers[rulerIndex] && canvas) {
+        const points = findPointsOfInterest(transformedStartPoint.x, transformedStartPoint.y);
         setPointsOfInterest(points);
       }
     }, 100);
@@ -941,14 +1238,40 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     e.preventDefault();
     e.stopPropagation();
     setIsDraggingEnd(true);
-    setActiveRulerIndex(rulerIndex);
-    setStartPoint(rulers[rulerIndex].startPoint);
-    setEndPoint(rulers[rulerIndex].endPoint);
+    setDraggingRulerIndex(rulerIndex);
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Get the transformed screen position of the marker
+    const transformedStartPoint = transformCoordinates(
+      rulers[rulerIndex].startPoint.x,
+      rulers[rulerIndex].startPoint.y,
+      canvas.width,
+      canvas.height,
+      scale,
+      rotation,
+    );
+
+    const transformedEndPoint = transformCoordinates(
+      rulers[rulerIndex].endPoint.x,
+      rulers[rulerIndex].endPoint.y,
+      canvas.width,
+      canvas.height,
+      scale,
+      rotation,
+    );
+
+    // Use the screen positions for the UI state
+    setStartPoint(transformedStartPoint);
+    setEndPoint(transformedEndPoint);
+    startPointRef.current = transformedStartPoint;
+    endPointRef.current = transformedEndPoint;
 
     // Delay point detection for smoother initial drag
     setTimeout(() => {
-      if (rulers[rulerIndex] && rulers[rulerIndex].endPoint) {
-        const points = findPointsOfInterest(rulers[rulerIndex].endPoint.x, rulers[rulerIndex].endPoint.y);
+      if (rulers[rulerIndex] && canvas) {
+        const points = findPointsOfInterest(transformedEndPoint.x, transformedEndPoint.y);
         setPointsOfInterest(points);
       }
     }, 100);
@@ -963,9 +1286,9 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     let lastCoords = { x: 0, y: 0 };
 
     // Initialize with current start/end points
-    if (isDraggingStart && activeRulerIndex !== null && startPoint) {
+    if (isDraggingStart && draggingRulerIndex !== null && startPoint) {
       lastCoords = { ...startPoint };
-    } else if (isDraggingEnd && activeRulerIndex !== null && endPoint) {
+    } else if (isDraggingEnd && draggingRulerIndex !== null && endPoint) {
       lastCoords = { ...endPoint };
     }
 
@@ -990,13 +1313,24 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     const updatePosition = () => {
       animationFrameId = 0;
 
-      if (isDraggingStart && activeRulerIndex !== null) {
+      if (!canvasRef.current) return;
+
+      // Normalize the coordinates to account for scale and rotation
+      const normalizedCoords = normalizeCoordinatesToZeroRotation(
+        lastCoords,
+        canvasRef.current.width,
+        canvasRef.current.height,
+        scale,
+        rotation,
+      );
+
+      if (isDraggingStart && draggingRulerIndex !== null) {
         setStartPoint(lastCoords);
-        updateRuler(activeRulerIndex, lastCoords);
+        updateRuler(draggingRulerIndex, normalizedCoords);
         // Points finding will be handled by the effect
-      } else if (isDraggingEnd && activeRulerIndex !== null) {
+      } else if (isDraggingEnd && draggingRulerIndex !== null) {
         setEndPoint(lastCoords);
-        updateRuler(activeRulerIndex, undefined, lastCoords);
+        updateRuler(draggingRulerIndex, undefined, normalizedCoords);
         // Points finding will be handled by the effect
       }
     };
@@ -1007,28 +1341,46 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
         cancelAnimationFrame(animationFrameId);
       }
 
+      if (!canvasRef.current || draggingRulerIndex === null) return;
+
       // Apply snapping if a snap target exists
-      if (snapTarget !== null && pointsOfInterest[snapTarget.index] && activeRulerIndex !== null) {
+      if (snapTarget !== null && pointsOfInterest[snapTarget.index]) {
         const point = pointsOfInterest[snapTarget.index];
+        // Normalize snap point coordinates
+        const normalizedPoint = normalizeCoordinatesToZeroRotation(
+          point,
+          canvasRef.current.width,
+          canvasRef.current.height,
+          scale,
+          rotation,
+        );
 
         if (isDraggingStart) {
           setStartPoint({ x: point.x, y: point.y });
-          updateRuler(activeRulerIndex, { x: point.x, y: point.y });
-        } else if (isDraggingEnd) {
+          updateRuler(draggingRulerIndex, normalizedPoint);
+        } else {
           setEndPoint({ x: point.x, y: point.y });
-          updateRuler(activeRulerIndex, undefined, { x: point.x, y: point.y });
+          updateRuler(draggingRulerIndex, undefined, normalizedPoint);
         }
       }
       // Fallback to highlighted point
-      else if (highlightedPointIndex !== null && pointsOfInterest[highlightedPointIndex] && activeRulerIndex !== null) {
+      else if (highlightedPointIndex !== null && pointsOfInterest[highlightedPointIndex]) {
         const point = pointsOfInterest[highlightedPointIndex];
+        // Normalize point coordinates
+        const normalizedPoint = normalizeCoordinatesToZeroRotation(
+          point,
+          canvasRef.current.width,
+          canvasRef.current.height,
+          scale,
+          rotation,
+        );
 
         if (isDraggingStart) {
           setStartPoint({ x: point.x, y: point.y });
-          updateRuler(activeRulerIndex, { x: point.x, y: point.y });
-        } else if (isDraggingEnd) {
+          updateRuler(draggingRulerIndex, normalizedPoint);
+        } else {
           setEndPoint({ x: point.x, y: point.y });
-          updateRuler(activeRulerIndex, undefined, { x: point.x, y: point.y });
+          updateRuler(draggingRulerIndex, undefined, normalizedPoint);
         }
       }
 
@@ -1053,7 +1405,7 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [isDraggingStart, isDraggingEnd, pointsOfInterest, highlightedPointIndex, snapTarget, activeRulerIndex]);
+  }, [isDraggingStart, isDraggingEnd, pointsOfInterest, highlightedPointIndex, snapTarget, draggingRulerIndex]);
 
   // Calculate distance between two points
   const calculateDistance = (point1: { x: number; y: number }, point2: { x: number; y: number }): number => {
@@ -1079,16 +1431,38 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     let minDistance = MARKER_SELECTION_RADIUS;
     let nearestMarker: { rulerIndex: number; isStart: boolean } | null = null;
 
+    if (!canvasRef.current) return null;
+    const canvas = canvasRef.current;
+
     rulers.forEach((ruler, index) => {
-      // Check start point
-      const startDistance = calculateDistance({ x, y }, ruler.startPoint);
+      // Transform the ruler points to screen coordinates based on current scale and rotation
+      const transformedStartPoint = transformCoordinates(
+        ruler.startPoint.x,
+        ruler.startPoint.y,
+        canvas.width,
+        canvas.height,
+        scale,
+        rotation,
+      );
+
+      const transformedEndPoint = transformCoordinates(
+        ruler.endPoint.x,
+        ruler.endPoint.y,
+        canvas.width,
+        canvas.height,
+        scale,
+        rotation,
+      );
+
+      // Check distance to transformed points
+      const startDistance = calculateDistance({ x, y }, transformedStartPoint);
       if (startDistance < minDistance) {
         minDistance = startDistance;
         nearestMarker = { rulerIndex: index, isStart: true };
       }
 
       // Check end point
-      const endDistance = calculateDistance({ x, y }, ruler.endPoint);
+      const endDistance = calculateDistance({ x, y }, transformedEndPoint);
       if (endDistance < minDistance) {
         minDistance = endDistance;
         nearestMarker = { rulerIndex: index, isStart: false };
@@ -1105,11 +1479,23 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     const updatedRulers = [...rulers];
     const ruler = { ...updatedRulers[index] };
 
-    if (start) ruler.startPoint = start;
-    if (end) ruler.endPoint = end;
+    // Store normalized coordinates (already normalized by caller)
+    if (start) {
+      ruler.startPoint = {
+        x: start.x,
+        y: start.y,
+      };
+    }
 
-    // Recalculate distance and angle
-    ruler.distance = calculateDistance(ruler.startPoint, ruler.endPoint) / scale;
+    if (end) {
+      ruler.endPoint = {
+        x: end.x,
+        y: end.y,
+      };
+    }
+
+    // Recalculate distance and angle - use normalized points
+    ruler.distance = calculateDistance(ruler.startPoint, ruler.endPoint);
     ruler.angle = calculateAngle(ruler.startPoint, ruler.endPoint);
 
     updatedRulers[index] = ruler;
@@ -1123,69 +1509,40 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
     const updatedRulers = rulers.filter((_, i) => i !== index);
     setRulers(updatedRulers);
 
-    if (activeRulerIndex === index) {
-      setActiveRulerIndex(null);
-    } else if (activeRulerIndex !== null && activeRulerIndex > index) {
-      setActiveRulerIndex(activeRulerIndex - 1);
+    if (draggingRulerIndex === index) {
+      setDraggingRulerIndex(null);
+    } else if (draggingRulerIndex !== null && draggingRulerIndex > index) {
+      setDraggingRulerIndex(draggingRulerIndex - 1);
     }
   };
 
   // Reset all rulers
   const resetAllRulers = () => {
     setRulers([]);
-    setActiveRulerIndex(null);
+    setDraggingRulerIndex(null);
     resetRuler();
   };
-
-  // Create positions for the markers and label
-  const startMarkerStyle = startPoint
-    ? {
-        left: `${startPoint.x}px`,
-        top: `${startPoint.y}px`,
-      }
-    : undefined;
-
-  const endMarkerStyle = endPoint
-    ? {
-        left: `${endPoint.x}px`,
-        top: `${endPoint.y}px`,
-      }
-    : undefined;
-
-  const distanceLabelStyle =
-    startPoint && endPoint
-      ? (() => {
-          // Calculate angle in radians
-          const dx = endPoint.x - startPoint.x;
-          const dy = endPoint.y - startPoint.y;
-          let textAngle = Math.atan2(dy, dx) * (180 / Math.PI);
-
-          // Adjust angle for readability (ensure text is not upside down)
-          if (textAngle > 90 || textAngle < -90) {
-            textAngle += 180;
-          }
-
-          // Position in the center of the line
-          const centerX = (startPoint.x + endPoint.x) / 2;
-          const centerY = (startPoint.y + endPoint.y) / 2;
-
-          // Calculate offset to position text above the line
-          const offsetX = Math.sin((textAngle * Math.PI) / 180) * 15; // 15px offset
-          const offsetY = -Math.cos((textAngle * Math.PI) / 180) * 15; // 15px offset
-
-          return {
-            left: `${centerX + offsetX}px`,
-            top: `${centerY + offsetY}px`,
-            transform: `translate(-50%, -50%) rotate(${textAngle}deg)`,
-            padding: '3px 8px',
-          };
-        })()
-      : undefined;
 
   // Redraw canvas whenever rulers or activeRulerIndex changes
   useEffect(() => {
     drawRuler();
-  }, [rulers, activeRulerIndex]);
+  }, [rulers, draggingRulerIndex]);
+
+  // Set up window resize listener
+  useEffect(() => {
+    const handleResize = throttle(() => {
+      const ctx = initializeCanvas();
+      if (ctx) {
+        updateRulerPositions();
+        drawRuler();
+      }
+    }, 250);
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   return (
     <>
@@ -1199,34 +1556,95 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
         onDoubleClick={handleDoubleClick}
         draggable='false'
       />
-      {/* Render markers for active ruler or currently drawing ruler */}
-      {activeRulerIndex !== null && rulers[activeRulerIndex] && (
-        <>
+
+      {/* Render markers and labels for all rulers */}
+      {rulers.map((ruler, index) => (
+        <React.Fragment key={ruler.id}>
           <div
             className={styles.rulerMarker}
-            style={{
-              left: `${rulers[activeRulerIndex].startPoint.x}px`,
-              top: `${rulers[activeRulerIndex].startPoint.y}px`,
-            }}
-            onMouseDown={(e) => handleStartMarkerMouseDown(e, activeRulerIndex)}
+            style={(() => {
+              const canvas = canvasRef.current;
+              if (!canvas) return {};
+
+              const transformed = transformCoordinates(
+                ruler.startPoint.x,
+                ruler.startPoint.y,
+                canvas.width,
+                canvas.height,
+                scale,
+                rotation,
+              );
+
+              // Use smaller marker size for DOM elements to match canvas markers
+              const markerSize = 6;
+
+              // Create marker with white center and blue ring using box-shadow
+              return {
+                left: `${transformed.x}px`,
+                top: `${transformed.y}px`,
+                width: `${markerSize}px`,
+                height: `${markerSize}px`,
+                transform: `translate(-50%, -50%)`,
+                backgroundColor: 'white', // White center
+                border: 'none', // No border
+                boxShadow: '0 0 0 2.5px rgba(33, 150, 243, 0.9)', // Blue ring
+                borderRadius: '50%',
+                cursor: 'pointer',
+                zIndex: 10,
+              };
+            })()}
+            onMouseDown={(e) => handleStartMarkerMouseDown(e, index)}
             draggable='false'
           />
           <div
             className={styles.rulerMarker}
-            style={{
-              left: `${rulers[activeRulerIndex].endPoint.x}px`,
-              top: `${rulers[activeRulerIndex].endPoint.y}px`,
-            }}
-            onMouseDown={(e) => handleEndMarkerMouseDown(e, activeRulerIndex)}
+            style={(() => {
+              const canvas = canvasRef.current;
+              if (!canvas) return {};
+
+              const transformed = transformCoordinates(
+                ruler.endPoint.x,
+                ruler.endPoint.y,
+                canvas.width,
+                canvas.height,
+                scale,
+                rotation,
+              );
+
+              // Use smaller marker size for DOM elements to match canvas markers
+              const markerSize = 6;
+
+              // Create marker with white center and blue ring using box-shadow
+              return {
+                left: `${transformed.x}px`,
+                top: `${transformed.y}px`,
+                width: `${markerSize}px`,
+                height: `${markerSize}px`,
+                transform: `translate(-50%, -50%)`,
+                backgroundColor: 'white', // White center
+                border: 'none', // No border
+                boxShadow: '0 0 0 2.5px rgba(33, 150, 243, 0.9)', // Blue ring
+                borderRadius: '50%',
+                cursor: 'pointer',
+                zIndex: 10,
+              };
+            })()}
+            onMouseDown={(e) => handleEndMarkerMouseDown(e, index)}
             draggable='false'
           />
           <div
             className={styles.rulerDistance}
             style={(() => {
-              const ruler = rulers[activeRulerIndex];
-              // Calculate angle in radians
-              const dx = ruler.endPoint.x - ruler.startPoint.x;
-              const dy = ruler.endPoint.y - ruler.startPoint.y;
+              const canvas = canvasRef.current;
+              if (!canvas) return {};
+
+              // Normalize start and end points
+              const normalizedStartPoint = ruler.startPoint;
+              const normalizedEndPoint = ruler.endPoint;
+
+              // Calculate angle and midpoint using normalized points
+              const dx = normalizedEndPoint.x - normalizedStartPoint.x;
+              const dy = normalizedEndPoint.y - normalizedStartPoint.y;
               let textAngle = Math.atan2(dy, dx) * (180 / Math.PI);
 
               // Adjust angle for readability (ensure text is not upside down)
@@ -1234,31 +1652,208 @@ export const RulerDrawingLayer: React.FC<RulerDrawingLayerProps> = ({ pageNumber
                 textAngle += 180;
               }
 
-              // Position in the center of the line
-              const centerX = (ruler.startPoint.x + ruler.endPoint.x) / 2;
-              const centerY = (ruler.startPoint.y + ruler.endPoint.y) / 2;
+              // Position in the center of the line using normalized coordinates
+              const midPointX = (normalizedStartPoint.x + normalizedEndPoint.x) / 2;
+              const midPointY = (normalizedStartPoint.y + normalizedEndPoint.y) / 2;
+
+              // Transform the midpoint back to screen space
+              const transformedMidPoint = transformCoordinates(
+                midPointX,
+                midPointY,
+                canvas.width,
+                canvas.height,
+                scale,
+                rotation,
+              );
 
               // Calculate offset to position text above the line
               const offsetX = Math.sin((textAngle * Math.PI) / 180) * 15; // 15px offset
               const offsetY = -Math.cos((textAngle * Math.PI) / 180) * 15; // 15px offset
 
+              // Adjust font size based on scale
+              const fontSize = Math.max(12, Math.min(12 * scale, 18));
+
               return {
-                left: `${centerX + offsetX}px`,
-                top: `${centerY + offsetY}px`,
+                left: `${transformedMidPoint.x + offsetX}px`,
+                top: `${transformedMidPoint.y + offsetY}px`,
                 transform: `translate(-50%, -50%) rotate(${textAngle}deg)`,
                 padding: '3px 8px',
+                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                border: '1px solid rgba(0, 0, 0, 0.2)',
+                borderRadius: '4px',
+                fontSize: `${fontSize}px`,
+                fontWeight: 'bold',
+                whiteSpace: 'nowrap',
+                zIndex: 15,
               };
             })()}>
-            {`${Math.round(rulers[activeRulerIndex].distance)} px`}
+            {`${Math.round(ruler.distance)} px`}
           </div>
-        </>
-      )}
+        </React.Fragment>
+      ))}
+
+      {/* Render markers for ruler currently being drawn */}
       {isDrawing && startPoint && endPoint && (
         <>
-          <div className={styles.rulerMarker} style={startMarkerStyle} draggable='false' />
-          <div className={styles.rulerMarker} style={endMarkerStyle} draggable='false' />
+          <div
+            className={styles.rulerMarker}
+            style={(() => {
+              const canvas = canvasRef.current;
+              if (!canvas) return {};
+
+              // Normalize coordinates before transforming to ensure
+              // preview markers appear in the same location as final rulers
+              const normalizedPoint = normalizeCoordinatesToZeroRotation(
+                { x: startPoint.x, y: startPoint.y },
+                canvas.width,
+                canvas.height,
+                scale,
+                rotation,
+              );
+
+              const transformed = transformCoordinates(
+                normalizedPoint.x,
+                normalizedPoint.y,
+                canvas.width,
+                canvas.height,
+                scale,
+                rotation,
+              );
+
+              // Use smaller marker size for DOM elements to match canvas markers
+              const markerSize = 6;
+
+              // Create marker with white center and blue ring using box-shadow
+              return {
+                left: `${transformed.x}px`,
+                top: `${transformed.y}px`,
+                width: `${markerSize}px`,
+                height: `${markerSize}px`,
+                transform: `translate(-50%, -50%)`,
+                backgroundColor: 'white', // White center
+                border: 'none', // No border
+                boxShadow: '0 0 0 2.5px rgba(33, 150, 243, 0.9)', // Blue ring
+                borderRadius: '50%',
+                cursor: 'pointer',
+                zIndex: 10,
+              };
+            })()}
+            draggable='false'
+          />
+          <div
+            className={styles.rulerMarker}
+            style={(() => {
+              const canvas = canvasRef.current;
+              if (!canvas) return {};
+
+              // Normalize coordinates before transforming to ensure
+              // preview markers appear in the same location as final rulers
+              const normalizedPoint = normalizeCoordinatesToZeroRotation(
+                { x: endPoint.x, y: endPoint.y },
+                canvas.width,
+                canvas.height,
+                scale,
+                rotation,
+              );
+
+              const transformed = transformCoordinates(
+                normalizedPoint.x,
+                normalizedPoint.y,
+                canvas.width,
+                canvas.height,
+                scale,
+                rotation,
+              );
+
+              // Use smaller marker size for DOM elements to match canvas markers
+              const markerSize = 6;
+
+              // Create marker with white center and blue ring using box-shadow
+              return {
+                left: `${transformed.x}px`,
+                top: `${transformed.y}px`,
+                width: `${markerSize}px`,
+                height: `${markerSize}px`,
+                transform: `translate(-50%, -50%)`,
+                backgroundColor: 'white', // White center
+                border: 'none', // No border
+                boxShadow: '0 0 0 2.5px rgba(33, 150, 243, 0.9)', // Blue ring
+                borderRadius: '50%',
+                cursor: 'pointer',
+                zIndex: 10,
+              };
+            })()}
+            draggable='false'
+          />
           {distance !== null && angle !== null && (
-            <div className={styles.rulerDistance} style={distanceLabelStyle}>
+            <div
+              className={styles.rulerDistance}
+              style={(() => {
+                const canvas = canvasRef.current;
+                if (!canvas) return {};
+
+                // Normalize start and end points
+                const normalizedStartPoint = normalizeCoordinatesToZeroRotation(
+                  startPoint,
+                  canvas.width,
+                  canvas.height,
+                  scale,
+                  rotation,
+                );
+
+                const normalizedEndPoint = normalizeCoordinatesToZeroRotation(
+                  endPoint,
+                  canvas.width,
+                  canvas.height,
+                  scale,
+                  rotation,
+                );
+
+                // Calculate angle and midpoint using normalized points
+                const dx = normalizedEndPoint.x - normalizedStartPoint.x;
+                const dy = normalizedEndPoint.y - normalizedStartPoint.y;
+                let textAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+                // Adjust angle for readability (ensure text is not upside down)
+                if (textAngle > 90 || textAngle < -90) {
+                  textAngle += 180;
+                }
+
+                // Position in the center of the line using normalized coordinates
+                const midPointX = (normalizedStartPoint.x + normalizedEndPoint.x) / 2;
+                const midPointY = (normalizedStartPoint.y + normalizedEndPoint.y) / 2;
+
+                // Transform the midpoint back to screen space
+                const transformedMidPoint = transformCoordinates(
+                  midPointX,
+                  midPointY,
+                  canvas.width,
+                  canvas.height,
+                  scale,
+                  rotation,
+                );
+
+                // Calculate offset to position text above the line
+                const offsetX = Math.sin((textAngle * Math.PI) / 180) * 15; // 15px offset
+                const offsetY = -Math.cos((textAngle * Math.PI) / 180) * 15; // 15px offset
+
+                // Adjust font size based on scale
+                const fontSize = Math.max(12, Math.min(12 * scale, 18));
+
+                return {
+                  left: `${transformedMidPoint.x + offsetX}px`,
+                  top: `${transformedMidPoint.y + offsetY}px`,
+                  transform: `translate(-50%, -50%) rotate(${textAngle}deg)`,
+                  padding: '3px 8px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                  border: '1px solid rgba(0, 0, 0, 0.2)',
+                  borderRadius: '4px',
+                  fontSize: `${fontSize}px`,
+                  fontWeight: 'bold',
+                  whiteSpace: 'nowrap',
+                  zIndex: 15,
+                };
+              })()}>
               {`${Math.round(distance)} px`}
             </div>
           )}
