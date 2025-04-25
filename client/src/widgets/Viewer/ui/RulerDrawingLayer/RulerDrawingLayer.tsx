@@ -28,6 +28,13 @@ interface Ruler {
   angle: number;
 }
 
+// Interface for calibration settings
+interface CalibrationSettings {
+  isCalibrated: boolean;
+  pixelsPerUnit: number;
+  unitName: string;
+}
+
 export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
   const { pageNumber, pdfCanvasRef } = props;
   const { state } = useContext(ViewerContext);
@@ -46,6 +53,19 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
   const SNAP_UPDATE_DELAY = 100; // Delay in ms between snap point updates
   const MOUSE_MOVE_THRESHOLD = 8; // Minimum mouse movement in pixels to trigger snap point update
   const MARKER_SELECTION_RADIUS = 15; // Radius in pixels to detect clicks on markers
+
+  // Add state for calibration
+  const [calibration, setCalibration] = useState<CalibrationSettings>({
+    isCalibrated: false,
+    pixelsPerUnit: 1, // Default 1:1 ratio (pixels to unit)
+    unitName: 'px', // Default unit is pixels
+  });
+
+  // Add state for calibration dialog
+  const [showCalibrationDialog, setShowCalibrationDialog] = useState(false);
+  const [selectedRulerForCalibration, setSelectedRulerForCalibration] = useState<number | null>(null);
+  const [calibrationActualSize, setCalibrationActualSize] = useState('');
+  const [calibrationUnit, setCalibrationUnit] = useState('');
 
   // Use the custom snap points hook
   const {
@@ -1188,6 +1208,89 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
     };
   }, []);
 
+  // Function to apply calibration
+  const applyCalibration = (actualSize: number, unitName: string, pixelDistance: number) => {
+    // Calculate pixels per unit
+    const pixelsPerUnit = pixelDistance / actualSize;
+
+    setCalibration({
+      isCalibrated: true,
+      pixelsPerUnit,
+      unitName,
+    });
+
+    console.log(`Calibration applied: ${pixelsPerUnit} pixels per ${unitName}`);
+  };
+
+  // Function to format distance using calibration
+  const formatDistance = (pixelDistance: number): string => {
+    if (!calibration.isCalibrated) {
+      return `${Math.round(pixelDistance)} px`;
+    }
+
+    // Convert pixel distance to calibrated units
+    const calibratedDistance = pixelDistance / calibration.pixelsPerUnit;
+    return `${calibratedDistance.toFixed(1)} ${calibration.unitName}`;
+  };
+
+  // Function to handle double click on ruler distance label
+  const handleRulerLabelDoubleClick = (e: React.MouseEvent, rulerIndex: number) => {
+    e.stopPropagation(); // Prevent event from reaching canvas
+    e.preventDefault();
+
+    if (rulerIndex < 0 || rulerIndex >= rulers.length) return;
+
+    setSelectedRulerForCalibration(rulerIndex);
+    setCalibrationActualSize('');
+    setCalibrationUnit('');
+    setShowCalibrationDialog(true);
+  };
+
+  // Function to handle calibration dialog submission
+  const handleCalibrationSubmit = () => {
+    if (selectedRulerForCalibration === null) return;
+
+    const actualSize = parseFloat(calibrationActualSize);
+    if (isNaN(actualSize) || actualSize <= 0) {
+      alert('Please enter a valid positive number for the actual size');
+      return;
+    }
+
+    // Get the pixel distance of the selected ruler
+    const pixelDistance = rulers[selectedRulerForCalibration].distance;
+
+    // Apply the calibration - use empty string if no unit provided
+    applyCalibration(actualSize, calibrationUnit.trim() || '', pixelDistance);
+
+    // Close the dialog
+    setShowCalibrationDialog(false);
+    setSelectedRulerForCalibration(null);
+  };
+
+  // Function to cancel calibration
+  const handleCalibrationCancel = () => {
+    setShowCalibrationDialog(false);
+    setSelectedRulerForCalibration(null);
+  };
+
+  // Function to reset calibration
+  const resetCalibration = () => {
+    setCalibration({
+      isCalibrated: false,
+      pixelsPerUnit: 1,
+      unitName: 'px',
+    });
+  };
+
+  // Function to handle click on ruler distance label
+  const handleRulerLabelClick = (e: React.MouseEvent, rulerIndex: number) => {
+    e.stopPropagation(); // Prevent event from reaching canvas
+    e.preventDefault();
+
+    // You can add additional functionality here for single clicks
+    console.log(`Ruler ${rulerIndex} label clicked`);
+  };
+
   return (
     <>
       <canvas
@@ -1329,9 +1432,18 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
                 fontWeight: 'bold',
                 whiteSpace: 'nowrap',
                 zIndex: 15,
+                cursor: 'pointer', // Add cursor pointer to indicate clickable
               };
-            })()}>
-            {`${Math.round(ruler.distance)} px`}
+            })()}
+            onDoubleClick={(e) => {
+              e.stopPropagation(); // Prevent double-click from reaching canvas
+              handleRulerLabelDoubleClick(e, index);
+            }}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent click from reaching canvas
+              handleRulerLabelClick(e, index);
+            }}>
+            {formatDistance(ruler.distance)}
           </div>
         </React.Fragment>
       ))}
@@ -1496,12 +1608,162 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
                   fontWeight: 'bold',
                   whiteSpace: 'nowrap',
                   zIndex: 15,
+                  cursor: 'pointer', // Add cursor pointer to indicate clickable
                 };
-              })()}>
-              {`${Math.round(distance)} px`}
+              })()}
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent click from reaching canvas
+                console.log('Drawing ruler label clicked');
+              }}
+              onDoubleClick={(e) => {
+                e.stopPropagation(); // Prevent double-click from reaching canvas
+                console.log('Cannot calibrate an incomplete ruler');
+                // Only allow calibration for completed rulers
+              }}>
+              {formatDistance(distance)}
             </div>
           )}
         </>
+      )}
+
+      {/* Calibration Dialog */}
+      {showCalibrationDialog && (
+        <div className={styles.calibrationDialog}>
+          <div
+            className={styles.calibrationDialogContent}
+            style={{
+              fontSize: '14px',
+              fontFamily:
+                '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif',
+              padding: '24px',
+            }}>
+            <h3
+              style={{
+                fontSize: '20px',
+                fontWeight: 600,
+                marginTop: 0,
+                marginBottom: '20px',
+              }}>
+              Калибровка линейки
+            </h3>
+
+            <p
+              style={{
+                fontSize: '14px',
+                marginBottom: '24px',
+                lineHeight: '1.5',
+              }}>
+              Введите реальный размер этого измерения:
+            </p>
+
+            <div className={styles.calibrationInputGroup} style={{ marginBottom: '20px' }}>
+              <label
+                htmlFor='actualSize'
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  marginBottom: '8px',
+                  display: 'block',
+                }}>
+                Реальный размер:
+              </label>
+              <input
+                id='actualSize'
+                type='number'
+                step='any'
+                min='0.001'
+                value={calibrationActualSize}
+                onChange={(e) => setCalibrationActualSize(e.target.value)}
+                placeholder='Введите значение'
+                style={{
+                  fontSize: '14px',
+                  padding: '10px',
+                  width: '100%',
+                  borderRadius: '4px',
+                  border: '1px solid #ccc',
+                }}
+              />
+            </div>
+
+            <div className={styles.calibrationInputGroup} style={{ marginBottom: '28px' }}>
+              <label
+                htmlFor='unitName'
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  marginBottom: '8px',
+                  display: 'block',
+                }}>
+                Единица измерения (необязательно):
+              </label>
+              <input
+                id='unitName'
+                type='text'
+                value={calibrationUnit}
+                onChange={(e) => setCalibrationUnit(e.target.value)}
+                placeholder='например, см, мм, дюйм (или оставьте пустым)'
+                style={{
+                  fontSize: '14px',
+                  padding: '10px',
+                  width: '100%',
+                  borderRadius: '4px',
+                  border: '1px solid #ccc',
+                }}
+              />
+            </div>
+
+            <div
+              className={styles.calibrationButtons}
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '12px',
+                marginTop: '20px',
+              }}>
+              <button
+                onClick={handleCalibrationSubmit}
+                style={{
+                  fontSize: '14px',
+                  padding: '10px 16px',
+                  backgroundColor: '#2196F3',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}>
+                Применить
+              </button>
+              <button
+                onClick={handleCalibrationCancel}
+                style={{
+                  fontSize: '14px',
+                  padding: '10px 16px',
+                  backgroundColor: '#f5f5f5',
+                  color: '#333',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}>
+                Отмена
+              </button>
+              {calibration.isCalibrated && (
+                <button
+                  onClick={resetCalibration}
+                  style={{
+                    fontSize: '14px',
+                    padding: '10px 16px',
+                    backgroundColor: '#f44336',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                  }}>
+                  Сбросить калибровку
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
