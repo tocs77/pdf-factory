@@ -20,6 +20,7 @@ export const initialViewerState: ViewerSchema = {
   pageRotations: {},
   textLayerEnabled: true,
   currentDrawingPage: -1,
+  currentPage: 1,
   compareMode: 'none',
   requestFinishDrawing: false,
   requestCancelDrawing: false,
@@ -169,6 +170,11 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
           pixelsPerUnit: 1,
           unitName: 'px',
         },
+      };
+    case 'setCurrentPage':
+      return {
+        ...state,
+        currentPage: action.payload,
       };
     default:
       return state;

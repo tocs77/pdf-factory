@@ -37,19 +37,18 @@ type PageOverrides = Record<number, number>;
 const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) => {
   const { url, drawings, drawingCreated, compareUrl, onDrawingClicked } = props;
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, showThumbnails, compareMode, drawingMode } = state;
+  const { scale, showThumbnails, compareMode, drawingMode, currentPage } = state;
 
   const [pdfRef, setPdfRef] = useState<PDFDocumentProxy | null>(null);
   const [comparePdfRef, setComparePdfRef] = useState<PDFDocumentProxy | null>(null);
   const [pages, setPages] = useState<PDFPageProxy[]>([]);
   const [comparePages, setComparePages] = useState<PDFPageProxy[]>([]);
-  const [selectedPage, setSelectedPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const pdfContainerRef = useRef<HTMLDivElement>(null);
 
-  // Ref to track the current selected page without causing effect re-runs
-  const selectedPageRef = useRef(selectedPage);
+  // Ref to track the current page without causing effect re-runs
+  const currentPageRef = useRef(currentPage);
 
   // State for comparison page overrides
   const [pageOverrides, setPageOverrides] = useState<PageOverrides>({});
@@ -70,8 +69,8 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     containerRef: pdfContainerRef,
     drawings,
     pages,
-    selectedPage,
-    setSelectedPage,
+    selectedPage: currentPage,
+    setSelectedPage: (page) => dispatch({ type: 'setCurrentPage', payload: page }),
     scale,
     pageRotations: state.pageRotations,
   });
@@ -80,12 +79,12 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   const handlePageChange = useCallback(
     (newPage: number) => {
       if (newPage >= 1 && newPage <= pages.length) {
-        setSelectedPage(newPage);
+        dispatch({ type: 'setCurrentPage', payload: newPage });
         // Add scrolling behavior
         requestAnimationFrame(() => {
           scrollToPage({
             newPage,
-            currentPage: selectedPage,
+            currentPage: currentPage,
             totalPages: pages.length,
             containerRef: pdfContainerRef,
             pages,
@@ -93,7 +92,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
         });
       }
     },
-    [pages, selectedPage],
+    [pages, currentPage, dispatch],
   );
 
   // Named function to handle compare page changes
@@ -107,21 +106,21 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       const newComparePageNum = isValidInput ? newComparePageNumInput : null;
 
       setPageOverrides((prevOverrides) => {
-        const oldComparePageForSelected = prevOverrides[selectedPage] ?? selectedPage;
+        const oldComparePageForSelected = prevOverrides[currentPage] ?? currentPage;
 
         let shift = 0;
         const newOverrides = { ...prevOverrides };
 
         if (newComparePageNum !== null) {
           shift = newComparePageNum - oldComparePageForSelected;
-          newOverrides[selectedPage] = newComparePageNum;
+          newOverrides[currentPage] = newComparePageNum;
         } else {
-          shift = -(oldComparePageForSelected - selectedPage);
-          delete newOverrides[selectedPage];
+          shift = -(oldComparePageForSelected - currentPage);
+          delete newOverrides[currentPage];
         }
 
         if (shift !== 0) {
-          for (let pageNum = selectedPage + 1; pageNum <= pages.length; pageNum++) {
+          for (let pageNum = currentPage + 1; pageNum <= pages.length; pageNum++) {
             const currentComparePage = newOverrides[pageNum] ?? pageNum;
 
             const shiftedComparePage = currentComparePage + shift;
@@ -137,20 +136,23 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
         return newOverrides;
       });
     },
-    [comparePages.length, pages.length, selectedPage],
+    [comparePages.length, pages.length, currentPage],
   );
 
   // Callback for child components to notify when they become visible
-  const handlePageBecameVisible = useCallback((visiblePageNumber: number) => {
-    // Only update if this is different from the current page to avoid unnecessary rerenders
-    if (selectedPageRef.current !== visiblePageNumber) {
-      // Always update the ref to reflect the latest visible page reported
-      selectedPageRef.current = visiblePageNumber;
+  const handlePageBecameVisible = useCallback(
+    (visiblePageNumber: number) => {
+      // Only update if this is different from the current page to avoid unnecessary rerenders
+      if (currentPageRef.current !== visiblePageNumber) {
+        // Always update the ref to reflect the latest visible page reported
+        currentPageRef.current = visiblePageNumber;
 
-      // Update the state for UI changes (e.g., menu page number)
-      setSelectedPage(visiblePageNumber);
-    }
-  }, []); // Dependency array remains empty
+        // Update the context for UI changes (e.g., menu page number)
+        dispatch({ type: 'setCurrentPage', payload: visiblePageNumber });
+      }
+    },
+    [dispatch],
+  ); // Add dispatch to dependencies
 
   // Expose scrollToDraw function to parent component
   useImperativeHandle(ref, () => ({
@@ -284,6 +286,11 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     }
   }, [pages.length, isLoading]);
 
+  // Update currentPageRef when context currentPage changes
+  useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
+
   // Render function for pages
   const renderPages = () => {
     if (!pages.length) return null;
@@ -310,7 +317,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
           onBecameVisible={handlePageBecameVisible}
           onDrawingClicked={onDrawingClicked}
           className={classes.pageItem}
-          selectedPage={selectedPage}
+          selectedPage={currentPage}
         />
       );
     });
@@ -333,7 +340,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   }
 
   // Calculate the comparison page number to pass to the menu
-  const currentComparePageNum = pageOverrides[selectedPage] ?? selectedPage;
+  const currentComparePageNum = pageOverrides[currentPage] ?? currentPage;
 
   return (
     <div className={classNames(classes.container, { [classes.noThumbnails]: !showThumbnails }, [])}>
@@ -344,7 +351,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
               key={`thumbnail-${index + 1}`}
               page={page}
               pageNumber={index + 1}
-              isSelected={selectedPage === index + 1}
+              isSelected={currentPage === index + 1}
               onClick={() => handleThumbnailClick(index + 1)}
             />
           ))}
@@ -353,7 +360,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
       <div className={classes.viewerContainer}>
         <ViewerMenu
-          currentPage={selectedPage}
+          currentPage={currentPage}
           totalPages={pages.length}
           onPageChange={handlePageChange}
           hasCompare={!!compareUrl}

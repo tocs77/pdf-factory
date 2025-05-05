@@ -283,6 +283,7 @@ export interface ViewerSchema {
   // Whether the text layer is enabled
   textLayerEnabled?: boolean;
   currentDrawingPage: number; //-1 means no current drawing page   0 means all pages
+  currentPage: number; // Current selected/visible page
   compareMode: 'none' | 'diff' | 'sideBySide'; // Type of comparison mode active
   requestFinishDrawing: boolean; // Request to finish current drawing
   requestCancelDrawing: boolean; // Request to cancel current drawing
@@ -325,6 +326,11 @@ type ResetCalibrationAction = {
   type: 'resetCalibration';
 };
 
+type SetCurrentPageAction = {
+  type: 'setCurrentPage';
+  payload: number;
+};
+
 export type IsDraftDrawing = boolean;
 // Remove obsolete toggleCompareMode action type
 export type Action =
@@ -344,4 +350,5 @@ export type Action =
   | RequestCancelDrawingAction
   | SetCalibrationAction
   | ApplyCalibrationAction
-  | ResetCalibrationAction; // Added new calibration-related actions
+  | ResetCalibrationAction
+  | SetCurrentPageAction;
