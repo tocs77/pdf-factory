@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useContext } from 'react';
-import type { PDFPageProxy } from 'pdfjs-dist';
+import type { PDFPageProxy, RenderTask } from 'pdfjs-dist';
 
 import { classNames } from '@/shared/utils';
 
@@ -57,6 +57,8 @@ export const ViewPage = ({
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState<any>(null);
   const [baseViewport, setBaseViewport] = useState<any>(null);
+  const currentRenderTaskRef = useRef<RenderTask | null>(null);
+  const isRenderingRef = useRef<boolean>(false);
 
   // Track the scale at which the PDF was last rendered
   const [baseScale, setBaseScale] = useState<number>(scale);
@@ -181,6 +183,23 @@ export const ViewPage = ({
     if (!page || !canvasRef.current) return;
 
     try {
+      // If there's an ongoing render task, cancel it first
+      if (currentRenderTaskRef.current) {
+        try {
+          await currentRenderTaskRef.current.cancel();
+        } catch (_error) {
+          // Ignore cancellation errors
+        }
+        currentRenderTaskRef.current = null;
+      }
+
+      // Set rendering flag to prevent concurrent renders
+      if (isRenderingRef.current) {
+        return;
+      }
+
+      isRenderingRef.current = true;
+
       // Create viewport with rotation at the current scale
       const currentViewport = page.getViewport({
         scale,
@@ -237,7 +256,10 @@ export const ViewPage = ({
 
       // Render PDF page to the canvas
       const renderTask = page.render(renderContext);
+      currentRenderTaskRef.current = renderTask;
+
       await renderTask.promise;
+      currentRenderTaskRef.current = null;
 
       // Create a copy of the rendered canvas for future scaling operations
       const backupCanvas = document.createElement('canvas');
@@ -253,7 +275,11 @@ export const ViewPage = ({
       setBaseScale(scale);
       setHasRendered(true);
     } catch (error: any) {
-      console.error(`Error rendering page ${pageNumber}:`, error);
+      if (!error?.message?.includes('cancelled')) {
+        console.error(`[ERROR][Page ${pageNumber}] Error rendering page:`, error);
+      }
+    } finally {
+      isRenderingRef.current = false;
     }
   };
 
@@ -329,10 +355,19 @@ export const ViewPage = ({
 
       if (!shouldRenderNow) return;
 
+      // Calculate scale difference for determining if full render is needed
       const scaleDifference = Math.abs(scale - baseScale);
 
       // For initial render or when scale difference exceeds threshold
-      if (!hasRendered || !highQualityCanvasRef.current || scaleDifference > SCALE_THRESHOLD) {
+      if (
+        // Only do a full render if:
+        // 1. Never rendered before, OR
+        // 2. No high quality canvas available, OR
+        // 3. Scale difference exceeds threshold
+        // NOT just because hasRendered is false (which could happen on scale changes)
+        !highQualityCanvasRef.current ||
+        scaleDifference > SCALE_THRESHOLD
+      ) {
         // Render PDF at current scale directly
         await renderPageAtCurrentScale();
       } else {
@@ -342,7 +377,7 @@ export const ViewPage = ({
     };
 
     handleRenderOrUpdate();
-  }, [page, rotation, scale, pageNumber, selectedPage, inView, hasRendered, baseScale]);
+  }, [page, rotation, scale, pageNumber, selectedPage, inView, baseScale]);
 
   // Re-render when rotation changes
   useEffect(() => {
@@ -350,8 +385,8 @@ export const ViewPage = ({
     const prevRotation = prevRotationRef.current;
 
     if (rotation !== prevRotation) {
-      // Need to re-render at new rotation
-      setHasRendered(false);
+      // For rotation changes we need to reset the high quality canvas
+      // because content needs to be re-rendered at the new rotation angle
       highQualityCanvasRef.current = null;
       prevRotationRef.current = rotation;
 
@@ -422,21 +457,30 @@ export const ViewPage = ({
 
   // In the part where hasRendered is updated
   useEffect(() => {
-    setHasRendered(false); // Reset rendering state
-
+    // Reset rendering state only when page or rotation changes, not on scale changes
     if (!page) return undefined;
 
-    let renderTimeout: NodeJS.Timeout;
+    // Only reset hasRendered if:
+    // 1. Page changes, or
+    // 2. Rotation changes
+    // Do NOT reset it for scale changes
+    const shouldResetRender = !hasRendered;
 
-    // Mark as rendered after a short delay to ensure canvas has fully drawn
-    renderTimeout = setTimeout(() => {
-      setHasRendered(true);
-    }, 500);
+    if (shouldResetRender) {
+      let renderTimeout: NodeJS.Timeout;
 
-    return () => {
-      clearTimeout(renderTimeout);
-    };
-  }, [page, pageNumber, scale, rotation]);
+      // Mark as rendered after a short delay to ensure canvas has fully drawn
+      renderTimeout = setTimeout(() => {
+        setHasRendered(true);
+      }, 500);
+
+      return () => {
+        clearTimeout(renderTimeout);
+      };
+    }
+
+    return undefined;
+  }, [page, pageNumber, rotation, hasRendered]);
 
   // Track when page becomes both visible and rendered
   useEffect(() => {
@@ -480,6 +524,17 @@ export const ViewPage = ({
       onDrawingCreated(drawing);
     }
   };
+
+  // Cleanup render task on unmount or when page changes
+  useEffect(() => {
+    return () => {
+      // Cancel any pending render tasks when the component unmounts or page changes
+      if (currentRenderTaskRef.current) {
+        currentRenderTaskRef.current.cancel();
+        currentRenderTaskRef.current = null;
+      }
+    };
+  }, [pageNumber, page]);
 
   return (
     <div ref={containerRef} className={classNames(classes.pageContainer, {}, [className])} id={id} data-page-number={pageNumber}>
