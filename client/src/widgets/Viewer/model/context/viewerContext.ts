@@ -93,22 +93,36 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
         ...state,
         drawingMode: state.drawingMode === 'ruler' ? 'none' : 'ruler',
       };
-    case 'rotatePageClockwise':
+    case 'rotatePageClockwise': {
+      // Store the current rotation before changing it
+      const prevRotation = state.pageRotations[action.payload] || 0;
+      const newRotation = ((prevRotation + 90) % 360) as RotationAngle;
+
       return {
         ...state,
         pageRotations: {
           ...state.pageRotations,
-          [action.payload]: (((state.pageRotations[action.payload] || 0) + 90) % 360) as RotationAngle,
+          [action.payload]: newRotation,
         },
+        // Always ensure the rotated page is the current page
+        currentPage: action.payload,
       };
-    case 'rotatePageCounterClockwise':
+    }
+    case 'rotatePageCounterClockwise': {
+      // Store the current rotation before changing it
+      const prevRotation = state.pageRotations[action.payload] || 0;
+      const newRotation = ((prevRotation + 270) % 360) as RotationAngle;
+
       return {
         ...state,
         pageRotations: {
           ...state.pageRotations,
-          [action.payload]: (((state.pageRotations[action.payload] || 0) + 270) % 360) as RotationAngle,
+          [action.payload]: newRotation,
         },
+        // Always ensure the rotated page is the current page
+        currentPage: action.payload,
       };
+    }
     case 'setPageRotation':
       return {
         ...state,

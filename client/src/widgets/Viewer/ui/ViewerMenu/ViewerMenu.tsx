@@ -60,6 +60,10 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
   const [comparePageInputValue, setComparePageInputValue] = useState<string>(comparePage ? comparePage.toString() : '');
   const comparePageDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Refs to track rotation in progress and prevent rapid clicks
+  const isRotationInProgressRef = useRef(false);
+  const rotationDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     setPageInputValue(currentPage.toString());
   }, [currentPage]);
@@ -133,12 +137,146 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
     }
   };
 
+  // Clean up rotation timer on unmount
+  useEffect(() => {
+    return () => {
+      if (rotationDebounceTimerRef.current) {
+        clearTimeout(rotationDebounceTimerRef.current);
+      }
+    };
+  }, []);
+
   const zoomIn = () => dispatch({ type: 'setScale', payload: scale + 0.25 });
   const zoomOut = () => dispatch({ type: 'setScale', payload: scale - 0.25 });
   const resetZoom = () => dispatch({ type: 'setScale', payload: 1.5 });
 
-  const rotatePageClockwise = () => dispatch({ type: 'rotatePageClockwise', payload: currentPage });
-  const rotatePageCounterClockwise = () => dispatch({ type: 'rotatePageCounterClockwise', payload: currentPage });
+  const rotatePageClockwise = () => {
+    // Prevent rapid clicks by checking if rotation is already in progress
+    if (isRotationInProgressRef.current) {
+      return;
+    }
+
+    // Set the rotation in progress flag
+    isRotationInProgressRef.current = true;
+
+    // First make sure the page is scrolled into view
+    if (onPageChange) {
+      // First trigger the page change to ensure it's scrolled into view
+      onPageChange(currentPage);
+
+      // Then, after a small delay, apply the rotation
+      setTimeout(() => {
+        // First try to scroll directly to the page element
+        const pageElement = document.getElementById(`pdf-page-${currentPage}`);
+        if (pageElement) {
+          pageElement.scrollIntoView({ behavior: 'auto', block: 'center' });
+
+          // Apply rotation after scrolling
+          setTimeout(() => {
+            dispatch({ type: 'rotatePageClockwise', payload: currentPage });
+
+            // Reset the rotation in progress flag after sufficient time for rendering
+            // This prevents rapid clicks from breaking renders
+            if (rotationDebounceTimerRef.current) {
+              clearTimeout(rotationDebounceTimerRef.current);
+            }
+            rotationDebounceTimerRef.current = setTimeout(() => {
+              isRotationInProgressRef.current = false;
+              rotationDebounceTimerRef.current = null;
+            }, 500); // 500ms debounce between rotations
+          }, 100);
+        } else {
+          // If element not found, just rotate
+          dispatch({ type: 'rotatePageClockwise', payload: currentPage });
+
+          // Reset the rotation in progress flag
+          if (rotationDebounceTimerRef.current) {
+            clearTimeout(rotationDebounceTimerRef.current);
+          }
+          rotationDebounceTimerRef.current = setTimeout(() => {
+            isRotationInProgressRef.current = false;
+            rotationDebounceTimerRef.current = null;
+          }, 500);
+        }
+      }, 50);
+    } else {
+      // If no page change handler, just rotate
+      dispatch({ type: 'rotatePageClockwise', payload: currentPage });
+
+      // Reset the rotation in progress flag
+      if (rotationDebounceTimerRef.current) {
+        clearTimeout(rotationDebounceTimerRef.current);
+      }
+      rotationDebounceTimerRef.current = setTimeout(() => {
+        isRotationInProgressRef.current = false;
+        rotationDebounceTimerRef.current = null;
+      }, 500);
+    }
+  };
+
+  const rotatePageCounterClockwise = () => {
+    // Prevent rapid clicks by checking if rotation is already in progress
+    if (isRotationInProgressRef.current) {
+      return;
+    }
+
+    // Set the rotation in progress flag
+    isRotationInProgressRef.current = true;
+
+    // First make sure the page is scrolled into view
+    if (onPageChange) {
+      // First trigger the page change to ensure it's scrolled into view
+      onPageChange(currentPage);
+
+      // Then, after a small delay, apply the rotation
+      setTimeout(() => {
+        // First try to scroll directly to the page element
+        const pageElement = document.getElementById(`pdf-page-${currentPage}`);
+        if (pageElement) {
+          pageElement.scrollIntoView({ behavior: 'auto', block: 'center' });
+
+          // Apply rotation after scrolling
+          setTimeout(() => {
+            dispatch({ type: 'rotatePageCounterClockwise', payload: currentPage });
+
+            // Reset the rotation in progress flag after sufficient time for rendering
+            // This prevents rapid clicks from breaking renders
+            if (rotationDebounceTimerRef.current) {
+              clearTimeout(rotationDebounceTimerRef.current);
+            }
+            rotationDebounceTimerRef.current = setTimeout(() => {
+              isRotationInProgressRef.current = false;
+              rotationDebounceTimerRef.current = null;
+            }, 500); // 500ms debounce between rotations
+          }, 100);
+        } else {
+          // If element not found, just rotate
+          dispatch({ type: 'rotatePageCounterClockwise', payload: currentPage });
+
+          // Reset the rotation in progress flag
+          if (rotationDebounceTimerRef.current) {
+            clearTimeout(rotationDebounceTimerRef.current);
+          }
+          rotationDebounceTimerRef.current = setTimeout(() => {
+            isRotationInProgressRef.current = false;
+            rotationDebounceTimerRef.current = null;
+          }, 500);
+        }
+      }, 50);
+    } else {
+      // If no page change handler, just rotate
+      dispatch({ type: 'rotatePageCounterClockwise', payload: currentPage });
+
+      // Reset the rotation in progress flag
+      if (rotationDebounceTimerRef.current) {
+        clearTimeout(rotationDebounceTimerRef.current);
+      }
+      rotationDebounceTimerRef.current = setTimeout(() => {
+        isRotationInProgressRef.current = false;
+        rotationDebounceTimerRef.current = null;
+      }, 500);
+    }
+  };
 
   const toggleRuler = () => dispatch({ type: 'toggleRuler' });
 

@@ -354,8 +354,19 @@ export const ViewPage = ({
       setHasRendered(false);
       highQualityCanvasRef.current = null;
       prevRotationRef.current = rotation;
+
+      // Set a timer to re-center this page after rotation is applied
+      // This ensures the page stays as the current page even after layout changes
+      setTimeout(() => {
+        if (pageNumber === selectedPage) {
+          const pageElement = document.getElementById(`pdf-page-${pageNumber}`);
+          if (pageElement) {
+            pageElement.scrollIntoView({ behavior: 'auto', block: 'center' });
+          }
+        }
+      }, 300);
     }
-  }, [pageNumber, pageRotations]);
+  }, [pageNumber, pageRotations, selectedPage]);
 
   // Remove console log from visibility changes
   useEffect(() => {

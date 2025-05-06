@@ -31,13 +31,62 @@ export const Page = (props: PageProps) => {
   } = props;
 
   const { state, dispatch } = useContext(ViewerContext);
-  const { currentPage } = state;
+  const { currentPage, pageRotations } = state;
 
   // Ref to track whether this is the current visible page to avoid infinite rerenders
   const isCurrentlyVisibleRef = useRef(false);
 
+  // Track rotation changes
+  const prevRotationRef = useRef(pageRotations[pageNumber] || 0);
+  const rotationChangedRef = useRef(false);
+  const rotationStabilizationTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Update rotation tracking
+  useEffect(() => {
+    const currentRotation = pageRotations[pageNumber] || 0;
+    const prevRotation = prevRotationRef.current;
+
+    if (currentRotation !== prevRotation) {
+      rotationChangedRef.current = true;
+      prevRotationRef.current = currentRotation;
+
+      // Clear any existing timer
+      if (rotationStabilizationTimerRef.current) {
+        clearTimeout(rotationStabilizationTimerRef.current);
+      }
+
+      // Set a timer to reset the rotation changed flag after 1 second
+      rotationStabilizationTimerRef.current = setTimeout(() => {
+        rotationChangedRef.current = false;
+        rotationStabilizationTimerRef.current = null;
+      }, 1000);
+    }
+
+    return () => {
+      if (rotationStabilizationTimerRef.current) {
+        clearTimeout(rotationStabilizationTimerRef.current);
+      }
+    };
+  }, [pageNumber, pageRotations]);
+
   // Internal handler for when a page becomes visible
   const handlePageBecameVisible = (visiblePageNumber: number) => {
+    // Don't update current page if this page has recently had its rotation changed
+    if (visiblePageNumber === pageNumber && rotationChangedRef.current) {
+      return;
+    }
+
+    // If another page becomes visible after a page rotation, ignore it for a brief period
+    // This prevents the wrong page from becoming the current page during rotation layout changes
+    const isAnyPageRotating = Object.keys(pageRotations).some((key) => {
+      const pageNum = parseInt(key, 10);
+      return pageNum !== pageNumber && pageRotations[pageNum] !== prevRotationRef.current;
+    });
+
+    if (isAnyPageRotating) {
+      return;
+    }
+
     // Only update context if this page isn't already the current page
     // This prevents infinite rerenders
     if (visiblePageNumber === pageNumber && !isCurrentlyVisibleRef.current) {
