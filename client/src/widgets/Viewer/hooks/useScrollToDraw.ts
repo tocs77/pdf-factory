@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { RefObject } from 'react';
-import { Drawing } from '../model/types/viewerSchema';
+import { Drawing } from '../model/types/Drawings';
 import { scrollToPage } from '../utils/pageScrollUtils';
 import { PDFPageProxy } from 'pdfjs-dist';
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
-import { Drawing, type ImageAnnotation } from '../../model/types/viewerSchema';
+import { Drawing, ImageAnnotation } from '../../model/types/Drawings';
 import { resizeImageToFit } from '../../utils/resizeImageToFit';
 import classes from './ImageLayer.module.scss'; // Assuming you have a similar CSS module
 

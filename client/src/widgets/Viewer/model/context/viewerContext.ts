@@ -9,10 +9,11 @@ interface ViewerContextType {
 
 const MAX_ZOOM = 5;
 const DEFAULT_DRAWING_COLOR = '#2196f3';
+const DEFAULT_SCALE = 1.5;
 
 // Define the initial state
 export const initialViewerState: ViewerSchema = {
-  scale: 1.5,
+  scale: DEFAULT_SCALE,
   drawingColor: DEFAULT_DRAWING_COLOR,
   drawingLineWidth: 3,
   drawingMode: 'none',

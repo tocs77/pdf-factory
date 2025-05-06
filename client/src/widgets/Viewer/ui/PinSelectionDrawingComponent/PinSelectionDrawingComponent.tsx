@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
-import { PinSelection } from '../../model/types/viewerSchema';
+import { PinSelection } from '../../model/types/Drawings';
 import styles from './PinSelectionDrawingComponent.module.scss';
 
 interface PinSelectionDrawingComponentProps {

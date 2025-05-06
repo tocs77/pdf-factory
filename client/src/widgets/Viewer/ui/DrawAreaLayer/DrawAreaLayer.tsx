@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
-import { Drawing } from '../../model/types/viewerSchema';
+import { Drawing } from '../../model/types/Drawings';
 import styles from './DrawAreaLayer.module.scss';
 
 interface DrawAreaLayerProps {

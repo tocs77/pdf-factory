@@ -1,4 +1,4 @@
-import { TextHighlight, TextUnderline, TextCrossedOut } from '../model/types/viewerSchema';
+import { TextHighlight, TextUnderline, TextCrossedOut } from '../model/types/Drawings';
 import { renderTextHighlight, renderTextUnderline, renderTextCrossedOut } from './drawingRenderers';
 import { normalizeCoordinatesToZeroRotation, transformCoordinates } from './rotationUtils';
 import { RefObject } from 'react';

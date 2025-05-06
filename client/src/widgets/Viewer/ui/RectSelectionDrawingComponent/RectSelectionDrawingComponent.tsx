@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
-import { RectSelection } from '../../model/types/viewerSchema';
+import { RectSelection } from '../../model/types/Drawings';
 import styles from './RectSelectionDrawingComponent.module.scss';
 
 interface RectSelectionDrawingComponentProps {

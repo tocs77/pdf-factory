@@ -13,7 +13,7 @@ import {
   renderpinSelection,
 } from '../../utils/drawingRenderers';
 import { renderExtensionLine } from '../../utils/extensionLineRenderer';
-import { Drawing, ImageAnnotation, DrawingMisc } from '../../model/types/viewerSchema';
+import { Drawing, ImageAnnotation, DrawingMisc } from '../../model/types/Drawings';
 import styles from './CompleteDrawings.module.scss';
 
 interface CompleteDrawingsProps {

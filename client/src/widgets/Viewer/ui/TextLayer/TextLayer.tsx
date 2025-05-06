@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useContext } from 'react';
 import type { PDFPageProxy } from 'pdfjs-dist';
 import classes from './TextLayer.module.scss';
-import { Drawing, TextHighlight, TextUnderline, TextCrossedOut } from '../../model/types/viewerSchema';
+import { Drawing, TextHighlight, TextUnderline, TextCrossedOut } from '../../model/types/Drawings';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { renderTextLayer } from '../../utils/renderTextLayer';
 import { getLineSegments, getHighlightRects, captureTextAnnotationImage } from '../../utils/textToolUtils';

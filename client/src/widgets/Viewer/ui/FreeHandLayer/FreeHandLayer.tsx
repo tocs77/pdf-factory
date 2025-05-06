@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
-import { Drawing, DrawingStyle } from '../../model/types/viewerSchema';
+import { Drawing, DrawingStyle } from '../../model/types/Drawings';
 import classes from './FreeHandLayer.module.scss';
 
 interface FreeHandLayerProps {

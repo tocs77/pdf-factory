@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useContext, useState } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
-import { Drawing } from '../../model/types/viewerSchema';
+import { Drawing } from '../../model/types/Drawings';
 import classes from './ExtensionLineDrawingComponent.module.scss';
 import { renderExtensionLine } from '../../utils/extensionLineRenderer';
 

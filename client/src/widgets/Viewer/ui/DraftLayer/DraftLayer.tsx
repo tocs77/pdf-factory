@@ -1,6 +1,7 @@
 import { useContext, useState, useRef, useEffect } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
-import { Drawing, DrawingMisc } from '../../model/types/viewerSchema';
+import { Drawing, DrawingMisc } from '../../model/types/Drawings';
+
 import { LineDrawingLayer } from '../LineDrawingLayer/LineDrawingLayer';
 import TextAreaDrawingLayer from '../TextAreaDrawingLayer/TextAreaDrawingLayer';
 import { FreeHandLayer } from '../FreeHandLayer/FreeHandLayer';

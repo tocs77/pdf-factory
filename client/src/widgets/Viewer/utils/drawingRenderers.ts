@@ -9,7 +9,7 @@ import {
   TextArea,
   PinSelection,
   RectSelection,
-} from '../model/types/viewerSchema';
+} from '../model/types/Drawings';
 import { transformCoordinates } from './rotationUtils';
 
 /**

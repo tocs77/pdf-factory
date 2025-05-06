@@ -4,7 +4,7 @@ import { useContext, useEffect, useRef } from 'react';
 import { ViewPage } from '../ViewPage/ViewPage';
 import { ComparePageDiff } from '../ComparePageDiff/ComparePageDiff';
 import { ComparePageSideBySide } from '../ComparePageSideBySide/ComparePageSideBySide';
-import { Drawing } from '../../model/types/viewerSchema';
+import { Drawing } from '../../model/types/Drawings';
 import { ViewerContext } from '../../model/context/viewerContext';
 
 interface PageProps {

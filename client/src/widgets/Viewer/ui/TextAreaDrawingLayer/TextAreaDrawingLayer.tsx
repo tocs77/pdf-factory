@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
-import { TextArea, Drawing } from '../../model/types/viewerSchema';
+import { TextArea, Drawing } from '../../model/types/Drawings';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import { renderTextArea } from '../../utils/drawingRenderers';

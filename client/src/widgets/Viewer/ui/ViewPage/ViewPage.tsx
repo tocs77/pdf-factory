@@ -4,7 +4,7 @@ import type { PDFPageProxy } from 'pdfjs-dist';
 import { classNames } from '@/shared/utils';
 
 import { ViewerContext } from '../../model/context/viewerContext';
-import { Drawing } from '../../model/types/viewerSchema';
+import { Drawing } from '../../model/types/Drawings';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import CompleteDrawings from '../CompleteDrawings/CompleteDrawings';
 import { DraftLayer } from '../DraftLayer/DraftLayer';
