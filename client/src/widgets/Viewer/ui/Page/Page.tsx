@@ -1,9 +1,11 @@
 import { PDFPageProxy } from 'pdfjs-dist';
+import { useContext, useEffect, useRef } from 'react';
 
 import { ViewPage } from '../ViewPage/ViewPage';
 import { ComparePageDiff } from '../ComparePageDiff/ComparePageDiff';
 import { ComparePageSideBySide } from '../ComparePageSideBySide/ComparePageSideBySide';
 import { Drawing } from '../../model/types/viewerSchema';
+import { ViewerContext } from '../../model/context/viewerContext';
 
 interface PageProps {
   page: PDFPageProxy;
@@ -12,10 +14,8 @@ interface PageProps {
   comparePage?: PDFPageProxy | null;
   drawings: Drawing[];
   drawingCreated: (drawing: Omit<Drawing, 'id'>) => void;
-  onBecameVisible: (pageNumber: number) => void;
   onDrawingClicked?: (id: string) => void;
   className?: string;
-  selectedPage: number;
 }
 
 export const Page = (props: PageProps) => {
@@ -26,11 +26,32 @@ export const Page = (props: PageProps) => {
     comparePage = null,
     drawings,
     drawingCreated,
-    onBecameVisible,
     onDrawingClicked,
     className,
-    selectedPage,
   } = props;
+
+  const { state, dispatch } = useContext(ViewerContext);
+  const { currentPage } = state;
+
+  // Ref to track whether this is the current visible page to avoid infinite rerenders
+  const isCurrentlyVisibleRef = useRef(false);
+
+  // Internal handler for when a page becomes visible
+  const handlePageBecameVisible = (visiblePageNumber: number) => {
+    // Only update context if this page isn't already the current page
+    // This prevents infinite rerenders
+    if (visiblePageNumber === pageNumber && !isCurrentlyVisibleRef.current) {
+      isCurrentlyVisibleRef.current = true;
+      dispatch({ type: 'setCurrentPage', payload: visiblePageNumber });
+    } else if (visiblePageNumber !== pageNumber && isCurrentlyVisibleRef.current) {
+      isCurrentlyVisibleRef.current = false;
+    }
+  };
+
+  // Reset visibility status when currentPage changes externally
+  useEffect(() => {
+    isCurrentlyVisibleRef.current = currentPage === pageNumber;
+  }, [currentPage, pageNumber]);
 
   const pageKey = `page-${pageNumber}`;
   const pageId = `pdf-page-${pageNumber}`;
@@ -45,7 +66,7 @@ export const Page = (props: PageProps) => {
         pageNumber={pageNumber}
         id={pageId}
         className={className}
-        onBecameVisible={onBecameVisible}
+        onBecameVisible={handlePageBecameVisible}
       />
     );
   }
@@ -62,7 +83,7 @@ export const Page = (props: PageProps) => {
         className={className}
         mainColor='#FF0000'
         comparisonColor='#0000FF'
-        onBecameVisible={onBecameVisible}
+        onBecameVisible={handlePageBecameVisible}
       />
     );
   }
@@ -77,9 +98,9 @@ export const Page = (props: PageProps) => {
       className={className}
       drawings={drawings.filter((d) => d.pageNumber === pageNumber)}
       onDrawingCreated={drawingCreated}
-      onBecameVisible={onBecameVisible}
+      onBecameVisible={handlePageBecameVisible}
       onDrawingClicked={onDrawingClicked}
-      selectedPage={selectedPage}
+      selectedPage={currentPage}
     />
   );
 };

@@ -47,9 +47,6 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   const [error, setError] = useState<string | null>(null);
   const pdfContainerRef = useRef<HTMLDivElement>(null);
 
-  // Ref to track the current page without causing effect re-runs
-  const currentPageRef = useRef(currentPage);
-
   // State for comparison page overrides
   const [pageOverrides, setPageOverrides] = useState<PageOverrides>({});
 
@@ -138,21 +135,6 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     },
     [comparePages.length, pages.length, currentPage],
   );
-
-  // Callback for child components to notify when they become visible
-  const handlePageBecameVisible = useCallback(
-    (visiblePageNumber: number) => {
-      // Only update if this is different from the current page to avoid unnecessary rerenders
-      if (currentPageRef.current !== visiblePageNumber) {
-        // Always update the ref to reflect the latest visible page reported
-        currentPageRef.current = visiblePageNumber;
-
-        // Update the context for UI changes (e.g., menu page number)
-        dispatch({ type: 'setCurrentPage', payload: visiblePageNumber });
-      }
-    },
-    [dispatch],
-  ); // Add dispatch to dependencies
 
   // Expose scrollToDraw function to parent component
   useImperativeHandle(ref, () => ({
@@ -286,11 +268,6 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     }
   }, [pages.length, isLoading]);
 
-  // Update currentPageRef when context currentPage changes
-  useEffect(() => {
-    currentPageRef.current = currentPage;
-  }, [currentPage]);
-
   // Render function for pages
   const renderPages = () => {
     if (!pages.length) return null;
@@ -314,10 +291,8 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
           comparePage={comparePageObject}
           drawings={drawings}
           drawingCreated={drawingCreated}
-          onBecameVisible={handlePageBecameVisible}
           onDrawingClicked={onDrawingClicked}
           className={classes.pageItem}
-          selectedPage={currentPage}
         />
       );
     });
