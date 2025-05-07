@@ -48,8 +48,8 @@ export const renderTextArea = (
   ctx.fillStyle = `${drawing.style.strokeColor}15`; // 15 is the hex for ~10% opacity
   ctx.fillRect(drawX, drawY, areaWidth, areaHeight);
 
-  // Scale font size based on scale factor
-  const baseFontSize = 14;
+  // Scale font size based on scale factor and use fontSize from the drawing if available
+  const baseFontSize = drawing.fontSize || 14;
   const scaledFontSize = baseFontSize * scale;
   ctx.font = `${scaledFontSize}px Arial`;
   ctx.fillStyle = drawing.style.strokeColor;
@@ -57,7 +57,7 @@ export const renderTextArea = (
   // Padding for text (also scaled)
   const padding = 5 * scale;
   const textX = drawX + padding;
-  const lineHeight = scaledFontSize;
+  const lineHeight = scaledFontSize; // Line height matches font size
 
   // Calculate maximum width for text
   const maxTextWidth = areaWidth - 2 * padding;

@@ -181,6 +181,10 @@ export interface TextArea extends BaseDrawing {
    * Style properties for the text area
    */
   style: DrawingStyle;
+  /**
+   * Font size for the text (in pixels at scale=1)
+   */
+  fontSize?: number;
 }
 
 export interface RectSelection extends BaseDrawing {

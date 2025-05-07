@@ -31,6 +31,12 @@ export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
   const { drawingColor, drawingLineWidth, scale, requestFinishDrawing, requestCancelDrawing } = state;
   const rotation = state.pageRotations[pageNumber] || 0;
 
+  // Define constant border width for rectangles
+  const RECT_BORDER_WIDTH = 2;
+
+  // Calculate font size based on drawingLineWidth
+  const baseFontSize = Math.max(drawingLineWidth * 3, 10); // At least 10px at scale=1
+
   // Refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const shadowRectRef = useRef<HTMLDivElement>(null);
@@ -115,9 +121,9 @@ export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
 
     clearCanvas();
 
-    // Draw rectangle
+    // Draw rectangle with constant border width instead of drawingLineWidth
     ctx.strokeStyle = drawingColor;
-    ctx.lineWidth = drawingLineWidth;
+    ctx.lineWidth = RECT_BORDER_WIDTH; // Use constant border width
 
     const rect = getRectangleFromPoints(startPoint, endPoint);
     ctx.beginPath();
@@ -213,8 +219,9 @@ export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
       text,
       style: {
         strokeColor: drawingColor,
-        strokeWidth: drawingLineWidth,
+        strokeWidth: RECT_BORDER_WIDTH, // Use constant border width
       },
+      fontSize: baseFontSize, // Include the font size
       boundingBox: {
         left: rect.left,
         top: rect.top,
@@ -283,8 +290,9 @@ export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
       text,
       style: {
         strokeColor: drawingColor,
-        strokeWidth: drawingLineWidth / scale, // Store at scale 1
+        strokeWidth: RECT_BORDER_WIDTH / scale, // Store constant border width at scale 1
       },
+      fontSize: baseFontSize, // Include the font size
       boundingBox: {
         left: normalizedStartPoint.x,
         top: normalizedStartPoint.y,
@@ -415,7 +423,7 @@ export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
                 clearCanvas();
 
                 ctx.strokeStyle = drawingColor;
-                ctx.lineWidth = drawingLineWidth;
+                ctx.lineWidth = RECT_BORDER_WIDTH;
                 ctx.beginPath();
 
                 const updatedRect = getRectangleFromPoints(startPoint, newEndPoint);
@@ -493,6 +501,12 @@ export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
             value={text}
             onChange={handleTextChange}
             placeholder='Enter text here...'
+            style={{
+              fontSize: `${Math.max(baseFontSize * scale, 8)}px`, // Use calculated font size
+              fontFamily: 'Arial', // Match the font used in renderTextArea
+              lineHeight: '1.2', // Match the line height in renderTextArea
+              color: drawingColor, // Match the text color with the drawing color
+            }}
           />
           <button className={classes.finishButton} onClick={handleFinishDrawing}>
             Finish
