@@ -17,6 +17,9 @@ export const DrawingMenu = () => {
   const selectionModes: DrawingMode[] = ['rectSelection', 'pinSelection', 'drawArea', 'ruler'];
   const isSelectionMode = selectionModes.includes(drawingMode);
 
+  // Check if we're in textArea mode
+  const isTextAreaMode = drawingMode === 'textArea';
+
   const handleFinishClick = () => {
     dispatch({ type: 'requestFinishDrawing', payload: true });
     // Reset the request flag after a short delay
@@ -109,16 +112,20 @@ export const DrawingMenu = () => {
         </div>
         {!isSelectionMode && (
           <div className={styles.lineWidthPicker}>
-            <span>Толщина:</span>
+            <span>{isTextAreaMode ? 'Размер текста:' : 'Толщина:'}</span>
             <div className={styles.lineWidthOptions}>
               {lineWidthOptions.map((width) => (
                 <button
                   key={width}
                   className={`${styles.lineWidthOption} ${width === drawingLineWidth ? styles.active : ''}`}
                   onClick={() => changeLineWidth(width)}
-                  title={`Установить толщину линии: ${width}`}
-                  aria-label={`Установить толщину линии: ${width}`}>
-                  <div style={{ height: `${width}px`, width: '14px', backgroundColor: '#333' }}></div>
+                  title={isTextAreaMode ? `Установить размер текста: ${width}` : `Установить толщину линии: ${width}`}
+                  aria-label={isTextAreaMode ? `Установить размер текста: ${width}` : `Установить толщину линии: ${width}`}>
+                  {isTextAreaMode ? (
+                    <div style={{ fontSize: `${10 + width * 2}px`, fontWeight: 'bold' }}>T</div>
+                  ) : (
+                    <div style={{ height: `${width}px`, width: '14px', backgroundColor: '#333' }}></div>
+                  )}
                 </button>
               ))}
             </div>
