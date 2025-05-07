@@ -75,8 +75,6 @@ export const ViewPage = () => {
     dispatch(viewerPageActions.clearDrawings());
   };
 
-  console.log(drawings);
-
   if (isLoading || isCompareLoading) return <div>Loading...</div>;
   return (
     <div className={classes.ViewPage}>

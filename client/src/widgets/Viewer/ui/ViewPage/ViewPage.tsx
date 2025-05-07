@@ -203,7 +203,7 @@ export const ViewPage = ({
       // Create viewport with rotation at the current scale
       const currentViewport = page.getViewport({
         scale,
-        rotation,
+        rotation: rotation || 0,
         dontFlip: false,
       });
 
@@ -294,7 +294,7 @@ export const ViewPage = ({
     // Calculate the current viewport based on user scale
     const currentViewport = page.getViewport({
       scale,
-      rotation,
+      rotation: rotation || 0,
       dontFlip: false,
     });
 
@@ -357,17 +357,21 @@ export const ViewPage = ({
 
       // Calculate scale difference for determining if full render is needed
       const scaleDifference = Math.abs(scale - baseScale);
+      const rotationChanged = rotation !== prevRotationRef.current;
 
       // For initial render or when scale difference exceeds threshold
       if (
         // Only do a full render if:
         // 1. Never rendered before, OR
         // 2. No high quality canvas available, OR
-        // 3. Scale difference exceeds threshold
-        // NOT just because hasRendered is false (which could happen on scale changes)
+        // 3. Scale difference exceeds threshold, OR
+        // 4. Rotation changed
         !highQualityCanvasRef.current ||
-        scaleDifference > SCALE_THRESHOLD
+        scaleDifference > SCALE_THRESHOLD ||
+        rotationChanged
       ) {
+        // Update the rotation ref
+        prevRotationRef.current = rotation;
         // Render PDF at current scale directly
         await renderPageAtCurrentScale();
       } else {
@@ -389,6 +393,9 @@ export const ViewPage = ({
       // because content needs to be re-rendered at the new rotation angle
       highQualityCanvasRef.current = null;
       prevRotationRef.current = rotation;
+
+      // Force a re-render immediately
+      renderPageAtCurrentScale();
 
       // Set a timer to re-center this page after rotation is applied
       // This ensures the page stays as the current page even after layout changes
