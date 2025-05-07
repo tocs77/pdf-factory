@@ -94,15 +94,22 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
       // Deep copy to ensure we don't have reference issues
       const drawingsCopy = drawings.map((drawing) => ({ ...drawing }));
       lastDrawingsRef.current = drawingsCopy;
+    } else if (Array.isArray(drawings) && drawings.length === 0) {
+      // Clear lastDrawingsRef when drawings is deliberately empty
+      lastDrawingsRef.current = [];
     }
   }, [drawings]);
 
   // Filter drawings for this page - use useMemo to prevent recreation on every render
   const pageDrawings = useMemo(() => {
     // Use most recent non-empty drawings data
-    const drawingsToFilter = drawings.length > 0 ? drawings : lastDrawingsRef.current;
-    const filtered = drawingsToFilter.filter((drawing) => drawing.pageNumber === pageNumber);
-    return filtered;
+    const drawingsToFilter =
+      Array.isArray(drawings) && drawings.length === 0
+        ? []
+        : drawings && drawings.length > 0
+          ? drawings
+          : lastDrawingsRef.current;
+    return drawingsToFilter.filter((drawing) => drawing.pageNumber === pageNumber);
   }, [drawings, pageNumber]);
 
   // Extract all images from both direct image drawings and nested in misc drawings
@@ -144,6 +151,14 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
           d.type === 'misc'),
     );
   }, [pageDrawings]);
+
+  const imageDrawingsRef = useRef<ImageAnnotation[]>([]);
+  const nonImageDrawingsRef = useRef<Drawing[]>([]);
+
+  useEffect(() => {
+    imageDrawingsRef.current = imageDrawings;
+    nonImageDrawingsRef.current = nonImageDrawings;
+  }, [imageDrawings, nonImageDrawings]);
 
   // Helper function to apply consistent canvas styling
   const ensureCanvasStyle = (canvas: HTMLCanvasElement) => {
@@ -275,9 +290,17 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
       return;
     }
 
+    // Always clear the canvas, even if there are no drawings
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // If the drawings prop is empty, forcibly clear and return
+    if (Array.isArray(drawings) && drawings.length === 0) {
+      return;
+    }
+
     // Determine what drawings to use - avoid recursive calls
-    let currentImageDrawings = imageDrawings;
-    let currentNonImageDrawings = nonImageDrawings;
+    let currentImageDrawings = imageDrawingsRef.current;
+    let currentNonImageDrawings = nonImageDrawingsRef.current;
 
     // Check if we need to use stored drawings
     const hasCurrentDrawings =
@@ -288,7 +311,13 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
     // 1. We don't have current drawings
     // 2. We're not already trying to render stored drawings (prevents recursion)
     // 3. We have stored drawings to use
-    if (!hasCurrentDrawings && !isRenderingStoredDrawingsRef.current && lastDrawingsRef.current.length > 0) {
+    // 4. The drawings prop is not an empty array (important to prevent showing deleted drawings)
+    if (
+      !hasCurrentDrawings &&
+      !isRenderingStoredDrawingsRef.current &&
+      lastDrawingsRef.current.length > 0 &&
+      !(Array.isArray(drawings) && drawings.length === 0)
+    ) {
       // Mark that we're now rendering stored drawings to prevent recursion
       isRenderingStoredDrawingsRef.current = true;
 
@@ -339,9 +368,6 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
     ) {
       return;
     }
-
-    // Clear the canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // First, render all images
     if (currentImageDrawings && currentImageDrawings.length > 0) {

@@ -10,7 +10,12 @@ import { PdfViewerRef } from '@/widgets/Viewer/ui/Viewer/Viewer';
 import { viewerPageActions } from '../model/slice/viewerPageSlice';
 import { viewerPageSelectors } from '../model/selectors/viewerPageSelectors';
 import classes from './ViewPage.module.scss';
-import { useGetDrawingsQuery, useCreateDrawingMutation, useDeleteDrawingMutation } from '@/entities/Drawings';
+import {
+  useGetDrawingsQuery,
+  useCreateDrawingMutation,
+  useDeleteDrawingMutation,
+  useDeleteDrawingsByFileMutation,
+} from '@/entities/Drawings';
 
 export const ViewPage = () => {
   const { id } = useParams();
@@ -25,6 +30,7 @@ export const ViewPage = () => {
   const { data } = useGetDrawingsQuery(id || '', { skip: !id });
   const [createDrawing] = useCreateDrawingMutation();
   const [deleteDrawing] = useDeleteDrawingMutation();
+  const [deleteAllDrawings] = useDeleteDrawingsByFileMutation();
 
   useEffect(() => {
     return () => {
@@ -63,6 +69,14 @@ export const ViewPage = () => {
     deleteDrawing({ id: drawingId, fileId: id });
   };
 
+  const deleteAllDrawingsHandle = async () => {
+    if (!id) return;
+    await deleteAllDrawings(id);
+    dispatch(viewerPageActions.clearDrawings());
+  };
+
+  console.log(drawings);
+
   if (isLoading || isCompareLoading) return <div>Loading...</div>;
   return (
     <div className={classes.ViewPage}>
@@ -74,7 +88,17 @@ export const ViewPage = () => {
         compareUrl={compareFileBlobUrl || undefined}
         onDrawingClicked={pdfDrawingClicked}
       />
+
       <div className={classes.drawings} ref={drawingsContainerRef}>
+        {drawings.length > 0 && (
+          <button
+            type='button'
+            onClick={deleteAllDrawingsHandle}
+            className={classes.deleteAllButton}
+            style={{ marginBottom: '8px' }}>
+            Удалить все
+          </button>
+        )}
         {drawings.map((drawing: Drawing) => (
           <div
             key={drawing.id}

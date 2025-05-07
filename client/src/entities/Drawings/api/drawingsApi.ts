@@ -52,7 +52,7 @@ const drawingsApi = rtkApi.enhanceEndpoints({ addTagTypes: ['drawings', 'drawing
       invalidatesTags: (_, _1, { fileId }) => [{ type: 'drawings', id: fileId }],
     }),
 
-    deleteDrawingsByFile: build.mutation<void, number>({
+    deleteDrawingsByFile: build.mutation<void, string>({
       queryFn: async (fileId) => {
         const response = await drawingController.deleteDrawingsByFile(fileId);
         if (response.type === 'error') return { error: response.message };

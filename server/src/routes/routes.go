@@ -20,7 +20,7 @@ func SetupRoutes(app *fiber.App) {
 	api.Get("/drawings", controllers.GetDrawings) // With query param ?fileId=X
 	api.Get("/drawings/:id", controllers.GetDrawing)
 	api.Put("/drawings/:id", controllers.UpdateDrawing)
-	api.Delete("/drawings/:id", controllers.DeleteDrawing)
 	api.Delete("/drawings/file", controllers.DeleteDrawingsByFile) // With query param ?fileId=X
+	api.Delete("/drawings/:id", controllers.DeleteDrawing)
 	api.Post("/drawings/bulk", controllers.BulkCreateDrawings)
 }

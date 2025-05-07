@@ -59,7 +59,7 @@ class DrawingController {
   }
 
   // Delete all drawings for a file
-  async deleteDrawingsByFile(fileId: number): Response<void> {
+  async deleteDrawingsByFile(fileId: string): Response<void> {
     try {
       await instance.delete(`/drawings/file?fileId=${fileId}`);
       return { payload: undefined, type: 'payload' };
