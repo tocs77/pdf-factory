@@ -3,7 +3,7 @@ import { ViewerContext } from '../../model/context/viewerContext';
 import { TextArea, Drawing } from '../../model/types/Drawings';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
-import { renderTextArea } from '../../utils/drawingRenderers';
+import { renderTextArea } from '../../utils/renderers';
 import classes from './TextAreaDrawingLayer.module.scss';
 
 interface TextAreaDrawingLayerProps {

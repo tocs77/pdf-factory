@@ -11,7 +11,7 @@ import {
   renderTextHighlight,
   renderTextArea,
   renderpinSelection,
-} from '../../utils/drawingRenderers';
+} from '../../utils/renderers';
 import { renderExtensionLine } from '../../utils/extensionLineRenderer';
 import { Drawing, ImageAnnotation, DrawingMisc } from '../../model/types/Drawings';
 import styles from './CompleteDrawings.module.scss';

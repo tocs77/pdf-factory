@@ -1,5 +1,5 @@
-import { TextHighlight, TextUnderline, TextCrossedOut } from '../model/types/Drawings';
-import { renderTextHighlight, renderTextUnderline, renderTextCrossedOut } from './drawingRenderers';
+import { TextHighlight, TextCrossedOut, TextUnderline } from '../model/types/Drawings';
+import { renderTextHighlight, renderTextUnderline, renderTextCrossedOut } from './renderers';
 import { normalizeCoordinatesToZeroRotation, transformCoordinates } from './rotationUtils';
 import { RefObject } from 'react';
 export { renderTextLayer } from './renderTextLayer';
