@@ -29,6 +29,7 @@ interface PdfViewerProps {
   drawings: Drawing[];
   drawingCreated: (drawing: Omit<Drawing, 'id'>) => void;
   onDrawingClicked?: (id: string) => void;
+  isMobile?: boolean;
 }
 
 // Type for page override mapping
@@ -36,7 +37,7 @@ type PageOverrides = Record<number, number>;
 
 // Internal viewer component that will be wrapped with the provider
 const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) => {
-  const { url, drawings, drawingCreated, compareUrl, onDrawingClicked } = props;
+  const { url, drawings, drawingCreated, compareUrl, onDrawingClicked, isMobile = false } = props;
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, showThumbnails, compareMode, drawingMode, currentPage } = state;
 
@@ -48,16 +49,62 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   const [error, setError] = useState<string | null>(null);
   const pdfContainerRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    dispatch({ type: 'setIsMobile', payload: isMobile });
+  }, [isMobile, dispatch]);
+
   // State for comparison page overrides
   const [pageOverrides, setPageOverrides] = useState<PageOverrides>({});
 
   // Track when the PDF is fully loaded and rendered
   const [pdfRendered, setPdfRendered] = useState(false);
 
+  // Handle touch events for mobile to prevent scrolling during drawing
+  useEffect(() => {
+    const container = pdfContainerRef.current;
+    if (!container || !isMobile) return;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (drawingMode !== 'none') {
+        // Don't prevent default if touching an element that should ignore touch prevention
+        const target = e.target as HTMLElement;
+        if (target.closest('[data-dragscroll-ignore="true"]')) {
+          return;
+        }
+        e.preventDefault();
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (drawingMode !== 'none') {
+        // Don't prevent default if touching an element that should ignore touch prevention
+        const target = e.target as HTMLElement;
+        if (target.closest('[data-dragscroll-ignore="true"]')) {
+          return;
+        }
+        e.preventDefault();
+      }
+    };
+
+    // Add event listeners with passive: false to allow preventDefault
+    container.addEventListener('touchstart', handleTouchStart, { passive: false });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, [isMobile, drawingMode]);
+
   // Setup drag-to-scroll functionality using the custom hook
   // Enable drag-scroll if no drawing tool is active and PDF is rendered, regardless of compare mode
+  // On mobile, disable scroll when in drawing mode to allow for touch drawing
   const isDragToScrollEnabled = drawingMode === 'none' && pdfRendered;
-  const isDragging = useDragToScroll({ containerRef: pdfContainerRef, isEnabled: isDragToScrollEnabled });
+  const isDragging = useDragToScroll({
+    containerRef: pdfContainerRef,
+    isEnabled: isDragToScrollEnabled,
+    isMobile,
+  });
 
   // Setup zoom functionality using the custom hook
   useZoomToMouse({ scale, dispatch, containerRef: pdfContainerRef });

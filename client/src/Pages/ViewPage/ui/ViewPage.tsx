@@ -1,5 +1,5 @@
 import { useParams, useSearchParams } from 'react-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppSelector } from '@/shared/hooks';
 import { useGetFileBlobUrlQuery } from '@/entities/File';
 import { convertDrawingDtoToDrawing, convertDrawingToDrawingDto, PdfViewer } from '@/widgets/Viewer';
@@ -17,11 +17,24 @@ import {
   useDeleteDrawingsByFileMutation,
 } from '@/entities/Drawings';
 
+// Function to detect if current device is a touchscreen
+const detectTouchscreen = (): boolean => {
+  // Check multiple touchscreen indicators
+  const hasTouchStart = 'ontouchstart' in window;
+  const hasMaxTouchPoints = navigator.maxTouchPoints > 0;
+  const hasPointerCoarse = window.matchMedia?.('(pointer: coarse)').matches;
+
+  // Device is considered touchscreen if it has touch capabilities
+  console.log(hasTouchStart, hasMaxTouchPoints, hasPointerCoarse);
+  return hasTouchStart || hasMaxTouchPoints || hasPointerCoarse;
+};
+
 export const ViewPage = () => {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const compare = searchParams.get('compare');
   const dispatch = useAppDispatch();
+  const [isMobile, setIsMobile] = useState(false);
   const { data: fileBlobUrl, isLoading } = useGetFileBlobUrlQuery(id || '');
   const { data: compareFileBlobUrl, isLoading: isCompareLoading } = useGetFileBlobUrlQuery(compare || '', { skip: !compare });
   const drawings = useAppSelector(viewerPageSelectors.getDrawings);
@@ -31,6 +44,12 @@ export const ViewPage = () => {
   const [createDrawing] = useCreateDrawingMutation();
   const [deleteDrawing] = useDeleteDrawingMutation();
   const [deleteAllDrawings] = useDeleteDrawingsByFileMutation();
+
+  // Detect touchscreen capability on component mount
+  useEffect(() => {
+    const touchscreenDetected = detectTouchscreen();
+    setIsMobile(touchscreenDetected);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -85,6 +104,7 @@ export const ViewPage = () => {
         drawingCreated={handleDrawingCreated}
         compareUrl={compareFileBlobUrl || undefined}
         onDrawingClicked={pdfDrawingClicked}
+        isMobile={isMobile}
       />
 
       <div className={classes.drawings} ref={drawingsContainerRef}>

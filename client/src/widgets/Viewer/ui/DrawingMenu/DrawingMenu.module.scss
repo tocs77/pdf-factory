@@ -4,7 +4,8 @@
   /* Position below ViewerMenu's page navigation area */
   left: 50%;
   transform: translateX(-50%);
-  height: 48px;
+  height: fit-content;
+  padding: 8px 0;
   background-color: white;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   padding: 0 16px;
@@ -23,6 +24,7 @@
   width: 100%;
   justify-content: flex-start;
   height: 100%;
+  flex-wrap: wrap;
 }
 
 .colorPicker {

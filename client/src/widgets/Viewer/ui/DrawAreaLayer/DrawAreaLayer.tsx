@@ -14,7 +14,8 @@ interface DrawAreaLayerProps {
 /**
  * Component for handling draw area with thick line (32px) that converts to rectangle
  */
-export const DrawAreaLayer: React.FC<DrawAreaLayerProps> = ({ pageNumber, onDrawingCreated, pdfCanvasRef }) => {
+export const DrawAreaLayer = (props: DrawAreaLayerProps) => {
+  const { pageNumber, onDrawingCreated, pdfCanvasRef } = props;
   const { state } = useContext(ViewerContext);
   const { scale, drawingColor, drawingLineWidth, pageRotations, drawingMode } = state;
 

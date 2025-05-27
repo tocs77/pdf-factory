@@ -51,7 +51,7 @@ export const DrawingMenu = () => {
   const lineWidthOptions = [1, 2, 3, 5, 8];
 
   return (
-    <div className={styles.drawingMenuContainer}>
+    <div className={styles.drawingMenuContainer} data-dragscroll-ignore='true'>
       <div className={styles.drawingOptions}>
         {!isSelectionMode && (
           <div className={styles.actionButtons}>

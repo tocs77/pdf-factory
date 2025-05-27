@@ -1,8 +1,12 @@
-import React, { useEffect, useRef, useState, useContext } from 'react';
+import React, { useEffect, useRef, useState, useContext, useCallback } from 'react';
+
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
 import { Drawing, DrawingStyle } from '../../model/types/Drawings';
+import { MouseDrawingLayer } from './MouseDrawingLayer';
+import { TouchDrawingLayer } from './TouchDrawingLayer';
+
 import classes from './FreeHandLayer.module.scss';
 
 interface FreeHandLayerProps {
@@ -47,7 +51,7 @@ export const FreeHandLayer = (props: FreeHandLayerProps) => {
   }, [drawingLineWidth]);
 
   // Create a function to initialize the canvas with correct dimensions and context
-  const initializeCanvas = () => {
+  const initializeCanvas = useCallback(() => {
     if (!canvasRef.current) return null;
 
     const canvas = canvasRef.current;
@@ -74,54 +78,57 @@ export const FreeHandLayer = (props: FreeHandLayerProps) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     return ctx;
-  };
+  }, []);
 
   // Draw all paths on the canvas
-  const redrawAllPaths = (ctx: CanvasRenderingContext2D) => {
-    if (!canvasRef.current) return;
+  const redrawAllPaths = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      if (!canvasRef.current) return;
 
-    // Clear canvas
-    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      // Clear canvas
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
 
-    // Draw all saved paths with their styles
-    allPaths.forEach((path, index) => {
-      if (path.length < 2) return;
+      // Draw all saved paths with their styles
+      allPaths.forEach((path, index) => {
+        if (path.length < 2) return;
 
-      // Get the style for this path
-      const style = pathStyles[index] || { strokeColor: drawingColor, strokeWidth: drawingLineWidth };
+        // Get the style for this path
+        const style = pathStyles[index] || { strokeColor: drawingColor, strokeWidth: drawingLineWidth };
 
-      ctx.strokeStyle = style.strokeColor;
-      ctx.lineWidth = style.strokeWidth;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
+        ctx.strokeStyle = style.strokeColor;
+        ctx.lineWidth = style.strokeWidth;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
 
-      ctx.beginPath();
-      ctx.moveTo(path[0].x, path[0].y);
+        ctx.beginPath();
+        ctx.moveTo(path[0].x, path[0].y);
 
-      for (let i = 1; i < path.length; i++) {
-        ctx.lineTo(path[i].x, path[i].y);
+        for (let i = 1; i < path.length; i++) {
+          ctx.lineTo(path[i].x, path[i].y);
+        }
+
+        ctx.stroke();
+      });
+
+      // Draw current path if active
+      if (currentPath.length > 1) {
+        ctx.strokeStyle = currentStyle.strokeColor;
+        ctx.lineWidth = currentStyle.strokeWidth;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        ctx.beginPath();
+        ctx.moveTo(currentPath[0].x, currentPath[0].y);
+
+        for (let i = 1; i < currentPath.length; i++) {
+          ctx.lineTo(currentPath[i].x, currentPath[i].y);
+        }
+
+        ctx.stroke();
       }
-
-      ctx.stroke();
-    });
-
-    // Draw current path if active
-    if (currentPath.length > 1) {
-      ctx.strokeStyle = currentStyle.strokeColor;
-      ctx.lineWidth = currentStyle.strokeWidth;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-
-      ctx.beginPath();
-      ctx.moveTo(currentPath[0].x, currentPath[0].y);
-
-      for (let i = 1; i < currentPath.length; i++) {
-        ctx.lineTo(currentPath[i].x, currentPath[i].y);
-      }
-
-      ctx.stroke();
-    }
-  };
+    },
+    [allPaths, pathStyles, drawingColor, drawingLineWidth, currentPath, currentStyle],
+  );
 
   // Set up drawing canvas whenever rotation, scale, or page changes
   useEffect(() => {
@@ -165,7 +172,7 @@ export const FreeHandLayer = (props: FreeHandLayerProps) => {
   };
 
   // Get raw coordinates relative to canvas
-  const getRawCoordinates = (clientX: number, clientY: number): { x: number; y: number } => {
+  const getRawCoordinates = useCallback((clientX: number, clientY: number): { x: number; y: number } => {
     if (!canvasRef.current) return { x: 0, y: 0 };
 
     const canvas = canvasRef.current;
@@ -176,10 +183,10 @@ export const FreeHandLayer = (props: FreeHandLayerProps) => {
     const y = clientY - rect.top;
 
     return { x, y };
-  };
+  }, []);
 
   // Finish drawing and save all paths as one drawing
-  const finishDrawing = () => {
+  const finishDrawing = useCallback(() => {
     if (!isDrawing || (allPaths.length === 0 && currentPath.length < 2)) {
       cancelDrawing();
       return;
@@ -283,55 +290,50 @@ export const FreeHandLayer = (props: FreeHandLayerProps) => {
     if (ctx) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
-  };
+  }, [
+    isDrawing,
+    allPaths,
+    currentPath,
+    pathStyles,
+    currentStyle,
+    scale,
+    rotation,
+    draftMode,
+    pdfCanvasRef,
+    drawingColor,
+    drawingLineWidth,
+    pageNumber,
+    onDrawingCreated,
+  ]);
 
-  // Drawing handlers
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (e.button !== 0) return; // Only react to left mouse button
-
-    // Initialize or reinitialize the canvas
-    const ctx = initializeCanvas();
-    if (!ctx) return;
-
-    // Get raw coordinates
-    const { x, y } = getRawCoordinates(e.clientX, e.clientY);
-
+  // Shared drawing handlers for both mouse and touch
+  const handleStartDrawing = useCallback((coordinates: { x: number; y: number }) => {
     setIsDrawing(true);
-    setCurrentPath([{ x, y }]);
+    setCurrentPath([coordinates]);
+  }, []);
 
-    // Start drawing
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.strokeStyle = currentStyle.strokeColor;
-    ctx.lineWidth = currentStyle.strokeWidth;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-  };
+  const handleDraw = useCallback(
+    (coordinates: { x: number; y: number }) => {
+      // Get or reinitialize the canvas context
+      const ctx = canvasRef.current?.getContext('2d');
+      if (!ctx) return;
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
+      // Add point to current path
+      setCurrentPath((prevPath) => {
+        const newPath = [...prevPath, coordinates];
 
-    // Get or reinitialize the canvas context
-    const ctx = canvasRef.current?.getContext('2d');
-    if (!ctx) return;
+        // Redraw the entire canvas with all paths and current path
+        if (ctx && canvasRef.current) {
+          redrawAllPaths(ctx);
+        }
 
-    // Get raw coordinates
-    const { x, y } = getRawCoordinates(e.clientX, e.clientY);
+        return newPath;
+      });
+    },
+    [redrawAllPaths],
+  );
 
-    // Add point to current path
-    setCurrentPath((prevPath) => {
-      const newPath = [...prevPath, { x, y }];
-
-      // Redraw the entire canvas with all paths and current path
-      if (ctx && canvasRef.current) {
-        redrawAllPaths(ctx);
-      }
-
-      return newPath;
-    });
-  };
-
-  const endDrawing = () => {
+  const handleEndDrawing = useCallback(() => {
     if (!isDrawing || drawingMode !== 'freehand') {
       return;
     }
@@ -342,19 +344,35 @@ export const FreeHandLayer = (props: FreeHandLayerProps) => {
     }
 
     finishDrawing();
-  };
+  }, [isDrawing, drawingMode, currentPath, currentStyle, finishDrawing]);
 
   return (
     <>
-      <canvas
-        ref={canvasRef}
-        className={classes.drawingCanvas}
-        onMouseDown={startDrawing}
-        onMouseMove={draw}
-        onMouseUp={endDrawing}
-        onMouseLeave={endDrawing}
-        data-testid='freehand-drawing-canvas'
-      />
+      {state.isMobile ? (
+        <TouchDrawingLayer
+          canvasRef={canvasRef}
+          isDrawing={isDrawing}
+          currentStyle={currentStyle}
+          drawingMode={drawingMode}
+          onStartDrawing={handleStartDrawing}
+          onDraw={handleDraw}
+          onEndDrawing={handleEndDrawing}
+          getRawCoordinates={getRawCoordinates}
+          initializeCanvas={initializeCanvas}
+        />
+      ) : (
+        <MouseDrawingLayer
+          canvasRef={canvasRef}
+          isDrawing={isDrawing}
+          currentStyle={currentStyle}
+          drawingMode={drawingMode}
+          onStartDrawing={handleStartDrawing}
+          onDraw={handleDraw}
+          onEndDrawing={handleEndDrawing}
+          getRawCoordinates={getRawCoordinates}
+          initializeCanvas={initializeCanvas}
+        />
+      )}
       {!draftMode && (
         <div className={classes.controlsContainer}>
           <div className={classes.finishButtonContainer}>

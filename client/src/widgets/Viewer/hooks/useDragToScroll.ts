@@ -4,9 +4,10 @@ import { isSliderBeingDragged } from '@/shared/utils';
 interface UseDragToScrollProps {
   containerRef: React.RefObject<HTMLDivElement>;
   isEnabled: boolean;
+  isMobile?: boolean;
 }
 
-export const useDragToScroll = ({ containerRef, isEnabled }: UseDragToScrollProps): boolean => {
+export const useDragToScroll = ({ containerRef, isEnabled, isMobile = false }: UseDragToScrollProps): boolean => {
   const [isDragging, setIsDragging] = useState(false);
   const dragStartXRef = useRef(0);
   const dragStartYRef = useRef(0);
@@ -107,13 +108,75 @@ export const useDragToScroll = ({ containerRef, isEnabled }: UseDragToScrollProp
       document.addEventListener('mouseup', handleMouseUp, { capture: true });
     };
 
-    // Add listener to document in capture phase
+    const handleTouchStart = (e: TouchEvent) => {
+      if (!isMobile) return;
+
+      // Ensure the touch originated within the container
+      const targetElement = e.target as Node;
+      if (!containerRef.current || !containerRef.current.contains(targetElement)) {
+        return;
+      }
+
+      // Check if the event target or an ancestor should ignore drag-scroll
+      if ((targetElement as HTMLElement).closest('[data-dragscroll-ignore="true"]')) {
+        return;
+      }
+
+      // Check conditions: enabled, not slider being dragged
+      if (
+        !isEnabled ||
+        isSliderBeingDragged() ||
+        document.body.classList.contains('slider-dragging') ||
+        document.body.classList.contains('resizingHorizontal') ||
+        e.touches.length !== 1
+      ) {
+        return;
+      }
+
+      const touch = e.touches[0];
+      dragStartXRef.current = touch.clientX;
+      dragStartYRef.current = touch.clientY;
+      scrollStartXRef.current = containerRef.current.scrollLeft;
+      scrollStartYRef.current = containerRef.current.scrollTop;
+
+      setIsDragging(true);
+      e.preventDefault(); // Prevent default touch behavior
+
+      const handleTouchMove = (moveEvent: TouchEvent) => {
+        if (!containerRef.current || moveEvent.touches.length !== 1) return;
+
+        const touch = moveEvent.touches[0];
+        const deltaX = touch.clientX - dragStartXRef.current;
+        const deltaY = touch.clientY - dragStartYRef.current;
+        containerRef.current.scrollLeft = scrollStartXRef.current - deltaX;
+        containerRef.current.scrollTop = scrollStartYRef.current - deltaY;
+        moveEvent.preventDefault();
+      };
+
+      const handleTouchEnd = () => {
+        setIsDragging(false);
+
+        document.removeEventListener('touchmove', handleTouchMove, true);
+        document.removeEventListener('touchend', handleTouchEnd, true);
+      };
+
+      document.addEventListener('touchmove', handleTouchMove, { capture: true, passive: false });
+      document.addEventListener('touchend', handleTouchEnd, { capture: true });
+    };
+
+    // Add listeners to document in capture phase
     document.addEventListener('mousedown', handleMouseDown, { capture: true });
+    if (isMobile) {
+      document.addEventListener('touchstart', handleTouchStart, { capture: true, passive: false });
+    }
 
     // Cleanup function
     return () => {
-      // Remove listener from document
+      // Remove listeners from document
       document.removeEventListener('mousedown', handleMouseDown, { capture: true });
+      if (isMobile) {
+        document.removeEventListener('touchstart', handleTouchStart, { capture: true });
+      }
 
       // Reset cursor on cleanup only if it was potentially set by this hook and container still exists
       if (
@@ -122,9 +185,9 @@ export const useDragToScroll = ({ containerRef, isEnabled }: UseDragToScrollProp
       ) {
         containerRef.current.style.cursor = 'default';
       }
-      // Note: mousemove/mouseup listeners are cleaned up internally by handleMouseUp
+      // Note: mousemove/mouseup and touchmove/touchend listeners are cleaned up internally by their handlers
     };
-  }, [containerRef, isEnabled, isDragging]); // isDragging needed to reset cursor correctly
+  }, [containerRef, isEnabled, isDragging, isMobile]); // isDragging needed to reset cursor correctly
 
   return isDragging;
 };

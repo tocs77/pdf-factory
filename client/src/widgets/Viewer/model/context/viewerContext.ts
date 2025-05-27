@@ -29,6 +29,7 @@ export const initialViewerState: ViewerSchema = {
     pixelsPerUnit: 1,
     unitName: 'px',
   },
+  isMobile: false,
 };
 
 // Create the context with default values
@@ -190,6 +191,11 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
       return {
         ...state,
         currentPage: action.payload,
+      };
+    case 'setIsMobile':
+      return {
+        ...state,
+        isMobile: action.payload,
       };
     default:
       return state;

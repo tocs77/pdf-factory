@@ -44,6 +44,7 @@ export interface ViewerSchema {
   requestCancelDrawing: boolean; // Request to cancel current drawing
   // Ruler calibration settings
   calibration: CalibrationSettings;
+  isMobile: boolean;
 }
 
 // Action types using discriminated unions
@@ -62,6 +63,7 @@ type SetCurrentDrawingPageAction = { type: 'setCurrentDrawingPage'; payload: num
 type SetCompareModeAction = { type: 'setCompareMode'; payload: 'none' | 'diff' | 'sideBySide' }; // New action type
 type RequestFinishDrawingAction = { type: 'requestFinishDrawing'; payload: boolean };
 type RequestCancelDrawingAction = { type: 'requestCancelDrawing'; payload: boolean };
+type SetIsMobileAction = { type: 'setIsMobile'; payload: boolean };
 
 type SetCalibrationAction = {
   type: 'setCalibration';
@@ -106,4 +108,5 @@ export type Action =
   | SetCalibrationAction
   | ApplyCalibrationAction
   | ResetCalibrationAction
-  | SetCurrentPageAction;
+  | SetCurrentPageAction
+  | SetIsMobileAction;
