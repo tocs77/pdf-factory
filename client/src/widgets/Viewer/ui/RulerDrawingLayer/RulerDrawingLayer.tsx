@@ -18,6 +18,7 @@ const throttle = (fn: Function, delay: number) => {
 interface RulerDrawingLayerProps {
   pageNumber: number;
   pdfCanvasRef?: React.RefObject<HTMLCanvasElement>;
+  enableSnapPoints?: boolean; // Enable/disable snap points detection
 }
 
 interface Ruler {
@@ -29,7 +30,7 @@ interface Ruler {
 }
 
 export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
-  const { pageNumber, pdfCanvasRef } = props;
+  const { pageNumber, pdfCanvasRef, enableSnapPoints = true } = props;
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations, calibration } = state;
 
@@ -53,7 +54,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
   const [calibrationActualSize, setCalibrationActualSize] = useState('');
   const [calibrationUnit, setCalibrationUnit] = useState('');
 
-  // Use the custom snap points hook
+  // Use the custom snap points hook (conditionally based on enableSnapPoints)
   const {
     pointsOfInterest,
     highlightedPointIndex,
@@ -70,7 +71,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
     maxVisibleSnapPoints: MAX_VISIBLE_SNAP_POINTS,
     snapUpdateDelay: SNAP_UPDATE_DELAY,
     mouseMovementThreshold: MOUSE_MOVE_THRESHOLD,
-    pdfCanvasRef,
+    pdfCanvasRef: enableSnapPoints ? pdfCanvasRef : undefined, // Disable by passing undefined
   });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -342,70 +343,73 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
       ctx.fill();
     }
 
-    // Limit visible points to MAX_VISIBLE_SNAP_POINTS
-    const visiblePoints = pointsOfInterest
-      .sort((a, b) => {
-        // Prioritize snap targets and highlighted points
-        const aIsSnap = snapTarget && snapTarget.index === pointsOfInterest.indexOf(a);
-        const bIsSnap = snapTarget && snapTarget.index === pointsOfInterest.indexOf(b);
-        const aIsHighlighted = highlightedPointIndex === pointsOfInterest.indexOf(a);
-        const bIsHighlighted = highlightedPointIndex === pointsOfInterest.indexOf(b);
+    // Draw snap points only if enabled
+    if (enableSnapPoints) {
+      // Limit visible points to MAX_VISIBLE_SNAP_POINTS
+      const visiblePoints = pointsOfInterest
+        .sort((a, b) => {
+          // Prioritize snap targets and highlighted points
+          const aIsSnap = snapTarget && snapTarget.index === pointsOfInterest.indexOf(a);
+          const bIsSnap = snapTarget && snapTarget.index === pointsOfInterest.indexOf(b);
+          const aIsHighlighted = highlightedPointIndex === pointsOfInterest.indexOf(a);
+          const bIsHighlighted = highlightedPointIndex === pointsOfInterest.indexOf(b);
 
-        if (aIsSnap && !bIsSnap) return -1;
-        if (!aIsSnap && bIsSnap) return 1;
-        if (aIsHighlighted && !bIsHighlighted) return -1;
-        if (!aIsHighlighted && bIsHighlighted) return 1;
+          if (aIsSnap && !bIsSnap) return -1;
+          if (!aIsSnap && bIsSnap) return 1;
+          if (aIsHighlighted && !bIsHighlighted) return -1;
+          if (!aIsHighlighted && bIsHighlighted) return 1;
 
-        // Prioritize corners and intersections over line-ends
-        if (a.type !== 'line-end' && b.type === 'line-end') return -1;
-        if (a.type === 'line-end' && b.type !== 'line-end') return 1;
+          // Prioritize corners and intersections over line-ends
+          if (a.type !== 'line-end' && b.type === 'line-end') return -1;
+          if (a.type === 'line-end' && b.type !== 'line-end') return 1;
 
-        // For the same type, prioritize corners over intersections
-        if (a.type === 'corner' && b.type === 'intersection') return -1;
-        if (a.type === 'intersection' && b.type === 'corner') return 1;
+          // For the same type, prioritize corners over intersections
+          if (a.type === 'corner' && b.type === 'intersection') return -1;
+          if (a.type === 'intersection' && b.type === 'corner') return 1;
 
-        // Then sort by confidence
-        return b.confidence - a.confidence;
-      })
-      .slice(0, MAX_VISIBLE_SNAP_POINTS);
+          // Then sort by confidence
+          return b.confidence - a.confidence;
+        })
+        .slice(0, MAX_VISIBLE_SNAP_POINTS);
 
-    // Draw all points first - to ensure the green one is on top
-    visiblePoints.forEach((point) => {
-      const index = pointsOfInterest.indexOf(point);
-      const isHighlighted = index === highlightedPointIndex;
-      const isSnap = snapTarget && snapTarget.index === index;
+      // Draw all points first - to ensure the green one is on top
+      visiblePoints.forEach((point) => {
+        const index = pointsOfInterest.indexOf(point);
+        const isHighlighted = index === highlightedPointIndex;
+        const isSnap = snapTarget && snapTarget.index === index;
 
-      // Skip the nearest point in this pass
-      if (isSnap || isHighlighted) return;
+        // Skip the nearest point in this pass
+        if (isSnap || isHighlighted) return;
 
-      // Draw regular points - make them more visible with larger size
-      ctx.beginPath();
-      ctx.arc(point.x, point.y, 8, 0, 2 * Math.PI); // Increased from 6 to 8
-      ctx.fillStyle = 'rgba(0, 180, 255, 0.8)'; // Brighter blue with higher opacity
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'; // More visible white outline
-      ctx.fill();
-      ctx.lineWidth = 2; // Thicker outline
-      ctx.stroke();
-    });
+        // Draw regular points - make them more visible with larger size
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 8, 0, 2 * Math.PI); // Increased from 6 to 8
+        ctx.fillStyle = 'rgba(0, 180, 255, 0.8)'; // Brighter blue with higher opacity
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'; // More visible white outline
+        ctx.fill();
+        ctx.lineWidth = 2; // Thicker outline
+        ctx.stroke();
+      });
 
-    // Now draw the nearest point (highlighted/snap) on top with larger size and green color
-    visiblePoints.forEach((point) => {
-      const index = pointsOfInterest.indexOf(point);
-      const isHighlighted = index === highlightedPointIndex;
-      const isSnap = snapTarget && snapTarget.index === index;
+      // Now draw the nearest point (highlighted/snap) on top with larger size and green color
+      visiblePoints.forEach((point) => {
+        const index = pointsOfInterest.indexOf(point);
+        const isHighlighted = index === highlightedPointIndex;
+        const isSnap = snapTarget && snapTarget.index === index;
 
-      // Only draw the highlighted/snap point in this pass
-      if (!isSnap && !isHighlighted) return;
+        // Only draw the highlighted/snap point in this pass
+        if (!isSnap && !isHighlighted) return;
 
-      // Draw highlighted point bigger and greener for better visibility
-      ctx.beginPath();
-      ctx.arc(point.x, point.y, 12, 0, 2 * Math.PI); // Increased from 10 to 12
-      ctx.fillStyle = isSnap ? 'rgba(0, 220, 0, 0.95)' : 'rgba(255, 165, 0, 0.95)'; // Green for snap, orange for highlight
-      ctx.strokeStyle = 'rgba(255, 255, 255, 1)'; // Solid white outline
-      ctx.fill();
-      ctx.lineWidth = 3; // Thicker outline for better visibility
-      ctx.stroke();
-    });
+        // Draw highlighted point bigger and greener for better visibility
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 12, 0, 2 * Math.PI); // Increased from 10 to 12
+        ctx.fillStyle = isSnap ? 'rgba(0, 220, 0, 0.95)' : 'rgba(255, 165, 0, 0.95)'; // Green for snap, orange for highlight
+        ctx.strokeStyle = 'rgba(255, 255, 255, 1)'; // Solid white outline
+        ctx.fill();
+        ctx.lineWidth = 3; // Thicker outline for better visibility
+        ctx.stroke();
+      });
+    }
 
     // Calculate distance (in pixels at the current zoom level) for the current ruler
     if (startPointRef.current && endPointRef.current && isDrawingRef.current) {
@@ -581,7 +585,9 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
         endPointRef.current = scaledEndPoint;
       }
       // Find points of interest around the clicked marker
-      throttledFindPoints(x, y);
+      if (enableSnapPoints) {
+        throttledFindPoints(x, y);
+      }
       return;
     }
 
@@ -603,7 +609,9 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
     setDraggingRulerIndex(null); // No active ruler when creating new
 
     // Find points of interest around the start point
-    throttledFindPoints(x, y);
+    if (enableSnapPoints) {
+      throttledFindPoints(x, y);
+    }
 
     // Make sure everything's drawn correctly
     drawRuler();
@@ -678,8 +686,10 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
       endPointRef.current = newEndPoint;
       drawRuler(); // Redraw immediately to clear old lines
       // Find snap points around the current mouse position
-      throttledFindPoints(x, y);
-    } else if (drawingMode === 'ruler') {
+      if (enableSnapPoints) {
+        throttledFindPoints(x, y);
+      }
+    } else if (drawingMode === 'ruler' && enableSnapPoints) {
       // Always show snap points when hovering in ruler mode, even when not actively drawing
       throttledFindPoints(x, y);
     }
@@ -876,11 +886,13 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
     endPointRef.current = transformedEndPoint;
 
     // Delay point detection for smoother initial drag
-    setTimeout(() => {
-      if (rulers[rulerIndex] && canvas) {
-        throttledFindPoints(transformedStartPoint.x, transformedStartPoint.y);
-      }
-    }, 100);
+    if (enableSnapPoints) {
+      setTimeout(() => {
+        if (rulers[rulerIndex] && canvas) {
+          throttledFindPoints(transformedStartPoint.x, transformedStartPoint.y);
+        }
+      }, 100);
+    }
   };
 
   const handleEndMarkerMouseDown = (e: React.MouseEvent, rulerIndex: number) => {
@@ -918,11 +930,13 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
     endPointRef.current = transformedEndPoint;
 
     // Delay point detection for smoother initial drag
-    setTimeout(() => {
-      if (rulers[rulerIndex] && canvas) {
-        throttledFindPoints(transformedEndPoint.x, transformedEndPoint.y);
-      }
-    }, 100);
+    if (enableSnapPoints) {
+      setTimeout(() => {
+        if (rulers[rulerIndex] && canvas) {
+          throttledFindPoints(transformedEndPoint.x, transformedEndPoint.y);
+        }
+      }, 100);
+    }
   };
 
   // Handle document-level mouse events for marker dragging
@@ -976,12 +990,16 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
         setStartPoint(lastCoords);
         updateRuler(draggingRulerIndex, normalizedCoords);
         // Find snap points around the cursor during dragging
-        throttledFindPoints(lastCoords.x, lastCoords.y);
+        if (enableSnapPoints) {
+          throttledFindPoints(lastCoords.x, lastCoords.y);
+        }
       } else if (isDraggingEnd && draggingRulerIndex !== null) {
         setEndPoint(lastCoords);
         updateRuler(draggingRulerIndex, undefined, normalizedCoords);
         // Find snap points around the cursor during dragging
-        throttledFindPoints(lastCoords.x, lastCoords.y);
+        if (enableSnapPoints) {
+          throttledFindPoints(lastCoords.x, lastCoords.y);
+        }
       }
     };
 

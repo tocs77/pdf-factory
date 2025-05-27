@@ -16,6 +16,7 @@ export interface PointOfInterest {
   y: number;
   type: 'line-end' | 'corner' | 'intersection';
   confidence: number;
+  direction?: number; // For line endpoints, the direction of the line
 }
 
 export interface UseSnapPointsOptions {
@@ -40,6 +41,138 @@ export interface UseSnapPointsReturn {
   lastUpdatePositionRef: React.MutableRefObject<{ x: number; y: number } | null>;
 }
 
+// Improved edge detection using Sobel operators
+const calculateSobelGradients = (data: Uint8ClampedArray, width: number, height: number, x: number, y: number) => {
+  if (x < 1 || x >= width - 1 || y < 1 || y >= height - 1) {
+    return { gx: 0, gy: 0, magnitude: 0, direction: 0 };
+  }
+
+  // Sobel X kernel: [-1, 0, 1; -2, 0, 2; -1, 0, 1]
+  // Sobel Y kernel: [-1, -2, -1; 0, 0, 0; 1, 2, 1]
+
+  const getGrayscale = (px: number, py: number) => {
+    const idx = (py * width + px) * 4;
+    return (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+  };
+
+  const gx =
+    -getGrayscale(x - 1, y - 1) +
+    getGrayscale(x + 1, y - 1) +
+    -2 * getGrayscale(x - 1, y) +
+    2 * getGrayscale(x + 1, y) +
+    -getGrayscale(x - 1, y + 1) +
+    getGrayscale(x + 1, y + 1);
+
+  const gy =
+    -getGrayscale(x - 1, y - 1) -
+    2 * getGrayscale(x, y - 1) -
+    getGrayscale(x + 1, y - 1) +
+    getGrayscale(x - 1, y + 1) +
+    2 * getGrayscale(x, y + 1) +
+    getGrayscale(x + 1, y + 1);
+
+  const magnitude = Math.sqrt(gx * gx + gy * gy);
+  const direction = Math.atan2(gy, gx);
+
+  return { gx, gy, magnitude, direction };
+};
+
+// Calculate adaptive threshold based on local image statistics
+const calculateAdaptiveThreshold = (data: Uint8ClampedArray, width: number, height: number) => {
+  let sum = 0;
+  let sumSquares = 0;
+  let count = 0;
+
+  // Sample pixels to calculate mean and standard deviation
+  const step = 3; // Sample every 3rd pixel for performance
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      const idx = (y * width + x) * 4;
+      const gray = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+      sum += gray;
+      sumSquares += gray * gray;
+      count++;
+    }
+  }
+
+  const mean = sum / count;
+  const variance = sumSquares / count - mean * mean;
+  const stdDev = Math.sqrt(variance);
+
+  // Adaptive threshold based on local statistics
+  // Higher threshold for high-contrast areas, lower for low-contrast
+  const baseThreshold = Math.max(20, Math.min(80, mean * 0.3 + stdDev * 0.5));
+  return baseThreshold;
+};
+
+// Detect line structures and their endpoints
+const detectLineEndpoints = (
+  gradients: Array<{ x: number; y: number; magnitude: number; direction: number }>,
+  threshold: number,
+) => {
+  const lineEndpoints: PointOfInterest[] = [];
+
+  // Group gradients by similar direction to find line segments
+  const directionGroups: { [key: number]: Array<{ x: number; y: number; magnitude: number; direction: number }> } = {};
+
+  gradients.forEach((grad) => {
+    if (grad.magnitude < threshold) return;
+
+    // Quantize direction to 8 main directions (0, 45, 90, 135, 180, 225, 270, 315 degrees)
+    const quantizedDir = Math.round(grad.direction / (Math.PI / 4)) * (Math.PI / 4);
+    const dirKey = Math.round(quantizedDir * 100); // Use rounded value as key
+
+    if (!directionGroups[dirKey]) {
+      directionGroups[dirKey] = [];
+    }
+    directionGroups[dirKey].push(grad);
+  });
+
+  // For each direction group, find potential endpoints
+  Object.values(directionGroups).forEach((group) => {
+    if (group.length < 3) return; // Need at least 3 points to form a meaningful line
+
+    // Sort by position along the line direction
+    const direction = group[0].direction;
+    group.sort((a, b) => {
+      const aProjection = a.x * Math.cos(direction) + a.y * Math.sin(direction);
+      const bProjection = b.x * Math.cos(direction) + b.y * Math.sin(direction);
+      return aProjection - bProjection;
+    });
+
+    // Check first and last points as potential endpoints
+    const first = group[0];
+    const last = group[group.length - 1];
+
+    // Verify they're actually endpoints by checking if they have fewer neighbors
+    const countNeighbors = (point: { x: number; y: number }) => {
+      return group.filter((p) => Math.sqrt((p.x - point.x) ** 2 + (p.y - point.y) ** 2) < 5).length;
+    };
+
+    if (countNeighbors(first) <= 2) {
+      lineEndpoints.push({
+        x: first.x,
+        y: first.y,
+        type: 'line-end',
+        confidence: first.magnitude,
+        direction: direction,
+      });
+    }
+
+    if (countNeighbors(last) <= 2) {
+      lineEndpoints.push({
+        x: last.x,
+        y: last.y,
+        type: 'line-end',
+        confidence: last.magnitude,
+        direction: direction,
+      });
+    }
+  });
+
+  return lineEndpoints;
+};
+
 export function useSnapPoints({
   snapDetectionRadius,
   snapMinDistance,
@@ -56,20 +189,16 @@ export function useSnapPoints({
   // Ref to track the last position where snap points were updated
   const lastUpdatePositionRef = useRef<{ x: number; y: number } | null>(null);
 
-  // Analyze image data to find potential snap points
+  // Blueprint-focused image analysis - only line endpoints, corners, and intersections
   const analyzeImageData = useCallback(
     (imageData: ImageData, offsetX: number, offsetY: number): PointOfInterest[] => {
       const { data, width, height } = imageData;
-      const points: PointOfInterest[] = [];
-      const threshold = 40; // Threshold for edge detection
-      const scanStep = 2; // Scan frequency for better detection
 
       // Check if the area is blank/empty
       const isBlankArea = (() => {
-        // Sample the image data to check for blank areas
         let totalSamples = 0;
         let blankSamples = 0;
-        const sampleStep = 4; // Sample every 4th pixel to save processing time
+        const sampleStep = 6; // Larger step for faster blank detection
 
         for (let y = 0; y < height; y += sampleStep) {
           for (let x = 0; x < width; x += sampleStep) {
@@ -78,179 +207,164 @@ export function useSnapPoints({
             const g = data[idx + 1];
             const b = data[idx + 2];
 
-            // Consider near-white pixels as blank (allowing for slight variations)
-            const isBlankPixel = r > 240 && g > 240 && b > 240;
-
+            const isBlankPixel = r > 230 && g > 230 && b > 230;
             totalSamples++;
             if (isBlankPixel) blankSamples++;
           }
         }
 
-        // If more than 95% of the sampled pixels are blank, consider it a blank area
-        return blankSamples / totalSamples > 0.95;
+        return blankSamples / totalSamples > 0.9;
       })();
 
-      // If it's a blank area, don't create any snap points
-      if (isBlankArea) {
-        return [];
-      }
+      if (isBlankArea) return [];
 
-      // Advanced detection for corners, intersections and line endpoints
+      // Calculate adaptive threshold with higher baseline for blueprints
+      const adaptiveThreshold = calculateAdaptiveThreshold(data, width, height);
+      const blueprintThreshold = Math.max(adaptiveThreshold, 50); // Higher minimum threshold for blueprints
+
+      // Collect only strong edges for blueprint detection
+      const gradients: Array<{ x: number; y: number; magnitude: number; direction: number }> = [];
+
+      // Use step of 2 for better performance while maintaining accuracy for blueprints
+      const scanStep = 2;
+
       for (let y = scanStep; y < height - scanStep; y += scanStep) {
         for (let x = scanStep; x < width - scanStep; x += scanStep) {
-          // Skip processing for likely blank pixels
-          const centerIdx = (y * width + x) * 4;
-          const centerRGB = [data[centerIdx], data[centerIdx + 1], data[centerIdx + 2]];
-          if (centerRGB[0] > 240 && centerRGB[1] > 240 && centerRGB[2] > 240) continue;
+          const sobel = calculateSobelGradients(data, width, height, x, y);
 
-          // Check neighboring pixels in 8 directions
-          const topIdx = ((y - scanStep) * width + x) * 4;
-          const bottomIdx = ((y + scanStep) * width + x) * 4;
-          const leftIdx = (y * width + (x - scanStep)) * 4;
-          const rightIdx = (y * width + (x + scanStep)) * 4;
-          const topLeftIdx = ((y - scanStep) * width + (x - scanStep)) * 4;
-          const topRightIdx = ((y - scanStep) * width + (x + scanStep)) * 4;
-          const bottomLeftIdx = ((y + scanStep) * width + (x - scanStep)) * 4;
-          const bottomRightIdx = ((y + scanStep) * width + (x + scanStep)) * 4;
-
-          // Get grayscale values for each pixel
-          const centerGray = (data[centerIdx] + data[centerIdx + 1] + data[centerIdx + 2]) / 3;
-          const topGray = (data[topIdx] + data[topIdx + 1] + data[topIdx + 2]) / 3;
-          const bottomGray = (data[bottomIdx] + data[bottomIdx + 1] + data[bottomIdx + 2]) / 3;
-          const leftGray = (data[leftIdx] + data[leftIdx + 1] + data[leftIdx + 2]) / 3;
-          const rightGray = (data[rightIdx] + data[rightIdx + 1] + data[rightIdx + 2]) / 3;
-          const topLeftGray = (data[topLeftIdx] + data[topLeftIdx + 1] + data[topLeftIdx + 2]) / 3;
-          const topRightGray = (data[topRightIdx] + data[topRightIdx + 1] + data[topRightIdx + 2]) / 3;
-          const bottomLeftGray = (data[bottomLeftIdx] + data[bottomLeftIdx + 1] + data[bottomLeftIdx + 2]) / 3;
-          const bottomRightGray = (data[bottomRightIdx] + data[bottomRightIdx + 1] + data[bottomRightIdx + 2]) / 3;
-
-          // Calculate gradients in different directions
-          const horizontalDiff = Math.abs(leftGray - rightGray);
-          const verticalDiff = Math.abs(topGray - bottomGray);
-          const diag1Diff = Math.abs(topLeftGray - bottomRightGray);
-          const diag2Diff = Math.abs(topRightGray - bottomLeftGray);
-
-          // Skip if all gradients are very low - indicates uniform area
-          if (
-            horizontalDiff < threshold / 2 &&
-            verticalDiff < threshold / 2 &&
-            diag1Diff < threshold / 2 &&
-            diag2Diff < threshold / 2
-          ) {
-            continue;
-          }
-
-          // Get differences between surrounding pixels to detect patterns
-          const horizontalGradients = [
-            Math.abs(topLeftGray - topGray),
-            Math.abs(topGray - topRightGray),
-            Math.abs(leftGray - centerGray),
-            Math.abs(centerGray - rightGray),
-            Math.abs(bottomLeftGray - bottomGray),
-            Math.abs(bottomGray - bottomRightGray),
-          ];
-
-          const verticalGradients = [
-            Math.abs(topLeftGray - leftGray),
-            Math.abs(leftGray - bottomLeftGray),
-            Math.abs(topGray - centerGray),
-            Math.abs(centerGray - bottomGray),
-            Math.abs(topRightGray - rightGray),
-            Math.abs(rightGray - bottomRightGray),
-          ];
-
-          // Calculate edge pattern to distinguish between points on lines vs endpoints/corners
-          const isOnHorizontalLine =
-            horizontalGradients.every((gradient) => gradient < threshold / 2) && verticalDiff > threshold;
-          const isOnVerticalLine = verticalGradients.every((gradient) => gradient < threshold / 2) && horizontalDiff > threshold;
-
-          // Define surrounding pixel pattern
-          const surroundingPixels = [
-            topGray,
-            rightGray,
-            bottomGray,
-            leftGray,
-            topLeftGray,
-            topRightGray,
-            bottomLeftGray,
-            bottomRightGray,
-          ];
-
-          // Count pixels that significantly differ from center (edge pixels)
-          const edgeCount = surroundingPixels.filter((gray) => Math.abs(gray - centerGray) > threshold).length;
-
-          // Detect corners - sharp changes in multiple directions simultaneously
-          if (
-            (horizontalDiff > threshold && verticalDiff > threshold && !isOnHorizontalLine && !isOnVerticalLine) ||
-            (diag1Diff > threshold && diag2Diff > threshold)
-          ) {
-            points.push({
+          // Only consider strong edges for blueprints
+          if (sobel.magnitude > blueprintThreshold) {
+            gradients.push({
               x: offsetX + x,
               y: offsetY + y,
-              type: 'corner',
-              confidence: (horizontalDiff + verticalDiff + diag1Diff + diag2Diff) / 4,
+              magnitude: sobel.magnitude,
+              direction: sobel.direction,
             });
           }
-          // Detect intersections - multiple edge directions meeting
-          else if (
-            edgeCount >= 3 &&
-            ((horizontalDiff > threshold && verticalDiff > threshold / 2) ||
-              (verticalDiff > threshold && horizontalDiff > threshold / 2)) &&
-            !isOnHorizontalLine &&
-            !isOnVerticalLine
-          ) {
-            points.push({
-              x: offsetX + x,
-              y: offsetY + y,
-              type: 'intersection',
-              confidence: ((horizontalDiff + verticalDiff) / 2) * (edgeCount / 8),
-            });
-          }
-          // Detect line endpoints - look for abrupt ending pattern
-          else if (
-            edgeCount <= 2 &&
-            // At least one direction needs significant change
-            (horizontalDiff > threshold || verticalDiff > threshold || diag1Diff > threshold || diag2Diff > threshold) &&
-            // Discard points that are likely on straight lines
-            !isOnHorizontalLine &&
-            !isOnVerticalLine
-          ) {
-            // Additional endpoint verification - check for endpoint pattern
-            // True endpoints have high intensity change in limited directions
-            const isEndpoint =
-              // Check for patterns that indicate endpoints rather than points along a line
-              (horizontalDiff > threshold * 1.2 &&
-                surroundingPixels.filter((p) => Math.abs(p - centerGray) < threshold / 2).length >= 5) ||
-              (verticalDiff > threshold * 1.2 &&
-                surroundingPixels.filter((p) => Math.abs(p - centerGray) < threshold / 2).length >= 5) ||
-              (diag1Diff > threshold * 1.2 &&
-                surroundingPixels.filter((p) => Math.abs(p - centerGray) < threshold / 2).length >= 5) ||
-              (diag2Diff > threshold * 1.2 &&
-                surroundingPixels.filter((p) => Math.abs(p - centerGray) < threshold / 2).length >= 5);
+        }
+      }
 
-            if (isEndpoint) {
+      if (gradients.length < 15) return []; // Need sufficient edge data for meaningful detection
+
+      const points: PointOfInterest[] = [];
+
+      // 1. Detect line endpoints - most important for blueprints
+      const endpoints = detectLineEndpoints(gradients, blueprintThreshold);
+
+      // Filter endpoints to avoid points on straight lines
+      const filteredEndpoints = endpoints.filter((endpoint) => {
+        // Check if this point has too many neighbors in the same direction (indicating it's on a line)
+        const sameDirectionNeighbors = gradients.filter((g) => {
+          const distance = Math.sqrt((g.x - endpoint.x) ** 2 + (g.y - endpoint.y) ** 2);
+          if (distance > 15 || distance < 3) return false;
+
+          const directionDiff = Math.abs(g.direction - (endpoint.direction || 0));
+          const normalizedDiff = Math.min(directionDiff, 2 * Math.PI - directionDiff);
+          return normalizedDiff < Math.PI / 8; // Within 22.5 degrees
+        });
+
+        // If there are too many neighbors in the same direction, it's likely on a line
+        return sameDirectionNeighbors.length <= 3;
+      });
+
+      points.push(...filteredEndpoints);
+
+      // 2. Detect corners and intersections - focus on significant direction changes
+      gradients.forEach((grad) => {
+        const { x, y, magnitude } = grad;
+
+        if (magnitude < blueprintThreshold * 1.3) return; // Higher threshold for corners
+
+        // Find nearby gradients with significant magnitude
+        const nearby = gradients.filter(
+          (g) => Math.sqrt((g.x - x) ** 2 + (g.y - y) ** 2) <= 12 && g !== grad && g.magnitude > blueprintThreshold * 0.8,
+        );
+
+        if (nearby.length < 4) return; // Need sufficient neighbors
+
+        // Group directions into clusters to detect intersections/corners
+        const directionClusters: number[][] = [];
+        nearby.forEach((neighbor) => {
+          let addedToCluster = false;
+          for (const cluster of directionClusters) {
+            const avgClusterDir = cluster.reduce((sum, d) => sum + d, 0) / cluster.length;
+            const diff = Math.abs(neighbor.direction - avgClusterDir);
+            const normalizedDiff = Math.min(diff, 2 * Math.PI - diff);
+
+            if (normalizedDiff < Math.PI / 6) {
+              // Within 30 degrees
+              cluster.push(neighbor.direction);
+              addedToCluster = true;
+              break;
+            }
+          }
+
+          if (!addedToCluster) {
+            directionClusters.push([neighbor.direction]);
+          }
+        });
+
+        // Filter out small clusters
+        const significantClusters = directionClusters.filter((cluster) => cluster.length >= 3);
+
+        if (significantClusters.length >= 2) {
+          // Calculate angle between main directions
+          const dir1 = significantClusters[0].reduce((sum, d) => sum + d, 0) / significantClusters[0].length;
+          const dir2 = significantClusters[1].reduce((sum, d) => sum + d, 0) / significantClusters[1].length;
+
+          let angleBetween = Math.abs(dir1 - dir2);
+          if (angleBetween > Math.PI) angleBetween = 2 * Math.PI - angleBetween;
+
+          // Only consider significant angle changes (not shallow curves)
+          if (angleBetween > Math.PI / 4) {
+            // More than 45 degrees for blueprints
+            const confidence = magnitude * (1 + angleBetween / Math.PI) * 1.5; // Higher confidence for blueprints
+
+            if (significantClusters.length >= 3) {
               points.push({
-                x: offsetX + x,
-                y: offsetY + y,
-                type: 'line-end',
-                confidence: Math.max(horizontalDiff, verticalDiff, diag1Diff, diag2Diff),
+                x,
+                y,
+                type: 'intersection',
+                confidence: confidence * 1.3, // Highest priority for intersections
+              });
+            } else {
+              points.push({
+                x,
+                y,
+                type: 'corner',
+                confidence,
               });
             }
           }
         }
-      }
+      });
 
-      // Filter out redundant points (points that are very close to each other)
+      // Filter out redundant points with blueprint-specific filtering
       const filteredPoints: PointOfInterest[] = [];
 
-      for (const point of points) {
-        if (!filteredPoints.some((p) => Math.sqrt(Math.pow(p.x - point.x, 2) + Math.pow(p.y - point.y, 2)) < snapMinDistance)) {
+      // Sort by type priority and confidence
+      const sortedPoints = points.sort((a, b) => {
+        const typeWeight = { intersection: 3, corner: 2, 'line-end': 1 };
+        const aWeight = (typeWeight[a.type] || 0) * 100 + a.confidence;
+        const bWeight = (typeWeight[b.type] || 0) * 100 + b.confidence;
+        return bWeight - aWeight;
+      });
+
+      for (const point of sortedPoints) {
+        const isDuplicate = filteredPoints.some((existing) => {
+          const distance = Math.sqrt((existing.x - point.x) ** 2 + (existing.y - point.y) ** 2);
+          return distance < Math.max(snapMinDistance, 10); // Minimum 10px separation for blueprints
+        });
+
+        if (!isDuplicate) {
           filteredPoints.push(point);
         }
+
+        // Limit to max visible points
+        if (filteredPoints.length >= maxVisibleSnapPoints) break;
       }
 
-      // Return the found points, sorted by confidence
-      return filteredPoints.sort((a, b) => b.confidence - a.confidence).slice(0, maxVisibleSnapPoints);
+      return filteredPoints;
     },
     [snapMinDistance, maxVisibleSnapPoints],
   );
@@ -268,44 +382,53 @@ export function useSnapPoints({
     [mouseMovementThreshold],
   );
 
-  // Find the closest point out of the points of interest
+  // Enhanced nearby point checking with priority scoring
   const throttledCheckNearbyPoints = useCallback(
     throttle((x: number, y: number) => {
-      // Always find the closest point regardless of threshold for better usability
-      let closestPointIndex = null;
-      let minDistance = Infinity; // Use Infinity to always find the closest point
+      if (pointsOfInterest.length === 0) {
+        setHighlightedPointIndex(null);
+        setSnapTarget(null);
+        return;
+      }
 
-      pointsOfInterest.forEach((point, index) => {
+      // Calculate priority score for each point
+      const scoredPoints = pointsOfInterest.map((point, index) => {
         const distance = Math.sqrt(Math.pow(point.x - x, 2) + Math.pow(point.y - y, 2));
 
-        // Find the closest point, period
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestPointIndex = index;
-        }
+        // Priority scoring: closer distance + higher confidence + type preference
+        const typeBonus =
+          {
+            intersection: 1.3,
+            corner: 1.2,
+            'line-end': 1.0,
+          }[point.type] || 1.0;
+
+        // Inverse distance scoring (closer = higher score)
+        const distanceScore = 100 / (distance + 1);
+        const confidenceScore = point.confidence / 100;
+
+        const totalScore = distanceScore * confidenceScore * typeBonus;
+
+        return { index, distance, score: totalScore, point };
       });
 
-      // Always highlight the closest point if available
-      setHighlightedPointIndex(closestPointIndex);
+      // Sort by score and find the best point
+      scoredPoints.sort((a, b) => b.score - a.score);
+      const bestPoint = scoredPoints[0];
 
-      // Only set snap target if the points array is not empty
-      if (closestPointIndex !== null && pointsOfInterest.length > 0) {
-        // Only set as snap target if it's within a reasonable distance (50 pixels)
-        // This prevents snap points from appearing too far from cursor
-        const MAX_SNAP_DISTANCE = 50;
-        if (minDistance <= MAX_SNAP_DISTANCE) {
-          setSnapTarget({
-            index: closestPointIndex,
-            distance: minDistance,
-          });
-        } else {
-          setSnapTarget(null);
-        }
+      setHighlightedPointIndex(bestPoint.index);
+
+      // Set snap target if within reasonable distance (smaller for blueprint precision)
+      const MAX_SNAP_DISTANCE = 35; // Smaller distance for blueprints (more precise)
+      if (bestPoint.distance <= MAX_SNAP_DISTANCE) {
+        setSnapTarget({
+          index: bestPoint.index,
+          distance: bestPoint.distance,
+        });
       } else {
         setSnapTarget(null);
       }
 
-      // Update the last position where snap points were updated
       lastUpdatePositionRef.current = { x, y };
     }, snapUpdateDelay),
     [pointsOfInterest, snapUpdateDelay],
@@ -320,22 +443,20 @@ export function useSnapPoints({
       if (!ctx) return [];
 
       try {
-        // Round coordinates to reduce unnecessary recomputation
         const roundedX = Math.round(x);
         const roundedY = Math.round(y);
 
-        // Get the image data around the cursor
+        // Smaller radius for blueprint precision
+        const detectionRadius = Math.min(snapDetectionRadius, 30); // Smaller radius for blueprints
+
         const imageData = ctx.getImageData(
-          Math.max(0, roundedX - snapDetectionRadius),
-          Math.max(0, roundedY - snapDetectionRadius),
-          snapDetectionRadius * 2,
-          snapDetectionRadius * 2,
+          Math.max(0, roundedX - detectionRadius),
+          Math.max(0, roundedY - detectionRadius),
+          detectionRadius * 2,
+          detectionRadius * 2,
         );
 
-        // Process the image data to find edges, corners, line endpoints
-        const points = analyzeImageData(imageData, roundedX - snapDetectionRadius, roundedY - snapDetectionRadius);
-
-        // Return found points
+        const points = analyzeImageData(imageData, roundedX - detectionRadius, roundedY - detectionRadius);
         return points;
       } catch (error) {
         console.error('Error analyzing PDF canvas:', error);
@@ -348,18 +469,17 @@ export function useSnapPoints({
   // Throttled version of findPointsOfInterest
   const throttledFindPoints = useCallback(
     throttle((x: number, y: number) => {
-      // Only update if the mouse has moved enough since the last update
       if (!hasMovedEnoughToUpdate(x, y)) return;
 
       const points = findPointsOfInterest(x, y);
       setPointsOfInterest(points);
 
-      // Check if there are points to snap to
       if (points.length > 0) {
         throttledCheckNearbyPoints(x, y);
       } else {
-        // Update the last position even when no points are found
         lastUpdatePositionRef.current = { x, y };
+        setHighlightedPointIndex(null);
+        setSnapTarget(null);
       }
     }, snapUpdateDelay),
     [findPointsOfInterest, throttledCheckNearbyPoints, hasMovedEnoughToUpdate, snapUpdateDelay],

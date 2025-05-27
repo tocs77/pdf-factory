@@ -601,7 +601,9 @@ export const ViewPage = ({
               )}
               {drawingMode === 'zoomArea' && <ZoomAreaLayer pageNumber={pageNumber} />}
 
-              {drawingMode === 'ruler' && <RulerDrawingLayer pageNumber={pageNumber} pdfCanvasRef={canvasRef} />}
+              {drawingMode === 'ruler' && (
+                <RulerDrawingLayer pageNumber={pageNumber} pdfCanvasRef={canvasRef} enableSnapPoints={false} />
+              )}
 
               {/* Add rectSelection Layer */}
               {drawingMode === 'rectSelection' && (
