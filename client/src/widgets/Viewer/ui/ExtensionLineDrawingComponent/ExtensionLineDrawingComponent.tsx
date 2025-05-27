@@ -7,71 +7,6 @@ import { Drawing } from '../../model/types/Drawings';
 import classes from './ExtensionLineDrawingComponent.module.scss';
 import { renderExtensionLine } from '../../utils/extensionLineRenderer';
 
-interface TextInputDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (text: string) => void;
-}
-
-const TextInputDialog: React.FC<TextInputDialogProps> = ({ isOpen, onClose, onSubmit }) => {
-  const [inputValue, setInputValue] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
-    }
-    // Reset input value when dialog opens
-    if (isOpen) {
-      setInputValue('');
-    }
-  }, [isOpen]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit(inputValue);
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className={classes.dialogOverlay}>
-      <div className={classes.dialogContent}>
-        <div className={classes.dialogHeader}>
-          <h3>Добавление выноски</h3>
-          <button onClick={onClose} className={classes.closeButton}>
-            ×
-          </button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className={classes.dialogBody}>
-            <label htmlFor='extensionLineText' className={classes.textLabel}>
-              Текст полки выноски
-            </label>
-            <input
-              id='extensionLineText'
-              ref={inputRef}
-              type='text'
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder='Введите текст'
-              className={classes.textInput}
-            />
-          </div>
-          <div className={classes.dialogFooter}>
-            <button type='button' onClick={onClose} className={classes.cancelButton}>
-              Отмена
-            </button>
-            <button type='submit' className={classes.submitButton}>
-              Добавить
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
 interface ExtensionLineDrawingComponentProps {
   pageNumber: number;
   onDrawingCreated: (drawing: Drawing) => void;
@@ -88,14 +23,17 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
   const rotation = pageRotations[pageNumber] || 0;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const textInputContainerRef = useRef<HTMLDivElement>(null);
 
   // States for tracking the multi-stage drawing process
-  const [drawingStage, setDrawingStage] = useState<'initial' | 'positioning' | 'completed'>('initial');
+  const [drawingStage, setDrawingStage] = useState<'initial' | 'positioning' | 'textInput'>('initial');
   const [pinPointPosition, setPinPointPosition] = useState<{ x: number; y: number } | null>(null);
   const [currentMousePosition, setCurrentMousePosition] = useState<{ x: number; y: number } | null>(null);
 
-  // Dialog state
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  // Text input state
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [text, setText] = useState('');
   const [pendingDrawingData, setPendingDrawingData] = useState<any>(null);
 
   // Set up drawing canvas
@@ -129,7 +67,8 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
     setPinPointPosition(null);
     setCurrentMousePosition(null);
     setDrawingStage('initial');
-    setIsDialogOpen(false);
+    setShowTextInput(false);
+    setText('');
   }, [pageNumber, drawingMode]);
 
   // Set cursor to crosshair
@@ -161,14 +100,14 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
     // Clear the canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (drawingStage === 'positioning' && currentMousePosition) {
-      // If we're in the positioning stage, draw a preview of the arrow
+    if ((drawingStage === 'positioning' || drawingStage === 'textInput') && currentMousePosition) {
+      // If we're in the positioning or textInput stage, draw a preview of the arrow
       const previewExtensionLine = {
         id: '',
         type: 'extensionLine' as const,
         position: pinPointPosition,
         bendPoint: currentMousePosition,
-        text: '',
+        text: drawingStage === 'textInput' ? text : '', // Show text if in textInput stage
         color: drawingColor,
         pageNumber,
         boundingBox: {
@@ -182,7 +121,7 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
       // Draw the pin with the current mouse position as the bend point
       renderExtensionLine(ctx, previewExtensionLine, pinPointPosition.x, pinPointPosition.y);
     }
-  }, [pinPointPosition, currentMousePosition, drawingStage, drawingColor, pageNumber]);
+  }, [pinPointPosition, currentMousePosition, drawingStage, drawingColor, pageNumber, text]);
 
   // Get raw coordinates relative to canvas
   const getRawCoordinates = (clientX: number, clientY: number): { x: number; y: number } => {
@@ -206,7 +145,17 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
     setCurrentMousePosition(getRawCoordinates(e.clientX, e.clientY));
   };
 
-  const finalizeDrawing = (text: string) => {
+  // Handle text input change
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setText(e.target.value);
+  };
+
+  // Finish drawing and create the ExtensionLine object
+  const handleFinishDrawing = (e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
     if (!pendingDrawingData) return;
 
     const { normalizedPinPoint, normalizedBendPoint, normalizedBoundingBox, image } = pendingDrawingData;
@@ -228,29 +177,7 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
     onDrawingCreated(newExtensionLine);
 
     // Reset drawing state
-    setPinPointPosition(null);
-    setCurrentMousePosition(null);
-    setDrawingStage('initial');
-    setPendingDrawingData(null);
-
-    // Clear the canvas as the extension line will be rendered by CompleteDrawings
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
-    }
-  };
-
-  const handleDialogSubmit = (text: string) => {
-    setIsDialogOpen(false);
-    if (text.trim()) {
-      finalizeDrawing(text);
-    } else {
-      // Reset if user submits empty text
-      resetDrawingState();
-    }
+    resetDrawingState();
   };
 
   const resetDrawingState = () => {
@@ -258,6 +185,8 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
     setCurrentMousePosition(null);
     setDrawingStage('initial');
     setPendingDrawingData(null);
+    setShowTextInput(false);
+    setText('');
 
     // Clear the canvas since we're aborting the drawing
     const canvas = canvasRef.current;
@@ -269,10 +198,35 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
     }
   };
 
-  const handleDialogClose = () => {
-    setIsDialogOpen(false);
-    resetDrawingState(); // Reset the drawing state which clears the canvas
+  // Focus textarea when it appears
+  useEffect(() => {
+    if (showTextInput && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [showTextInput]);
+
+  // Handle clicks outside text input (cancel drawing)
+  const handleOutsideClick = (e: MouseEvent) => {
+    const isOutsideClick =
+      showTextInput && textInputContainerRef.current && !textInputContainerRef.current.contains(e.target as Node);
+
+    if (isOutsideClick) {
+      resetDrawingState();
+    }
   };
+
+  // Add/remove outside click listener
+  useEffect(() => {
+    if (showTextInput) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    } else {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [showTextInput]);
 
   // Handle clicks for pin placement
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -352,8 +306,9 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
         image,
       });
 
-      // Open the dialog to get text input
-      setIsDialogOpen(true);
+      // Set drawing stage to textInput and show text input
+      setDrawingStage('textInput');
+      setShowTextInput(true);
     }
   };
 
@@ -377,7 +332,34 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
         tabIndex={0} // Make canvas focusable
         data-testid='extensionLine-drawing-canvas'
       />
-      <TextInputDialog isOpen={isDialogOpen} onClose={handleDialogClose} onSubmit={handleDialogSubmit} />
+
+      {showTextInput && currentMousePosition && (
+        <div
+          ref={textInputContainerRef}
+          className={classes.textInputContainer}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            left: `${currentMousePosition.x + 10}px`, // Offset from arrow tail
+            top: `${currentMousePosition.y - 60}px`, // Position above arrow tail
+            width: '150px',
+            height: '60px',
+          }}>
+          <textarea
+            ref={textareaRef}
+            className={classes.textInput}
+            value={text}
+            onChange={handleTextChange}
+            placeholder='Введите текст выноски...'
+            style={{
+              color: drawingColor,
+            }}
+          />
+          <button className={classes.finishButton} onClick={handleFinishDrawing}>
+            Готово
+          </button>
+        </div>
+      )}
     </>
   );
 };
