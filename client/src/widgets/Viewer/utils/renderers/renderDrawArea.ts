@@ -65,5 +65,6 @@ export const renderDrawArea = (
   ctx.strokeStyle = drawing.style.strokeColor;
   // Apply the line width from the context that was saved with the area
   ctx.lineWidth = drawing.style.strokeWidth * scale;
+  ctx.globalAlpha = drawing.style.opacity ?? 1;
   ctx.strokeRect(areaStartX, areaStartY, areaWidth, areaHeight);
 };

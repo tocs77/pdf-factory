@@ -42,6 +42,7 @@ export const renderTextArea = (
   // Draw the rectangle border
   ctx.strokeStyle = drawing.style.strokeColor;
   ctx.lineWidth = drawing.style.strokeWidth * scale;
+  ctx.globalAlpha = drawing.style.opacity ?? 1;
   ctx.strokeRect(drawX, drawY, areaWidth, areaHeight);
 
   // Fill with a semi-transparent background

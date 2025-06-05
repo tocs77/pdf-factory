@@ -15,7 +15,7 @@ interface LineDrawingLayerProps {
 export const LineDrawingLayer = (props: LineDrawingLayerProps) => {
   const { pageNumber, onDrawingCreated, pdfCanvasRef, draftMode = false } = props;
   const { state } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations } = state;
+  const { scale, drawingColor, drawingLineWidth, drawingOpacity, drawingMode, pageRotations } = state;
 
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;
@@ -32,6 +32,7 @@ export const LineDrawingLayer = (props: LineDrawingLayerProps) => {
   const [currentStyle, setCurrentStyle] = useState<DrawingStyle>({
     strokeColor: drawingColor,
     strokeWidth: drawingLineWidth,
+    opacity: drawingOpacity,
   }); // Style for the current line
 
   // Update current style when drawingColor changes
@@ -49,6 +50,14 @@ export const LineDrawingLayer = (props: LineDrawingLayerProps) => {
       strokeWidth: drawingLineWidth,
     }));
   }, [drawingLineWidth]);
+
+  // Update current style when drawingOpacity changes
+  useEffect(() => {
+    setCurrentStyle((prev) => ({
+      ...prev,
+      opacity: drawingOpacity,
+    }));
+  }, [drawingOpacity]);
 
   // Create a function to initialize the canvas with correct dimensions and context
   const initializeCanvas = () => {
@@ -90,10 +99,11 @@ export const LineDrawingLayer = (props: LineDrawingLayerProps) => {
     // Draw all saved lines with their styles
     allLines.forEach((line, index) => {
       // Get the style for this line
-      const style = lineStyles[index] || { strokeColor: drawingColor, strokeWidth: drawingLineWidth };
+      const style = lineStyles[index] || { strokeColor: drawingColor, strokeWidth: drawingLineWidth, opacity: drawingOpacity };
 
       ctx.strokeStyle = style.strokeColor;
       ctx.lineWidth = style.strokeWidth;
+      ctx.globalAlpha = style.opacity ?? 1;
       ctx.lineCap = 'round';
 
       ctx.beginPath();
@@ -106,6 +116,7 @@ export const LineDrawingLayer = (props: LineDrawingLayerProps) => {
     if (startPoint && endPoint) {
       ctx.strokeStyle = currentStyle.strokeColor;
       ctx.lineWidth = currentStyle.strokeWidth;
+      ctx.globalAlpha = currentStyle.opacity ?? 1;
       ctx.lineCap = 'round';
 
       ctx.beginPath();
@@ -348,6 +359,7 @@ export const LineDrawingLayer = (props: LineDrawingLayerProps) => {
       lineStyles: styles.map((style) => ({
         strokeColor: style.strokeColor,
         strokeWidth: style.strokeWidth / scale, // Store line width at scale 1
+        opacity: style.opacity,
       })),
       pageNumber,
       image,

@@ -16,6 +16,7 @@ export const initialViewerState: ViewerSchema = {
   scale: DEFAULT_SCALE,
   drawingColor: DEFAULT_DRAWING_COLOR,
   drawingLineWidth: 3,
+  drawingOpacity: 1,
   drawingMode: 'none',
   showThumbnails: false,
   pageRotations: {},
@@ -64,6 +65,11 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
       return {
         ...state,
         drawingLineWidth: action.payload,
+      };
+    case 'setDrawingOpacity':
+      return {
+        ...state,
+        drawingOpacity: action.payload,
       };
     case 'setDrawingMode': {
       let currentDrawingPage = -1;

@@ -18,13 +18,15 @@ interface FreeHandLayerProps {
 
 export const FreeHandLayer = (props: FreeHandLayerProps) => {
   const { pageNumber, onDrawingCreated, pdfCanvasRef, draftMode = false } = props;
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const { state } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations } = state;
+
+  const { scale, pageRotations, drawingColor, drawingLineWidth, drawingOpacity, drawingMode, requestFinishDrawing, requestCancelDrawing } =
+    state;
 
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([]);
   const [allPaths, setAllPaths] = useState<Array<{ x: number; y: number }[]>>([]);
@@ -32,6 +34,7 @@ export const FreeHandLayer = (props: FreeHandLayerProps) => {
   const [currentStyle, setCurrentStyle] = useState<DrawingStyle>({
     strokeColor: drawingColor,
     strokeWidth: drawingLineWidth,
+    opacity: drawingOpacity,
   }); // Style for the current path
 
   // Update current style when drawingColor changes
@@ -49,6 +52,14 @@ export const FreeHandLayer = (props: FreeHandLayerProps) => {
       strokeWidth: drawingLineWidth,
     }));
   }, [drawingLineWidth]);
+
+  // Update current style when drawingOpacity changes
+  useEffect(() => {
+    setCurrentStyle((prev) => ({
+      ...prev,
+      opacity: drawingOpacity,
+    }));
+  }, [drawingOpacity]);
 
   // Create a function to initialize the canvas with correct dimensions and context
   const initializeCanvas = useCallback(() => {
@@ -93,10 +104,11 @@ export const FreeHandLayer = (props: FreeHandLayerProps) => {
         if (path.length < 2) return;
 
         // Get the style for this path
-        const style = pathStyles[index] || { strokeColor: drawingColor, strokeWidth: drawingLineWidth };
+        const style = pathStyles[index] || { strokeColor: drawingColor, strokeWidth: drawingLineWidth, opacity: drawingOpacity };
 
         ctx.strokeStyle = style.strokeColor;
         ctx.lineWidth = style.strokeWidth;
+        ctx.globalAlpha = style.opacity ?? 1;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
@@ -114,6 +126,7 @@ export const FreeHandLayer = (props: FreeHandLayerProps) => {
       if (currentPath.length > 1) {
         ctx.strokeStyle = currentStyle.strokeColor;
         ctx.lineWidth = currentStyle.strokeWidth;
+        ctx.globalAlpha = currentStyle.opacity ?? 1;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
@@ -270,6 +283,7 @@ export const FreeHandLayer = (props: FreeHandLayerProps) => {
       pathStyles: styles.map((style) => ({
         strokeColor: style.strokeColor,
         strokeWidth: style.strokeWidth / scale, // Store line width at scale 1
+        opacity: style.opacity,
       })),
       pageNumber,
       image,

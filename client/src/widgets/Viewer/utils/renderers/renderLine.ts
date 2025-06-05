@@ -18,6 +18,7 @@ export const renderLine = (
     const lineStyle = drawing.lineStyles?.[lineIndex] || drawing.style;
     ctx.strokeStyle = lineStyle.strokeColor;
     ctx.lineWidth = lineStyle.strokeWidth * scale;
+    ctx.globalAlpha = lineStyle.opacity ?? 1;
     ctx.lineCap = 'round';
 
     ctx.beginPath();

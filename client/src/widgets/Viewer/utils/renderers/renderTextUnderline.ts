@@ -15,6 +15,7 @@ export const renderTextUnderline = (
   ctx.beginPath();
   ctx.strokeStyle = drawing.style.strokeColor;
   ctx.lineWidth = drawing.style.strokeWidth * scale;
+  ctx.globalAlpha = drawing.style.opacity ?? 1;
   ctx.setLineDash([]); // Solid line
 
   // Draw each line segment

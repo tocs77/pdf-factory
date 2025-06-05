@@ -15,6 +15,7 @@ export const renderRectangle = (
   ctx.beginPath();
   ctx.strokeStyle = drawing.style.strokeColor;
   ctx.lineWidth = drawing.style.strokeWidth * scale;
+  ctx.globalAlpha = drawing.style.opacity ?? 1;
 
   // Transform rectangle points with rotation
   const { x: rectStartX, y: rectStartY } = transformCoordinates(

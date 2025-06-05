@@ -17,7 +17,7 @@ interface DrawRectProps {
  */
 const DrawRect: React.FC<DrawRectProps> = ({ pageNumber, onDrawingCreated, pdfCanvasRef, draftMode = false }) => {
   const { state } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations } = state;
+  const { scale, drawingColor, drawingLineWidth, drawingOpacity, drawingMode, pageRotations } = state;
 
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;
@@ -126,6 +126,7 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber, onDrawingCreated, pdfCa
     ctx.beginPath();
     ctx.strokeStyle = drawingColor;
     ctx.lineWidth = drawingLineWidth;
+    ctx.globalAlpha = drawingOpacity;
     ctx.rect(startPoint.x, startPoint.y, point.x - startPoint.x, point.y - startPoint.y);
     ctx.stroke();
   };
@@ -212,6 +213,7 @@ const DrawRect: React.FC<DrawRectProps> = ({ pageNumber, onDrawingCreated, pdfCa
       style: {
         strokeColor: drawingColor,
         strokeWidth: drawingLineWidth / scale, // Store line width at scale 1
+        opacity: drawingOpacity,
       },
       pageNumber,
       image,

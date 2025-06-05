@@ -28,7 +28,7 @@ interface Rectangle {
 export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
   const { pageNumber, onDrawingCreated, pdfCanvasRef, draftMode = false } = props;
   const { state } = useContext(ViewerContext);
-  const { drawingColor, drawingLineWidth, scale, requestFinishDrawing, requestCancelDrawing } = state;
+  const { drawingColor, drawingLineWidth, drawingOpacity, scale, requestFinishDrawing, requestCancelDrawing } = state;
   const rotation = state.pageRotations[pageNumber] || 0;
 
   // Define constant border width for rectangles
@@ -220,6 +220,7 @@ export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
       style: {
         strokeColor: drawingColor,
         strokeWidth: RECT_BORDER_WIDTH, // Use constant border width
+        opacity: drawingOpacity,
       },
       fontSize: baseFontSize, // Include the font size
       boundingBox: {
@@ -291,6 +292,7 @@ export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
       style: {
         strokeColor: drawingColor,
         strokeWidth: RECT_BORDER_WIDTH / scale, // Store constant border width at scale 1
+        opacity: drawingOpacity,
       },
       fontSize: baseFontSize, // Include the font size
       boundingBox: {

@@ -31,6 +31,7 @@ export interface ViewerSchema {
   scale: number;
   drawingColor: string;
   drawingLineWidth: number;
+  drawingOpacity: number; // Drawing opacity value from 0.25 to 1
   drawingMode: DrawingMode;
   showThumbnails: boolean;
   // Map of page numbers to rotation angles
@@ -52,6 +53,7 @@ export interface ViewerSchema {
 type SetScaleAction = { type: 'setScale'; payload: number };
 type SetDrawingColorAction = { type: 'setDrawingColor'; payload: string };
 type SetDrawingLineWidthAction = { type: 'setDrawingLineWidth'; payload: number };
+type SetDrawingOpacityAction = { type: 'setDrawingOpacity'; payload: number };
 type SetDrawingModeAction = { type: 'setDrawingMode'; payload: DrawingMode };
 type ToggleThumbnailsAction = { type: 'toggleThumbnails' };
 type SetPageRotationAction = { type: 'setPageRotation'; payload: { pageNumber: number; angle: RotationAngle } };
@@ -100,6 +102,7 @@ export type Action =
   | SetScaleAction
   | SetDrawingColorAction
   | SetDrawingLineWidthAction
+  | SetDrawingOpacityAction
   | SetDrawingModeAction
   | ToggleThumbnailsAction
   | SetPageRotationAction

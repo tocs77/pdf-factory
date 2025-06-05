@@ -20,6 +20,7 @@ export const renderFreehandPath = (
     const pathStyle = drawing.pathStyles?.[pathIndex] || drawing.style;
     ctx.strokeStyle = pathStyle.strokeColor;
     ctx.lineWidth = pathStyle.strokeWidth * scale; // Apply current scale to line width
+    ctx.globalAlpha = pathStyle.opacity ?? 1;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 

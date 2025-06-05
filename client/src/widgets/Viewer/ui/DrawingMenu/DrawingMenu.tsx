@@ -6,7 +6,7 @@ import { DrawingMode } from '../../model/types/viewerSchema';
 
 export const DrawingMenu = () => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { drawingMode, drawingColor, drawingLineWidth } = state;
+  const { drawingMode, drawingColor, drawingLineWidth, drawingOpacity } = state;
 
   // Don't need to check visibility as the parent component (Viewer) handles this
   if (drawingMode === 'none') {
@@ -44,11 +44,18 @@ export const DrawingMenu = () => {
     dispatch({ type: 'setDrawingLineWidth', payload: width });
   };
 
+  const changeOpacity = (opacity: number) => {
+    dispatch({ type: 'setDrawingOpacity', payload: opacity });
+  };
+
   // Color options
   const colorOptions = ['#2196f3', '#4caf50', '#f44336', '#ff9800', '#9c27b0', '#000000'];
 
   // Line width options
   const lineWidthOptions = [1, 2, 3, 5, 8];
+
+  // Opacity options (25%, 50%, 75%, 100%)
+  const opacityOptions = [0.25, 0.5, 0.75, 1];
 
   return (
     <div className={styles.drawingMenuContainer} data-dragscroll-ignore='true'>
@@ -126,6 +133,35 @@ export const DrawingMenu = () => {
                   ) : (
                     <div style={{ height: `${width}px`, width: '14px', backgroundColor: '#333' }}></div>
                   )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {!isSelectionMode && (
+          <div className={styles.opacityPicker}>
+            <span>Прозрачность:</span>
+            <div className={styles.opacityOptions}>
+              {opacityOptions.map((opacity) => (
+                <button
+                  key={opacity}
+                  className={`${styles.opacityOption} ${opacity === drawingOpacity ? styles.active : ''}`}
+                  onClick={() => changeOpacity(opacity)}
+                  title={`Установить прозрачность: ${Math.round(opacity * 100)}%`}
+                  aria-label={`Установить прозрачность: ${Math.round(opacity * 100)}%`}>
+                  <div 
+                    style={{ 
+                      width: '20px', 
+                      height: '16px', 
+                      backgroundColor: drawingColor,
+                      opacity: opacity,
+                      border: '1px solid #ccc',
+                      borderRadius: '2px'
+                    }}
+                  />
+                  <span style={{ fontSize: '10px', marginTop: '2px' }}>
+                    {Math.round(opacity * 100)}%
+                  </span>
                 </button>
               ))}
             </div>

@@ -16,6 +16,7 @@ export interface BaseDrawing {
 export interface DrawingStyle {
   strokeColor: string;
   strokeWidth: number;
+  opacity?: number; // Opacity value from 0 to 1, defaults to 1 if not specified
 }
 
 export interface DrawingPath extends BaseDrawing {

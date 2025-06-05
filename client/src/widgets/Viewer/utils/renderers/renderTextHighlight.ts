@@ -14,16 +14,12 @@ export const renderTextHighlight = (
 ): void => {
   // Set semi-transparent fill for highlighting
   const baseColor = drawing.style.strokeColor;
-  // Default to 50% opacity if not specified
-  let fillColor = baseColor + '80';
-
-  if (drawing.opacity !== undefined) {
-    // If opacity is specified in the drawing, use that instead
-    const hexOpacity = Math.round(drawing.opacity * 255)
-      .toString(16)
-      .padStart(2, '0');
-    fillColor = baseColor + hexOpacity;
-  }
+  // Use opacity from drawing.opacity first, then fall back to style.opacity, then default to 0.5
+  const opacity = drawing.opacity ?? drawing.style.opacity ?? 0.5;
+  const hexOpacity = Math.round(opacity * 255)
+    .toString(16)
+    .padStart(2, '0');
+  const fillColor = baseColor + hexOpacity;
 
   ctx.fillStyle = fillColor;
 

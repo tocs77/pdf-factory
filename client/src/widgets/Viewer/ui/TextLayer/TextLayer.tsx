@@ -23,7 +23,7 @@ export const TextLayer = (props: TextLayerProps) => {
 
   // Get drawing color and line width from the ViewerContext
   const { state, dispatch } = useContext(ViewerContext);
-  const { drawingColor, drawingLineWidth, requestFinishDrawing, requestCancelDrawing } = state;
+  const { drawingColor, drawingLineWidth, drawingOpacity, requestFinishDrawing, requestCancelDrawing } = state;
 
   // Helper function to hide tools after applying
   const hideToolsAfterApplying = () => {
@@ -103,6 +103,7 @@ export const TextLayer = (props: TextLayerProps) => {
       style: {
         strokeColor: drawingColor,
         strokeWidth: drawingLineWidth / scale,
+        opacity: drawingOpacity,
       },
       boundingBox: {
         left: Math.min(...lines.flatMap((line) => [line.start.x, line.end.x])),
@@ -179,6 +180,7 @@ export const TextLayer = (props: TextLayerProps) => {
       style: {
         strokeColor: drawingColor,
         strokeWidth: drawingLineWidth / scale,
+        opacity: drawingOpacity,
       },
       boundingBox: {
         left: Math.min(...crossedOutLines.flatMap((line) => [line.start.x, line.end.x])),
@@ -220,8 +222,9 @@ export const TextLayer = (props: TextLayerProps) => {
       style: {
         strokeColor: drawingColor,
         strokeWidth: 1 / scale, // Thin border
+        opacity: drawingOpacity,
       },
-      opacity: 0.3, // 30% opacity for highlighting
+      opacity: drawingOpacity !== 1 ? drawingOpacity : 0.3, // Use global opacity or default to 30% for highlighting
       boundingBox: {
         left: Math.min(...highlightRects.flatMap((rect) => [rect.x, rect.x + rect.width])),
         top: Math.min(...highlightRects.flatMap((rect) => [rect.y, rect.y + rect.height])),
