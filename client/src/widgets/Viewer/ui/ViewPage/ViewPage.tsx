@@ -46,7 +46,7 @@ export const ViewPage = ({
   selectedPage,
 }: ViewPageProps) => {
   const { state } = useContext(ViewerContext);
-  const { drawingMode, pageRotations, scale, currentDrawingPage } = state;
+  const { drawingMode, pageRotations, scale, currentDrawingPage, isPinchZooming } = state;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -182,6 +182,8 @@ export const ViewPage = ({
   const renderPageAtCurrentScale = async () => {
     if (!page || !canvasRef.current) return;
 
+    console.log(`🔄 [Page ${pageNumber}] Starting PDF rerender at scale ${scale.toFixed(2)}, isPinchZooming: ${isPinchZooming}`);
+
     try {
       // If there's an ongoing render task, cancel it first
       if (currentRenderTaskRef.current) {
@@ -274,6 +276,7 @@ export const ViewPage = ({
       // Update the base scale
       setBaseScale(scale);
       setHasRendered(true);
+      console.log(`✅ [Page ${pageNumber}] PDF rerender completed at scale ${scale.toFixed(2)}`);
     } catch (error: any) {
       if (!error?.message?.includes('cancelled')) {
         console.error(`[ERROR][Page ${pageNumber}] Error rendering page:`, error);
@@ -359,29 +362,41 @@ export const ViewPage = ({
       const scaleDifference = Math.abs(scale - baseScale);
       const rotationChanged = rotation !== prevRotationRef.current;
 
+      console.log(`📊 [Page ${pageNumber}] Render decision:`, {
+        scale: scale.toFixed(2),
+        baseScale: baseScale.toFixed(2),
+        scaleDifference: scaleDifference.toFixed(2),
+        threshold: SCALE_THRESHOLD,
+        isPinchZooming,
+        rotationChanged,
+        hasHighQualityCanvas: !!highQualityCanvasRef.current,
+      });
+
       // For initial render or when scale difference exceeds threshold
       if (
         // Only do a full render if:
         // 1. Never rendered before, OR
         // 2. No high quality canvas available, OR
-        // 3. Scale difference exceeds threshold, OR
+        // 3. Scale difference exceeds threshold AND not currently pinch zooming, OR
         // 4. Rotation changed
         !highQualityCanvasRef.current ||
-        scaleDifference > SCALE_THRESHOLD ||
+        (scaleDifference > SCALE_THRESHOLD && !isPinchZooming) ||
         rotationChanged
       ) {
+        console.log(`🔄 [Page ${pageNumber}] Triggering full PDF rerender`);
         // Update the rotation ref
         prevRotationRef.current = rotation;
         // Render PDF at current scale directly
         await renderPageAtCurrentScale();
       } else {
+        console.log(`⚡ [Page ${pageNumber}] Using fast display canvas update (no PDF rerender)`);
         // Just update display canvas with scaling
         updateDisplayCanvas();
       }
     };
 
     handleRenderOrUpdate();
-  }, [page, rotation, scale, pageNumber, selectedPage, inView, baseScale]);
+  }, [page, rotation, scale, pageNumber, selectedPage, inView, baseScale, isPinchZooming]);
 
   // Re-render when rotation changes
   useEffect(() => {

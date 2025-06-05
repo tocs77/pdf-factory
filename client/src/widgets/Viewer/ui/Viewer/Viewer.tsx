@@ -13,6 +13,7 @@ import { scrollToPage } from '../../utils/pageScrollUtils';
 import { Drawing } from '../../model/types/Drawings';
 import { RotationAngle } from '../../model/types/viewerSchema';
 import { useZoomToMouse } from '../../hooks/useZoomToMouse';
+import { useZoomToPinch } from '../../hooks/useZoomToPinch';
 import { useDragToScroll } from '../../hooks/useDragToScroll';
 import { useScrollToDraw } from '../../hooks/useScrollToDraw';
 
@@ -108,6 +109,14 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
   // Setup zoom functionality using the custom hook
   useZoomToMouse({ scale, dispatch, containerRef: pdfContainerRef });
+
+  // Setup pinch zoom functionality for mobile using the custom hook
+  const { bind: pinchBind } = useZoomToPinch({
+    scale,
+    dispatch,
+    containerRef: pdfContainerRef,
+    isEnabled: isMobile && pdfRendered,
+  });
 
   // Use the scrollToDraw hook
   const scrollToDraw = useScrollToDraw({
@@ -398,6 +407,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
             [classes.dragging]: isDragging,
           })}
           ref={pdfContainerRef}
+          {...(isMobile ? pinchBind() : {})}
           onMouseDown={(e) => {
             if (isSliderBeingDragged() || document.body.classList.contains('slider-dragging')) {
               e.stopPropagation();

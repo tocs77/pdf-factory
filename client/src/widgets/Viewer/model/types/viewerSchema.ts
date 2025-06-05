@@ -45,6 +45,7 @@ export interface ViewerSchema {
   // Ruler calibration settings
   calibration: CalibrationSettings;
   isMobile: boolean;
+  isPinchZooming: boolean;
 }
 
 // Action types using discriminated unions
@@ -88,6 +89,11 @@ type SetCurrentPageAction = {
   payload: number;
 };
 
+type SetIsPinchZoomingAction = {
+  type: 'setIsPinchZooming';
+  payload: boolean;
+};
+
 export type IsDraftDrawing = boolean;
 // Remove obsolete toggleCompareMode action type
 export type Action =
@@ -109,4 +115,5 @@ export type Action =
   | ApplyCalibrationAction
   | ResetCalibrationAction
   | SetCurrentPageAction
-  | SetIsMobileAction;
+  | SetIsMobileAction
+  | SetIsPinchZoomingAction;
