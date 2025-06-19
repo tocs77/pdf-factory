@@ -21,8 +21,16 @@ export const FreeHandLayer = (props: FreeHandLayerProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { state } = useContext(ViewerContext);
 
-  const { scale, pageRotations, drawingColor, drawingLineWidth, drawingOpacity, drawingMode, requestFinishDrawing, requestCancelDrawing } =
-    state;
+  const {
+    scale,
+    pageRotations,
+    drawingColor,
+    drawingLineWidth,
+    drawingOpacity,
+    drawingMode,
+    requestFinishDrawing,
+    requestCancelDrawing,
+  } = state;
 
   // Get the rotation angle for this page
   const rotation = pageRotations[pageNumber] || 0;

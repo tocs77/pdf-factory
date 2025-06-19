@@ -79,7 +79,7 @@ export const Page = (props: PageProps) => {
     // If another page becomes visible after a page rotation, ignore it for a brief period
     // This prevents the wrong page from becoming the current page during rotation layout changes
     const isAnyPageRotating = Object.keys(pageRotations).some((key) => {
-      const pageNum = parseInt(key, 10);
+      const pageNum = Number.parseInt(key, 10);
       return pageNum !== pageNumber && pageRotations[pageNum] !== prevRotationRef.current;
     });
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useContext, useCallback } from 'react';
 import { transformCoordinates, normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import { ViewerContext } from '../../model/context/viewerContext';
-import { useSnapPoints } from '../../../../shared/hooks/useSnapPoints';
+import { useSnapPoints } from '../../hooks/useSnapPoints';
 import styles from './RulerDrawingLayer.module.scss';
 
 // Add throttle utility function
@@ -1216,7 +1216,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
   const handleCalibrationSubmit = () => {
     if (selectedRulerForCalibration === null) return;
 
-    const actualSize = parseFloat(calibrationActualSize);
+    const actualSize = Number.parseFloat(calibrationActualSize);
     if (isNaN(actualSize) || actualSize <= 0) {
       alert('Please enter a valid positive number for the actual size');
       return;
@@ -1327,7 +1327,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
                 top: `${transformed.y}px`,
                 width: `${markerSize}px`,
                 height: `${markerSize}px`,
-                transform: `translate(-50%, -50%)`,
+                transform: 'translate(-50%, -50%)',
                 backgroundColor: 'white', // White center
                 border: 'none', // No border
                 boxShadow: '0 0 0 3px rgba(33, 150, 243, 0.95)', // Thicker, more opaque blue ring
@@ -1363,7 +1363,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
                 top: `${transformed.y}px`,
                 width: `${markerSize}px`,
                 height: `${markerSize}px`,
-                transform: `translate(-50%, -50%)`,
+                transform: 'translate(-50%, -50%)',
                 backgroundColor: 'white', // White center
                 border: 'none', // No border
                 boxShadow: '0 0 0 3px rgba(33, 150, 243, 0.95)', // Thicker, more opaque blue ring
@@ -1481,7 +1481,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
                 top: `${transformed.y}px`,
                 width: `${markerSize}px`,
                 height: `${markerSize}px`,
-                transform: `translate(-50%, -50%)`,
+                transform: 'translate(-50%, -50%)',
                 backgroundColor: 'white', // White center
                 border: 'none', // No border
                 boxShadow: '0 0 0 3px rgba(33, 150, 243, 0.95)', // Thicker, more opaque blue ring
@@ -1526,7 +1526,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
                 top: `${transformed.y}px`,
                 width: `${markerSize}px`,
                 height: `${markerSize}px`,
-                transform: `translate(-50%, -50%)`,
+                transform: 'translate(-50%, -50%)',
                 backgroundColor: 'white', // White center
                 border: 'none', // No border
                 boxShadow: '0 0 0 3px rgba(33, 150, 243, 0.95)', // Thicker, more opaque blue ring

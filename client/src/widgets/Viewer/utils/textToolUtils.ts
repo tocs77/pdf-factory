@@ -11,9 +11,9 @@ export const isLightColor = (color: string): boolean => {
   // Convert hex to RGB
   let r, g, b;
   if (color.startsWith('#')) {
-    r = parseInt(color.slice(1, 3), 16);
-    g = parseInt(color.slice(3, 5), 16);
-    b = parseInt(color.slice(5, 7), 16);
+    r = Number.parseInt(color.slice(1, 3), 16);
+    g = Number.parseInt(color.slice(3, 5), 16);
+    b = Number.parseInt(color.slice(5, 7), 16);
   } else {
     // Default to dark if not a hex color
     return false;
@@ -477,8 +477,8 @@ export const getHighlightRects = (
       const lastRect = lastElement.getBoundingClientRect();
 
       // Find the top-most and bottom-most points in this line
-      let minY = Infinity;
-      let maxY = -Infinity;
+      let minY = Number.POSITIVE_INFINITY;
+      let maxY = Number.NEGATIVE_INFINITY;
 
       lineElements.forEach((el) => {
         const elRect = el.getBoundingClientRect();
@@ -553,10 +553,10 @@ export const captureTextAnnotationImage = (
   const canvasHeight = pageRect.height / scale;
 
   // Calculate the bounding box for all elements in original rotated coordinates
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
 
   // Get bounds in the coordinate system that matches the current rotation
   if (annotationType === 'highlight') {

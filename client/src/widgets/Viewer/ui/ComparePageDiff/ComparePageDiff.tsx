@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useContext } from 'react';
 import type { PDFPageProxy, RenderTask } from 'pdfjs-dist/types/src/display/api';
 import { ViewerContext } from '../../model/context/viewerContext';
 import classes from './ComparePageDiff.module.scss';
-import { classNames } from '@/shared/utils';
+import { classNames } from '../../utils/classNames';
 
 interface ComparePageDiffProps {
   page: PDFPageProxy;
@@ -20,9 +20,9 @@ const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
     ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
+        r: Number.parseInt(result[1], 16),
+        g: Number.parseInt(result[2], 16),
+        b: Number.parseInt(result[3], 16),
       }
     : null;
 };

@@ -23,10 +23,10 @@ import {
   ZoomAreaIcon,
   ZoomInIcon,
   ZoomOutIcon,
-} from '@/shared/ui/Icons';
+} from '../Icons';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { DrawingMode } from '../../model/types/viewerSchema';
-import { classNames } from '@/shared/utils';
+import { classNames } from '../../utils/classNames';
 import classes from './ViewerMenu.module.scss';
 
 interface ViewerMenuProps {
@@ -69,7 +69,7 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
   }, [currentPage]);
 
   const navigateToEnteredPage = () => {
-    const pageNumber = parseInt(pageInputValue, 10);
+    const pageNumber = Number.parseInt(pageInputValue, 10);
     if (pageNumber && pageNumber >= 1 && pageNumber <= totalPages && onPageChange) {
       onPageChange(pageNumber);
     } else {
@@ -105,7 +105,7 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
   }, [comparePage]);
 
   const navigateToEnteredComparePage = () => {
-    const pageNumber = parseInt(comparePageInputValue, 10);
+    const pageNumber = Number.parseInt(comparePageInputValue, 10);
     if (pageNumber && pageNumber >= 1 && pageNumber <= totalComparePages && onComparePageChange) {
       onComparePageChange(pageNumber);
     } else {

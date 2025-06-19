@@ -34,6 +34,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
               <div style={{ margin: '20px', width: '80%' }}>
                 <h3>{this.state?.error?.message}</h3>
                 {this.state?.errorInfo?.componentStack?.split('\n').map((s, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
                   <div key={i}>{s}</div>
                 ))}
               </div>

@@ -98,10 +98,10 @@ export const renderTextLayer = async (textLayerRef: HTMLDivElement, page: PDFPag
 
             // Apply exact positioning based on the viewport transform
             // This ensures text is positioned exactly where it should be on the canvas
-            let left = tx[4];
+            const left = tx[4];
             // Adjust the top position to align text properly with the canvas
             // The fontHeight adjustment is critical for proper vertical alignment
-            let top = tx[5] - fontHeight;
+            const top = tx[5] - fontHeight;
 
             // Apply precise positioning with subpixel accuracy
             textDiv.style.left = `${left.toFixed(3)}px`;

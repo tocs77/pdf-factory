@@ -207,10 +207,10 @@ export const DrawAreaLayer = (props: DrawAreaLayerProps) => {
 
     // Calculate the bounding box of the current path
     // This ensures we use the actual path points rather than potentially incorrect state variables
-    let pathMinX = Infinity;
-    let pathMinY = Infinity;
-    let pathMaxX = -Infinity;
-    let pathMaxY = -Infinity;
+    let pathMinX = Number.POSITIVE_INFINITY;
+    let pathMinY = Number.POSITIVE_INFINITY;
+    let pathMaxX = Number.NEGATIVE_INFINITY;
+    let pathMaxY = Number.NEGATIVE_INFINITY;
 
     // Find the min/max coordinates from the current path
     currentPath.forEach((point) => {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { isSliderBeingDragged } from '@/shared/utils';
+import { isSliderBeingDragged } from '../utils/dragControl/dragControl';
 
 interface UseDragToScrollProps {
   containerRef: React.RefObject<HTMLDivElement>;

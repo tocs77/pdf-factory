@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState, useContext } from 'react';
 import type { PDFPageProxy, RenderTask } from 'pdfjs-dist';
 
-import { classNames } from '@/shared/utils';
-
+import { classNames } from '../../utils/classNames';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { Drawing } from '../../model/types/Drawings';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
@@ -48,7 +47,7 @@ export const ViewPage = ({
   const { state } = useContext(ViewerContext);
   const { drawingMode, pageRotations, scale, currentDrawingPage, isPinchZooming } = state;
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null!);
   const containerRef = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
   const [isCentered, setIsCentered] = useState(false);
@@ -489,10 +488,8 @@ export const ViewPage = ({
     const shouldResetRender = !hasRendered;
 
     if (shouldResetRender) {
-      let renderTimeout: NodeJS.Timeout;
-
       // Mark as rendered after a short delay to ensure canvas has fully drawn
-      renderTimeout = setTimeout(() => {
+      const renderTimeout = setTimeout(() => {
         setHasRendered(true);
       }, 500);
 

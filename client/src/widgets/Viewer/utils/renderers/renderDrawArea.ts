@@ -41,9 +41,9 @@ export const renderDrawArea = (
   let fillColor;
   if (strokeColor.startsWith('#')) {
     // Parse the hex color to get RGB values
-    const r = parseInt(strokeColor.slice(1, 3), 16);
-    const g = parseInt(strokeColor.slice(3, 5), 16);
-    const b = parseInt(strokeColor.slice(5, 7), 16);
+    const r = Number.parseInt(strokeColor.slice(1, 3), 16);
+    const g = Number.parseInt(strokeColor.slice(3, 5), 16);
+    const b = Number.parseInt(strokeColor.slice(5, 7), 16);
     fillColor = `rgba(${r}, ${g}, ${b}, 0.3)`;
   } else {
     // If not hex, assume it's already rgba and try to modify the alpha

@@ -149,19 +149,17 @@ export const DrawingMenu = () => {
                   onClick={() => changeOpacity(opacity)}
                   title={`Установить прозрачность: ${Math.round(opacity * 100)}%`}
                   aria-label={`Установить прозрачность: ${Math.round(opacity * 100)}%`}>
-                  <div 
-                    style={{ 
-                      width: '20px', 
-                      height: '16px', 
+                  <div
+                    style={{
+                      width: '20px',
+                      height: '16px',
                       backgroundColor: drawingColor,
                       opacity: opacity,
                       border: '1px solid #ccc',
-                      borderRadius: '2px'
+                      borderRadius: '2px',
                     }}
                   />
-                  <span style={{ fontSize: '10px', marginTop: '2px' }}>
-                    {Math.round(opacity * 100)}%
-                  </span>
+                  <span style={{ fontSize: '10px', marginTop: '2px' }}>{Math.round(opacity * 100)}%</span>
                 </button>
               ))}
             </div>

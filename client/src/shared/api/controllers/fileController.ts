@@ -6,7 +6,7 @@ class FileController {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      await instance.post(`upload`, formData);
+      await instance.post('/upload', formData);
       return { payload: undefined, type: 'payload' };
     } catch (error) {
       console.log('Got api load error: ', error);

@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState, useContext } from 'react';
 import type { PDFPageProxy } from 'pdfjs-dist';
 import { ViewerContext } from '../../model/context/viewerContext';
 import classes from './ComparePageSideBySide.module.scss';
-import { classNames } from '@/shared/utils';
-import { setSliderDragging, forceReleaseDrag } from '@/shared/utils';
+import { classNames } from '../../utils/classNames';
+import { setSliderDragging, forceReleaseDrag } from '../../utils/dragControl/dragControl';
 
 interface ComparePageSideBySideProps {
   page: PDFPageProxy;
@@ -201,7 +201,7 @@ export const ComparePageSideBySide: React.FC<ComparePageSideBySideProps> = ({
       event.stopPropagation();
 
       const rect = sideBySideContainerRef.current.getBoundingClientRect();
-      let newX = event.clientX - rect.left;
+      const newX = event.clientX - rect.left;
       let newSliderPosition = (newX / rect.width) * 100;
 
       // Clamp position between 0 and 100

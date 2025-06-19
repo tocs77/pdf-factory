@@ -1,7 +1,8 @@
 import { useContext, useEffect, useState, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import { PDFDocumentProxy, PDFPageProxy, getDocument } from 'pdfjs-dist';
 
-import { classNames, isSliderBeingDragged } from '@/shared/utils';
+import { classNames } from '../../utils/classNames';
+import { isSliderBeingDragged } from '../../utils/dragControl/dragControl';
 
 import { Thumbnail } from '../Thumbnail/Thumbnail';
 import { ViewerMenu } from '../ViewerMenu/ViewerMenu';
@@ -48,7 +49,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   const [comparePages, setComparePages] = useState<PDFPageProxy[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const pdfContainerRef = useRef<HTMLDivElement>(null);
+  const pdfContainerRef = useRef<HTMLDivElement>(null!);
 
   useEffect(() => {
     dispatch({ type: 'setIsMobile', payload: isMobile });

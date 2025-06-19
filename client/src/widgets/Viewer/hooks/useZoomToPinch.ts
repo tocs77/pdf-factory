@@ -112,12 +112,12 @@ export const useZoomToPinch = ({ scale, dispatch, containerRef, isEnabled }: Use
 
       // Handle pinch start/end detection
       if (first) {
-        console.log(`🤏 [Pinch Zoom] Pinch started - setting isPinchZooming = true`);
+        console.log('🤏 [Pinch Zoom] Pinch started - setting isPinchZooming = true');
         dispatch({ type: 'setIsPinchZooming', payload: true });
       }
 
       if (last) {
-        console.log(`🤏 [Pinch Zoom] Pinch ended - setting isPinchZooming = false`);
+        console.log('🤏 [Pinch Zoom] Pinch ended - setting isPinchZooming = false');
         dispatch({ type: 'setIsPinchZooming', payload: false });
       }
 
@@ -169,7 +169,7 @@ export const useZoomToPinch = ({ scale, dispatch, containerRef, isEnabled }: Use
       const zoomThreshold = 0.1; // Lower threshold since scale_offset is normalized
       const zoomSensitivity = 0.3 * ZOOM_SPEED; // Use ZOOM_SPEED to control zoom rate
 
-      console.log(`📊 [Pinch Zoom] Gesture analysis:`, {
+      console.log('📊 [Pinch Zoom] Gesture analysis:', {
         currentDistance: currentDistance.toFixed(3),
         distanceDelta: distanceDelta.toFixed(3),
         accumulatedDelta: memo.accumulatedDelta.toFixed(3),
@@ -216,7 +216,7 @@ export const useZoomToPinch = ({ scale, dispatch, containerRef, isEnabled }: Use
         };
 
         // Update scale
-        console.log(`🔍 [Pinch Zoom] Dispatching scale change:`, {
+        console.log('🔍 [Pinch Zoom] Dispatching scale change:', {
           oldScale: currentScale.toFixed(3),
           newScale: newScale.toFixed(3),
           scaleChange: scaleChange.toFixed(3),
