@@ -26,8 +26,8 @@ export const ComparePageSideBySide: React.FC<ComparePageSideBySideProps> = ({
   const { pageRotations, scale } = state;
 
   // Refs for canvases (primary and comparison)
-  const primaryCanvasRef = useRef<HTMLCanvasElement>(null);
-  const compareCanvasRef = useRef<HTMLCanvasElement>(null);
+  const primaryCanvasRef = useRef<HTMLCanvasElement>(null!);
+  const compareCanvasRef = useRef<HTMLCanvasElement>(null!);
   const containerRef = useRef<HTMLDivElement>(null); // Main container for observer
   const sideBySideContainerRef = useRef<HTMLDivElement>(null); // Container for the two canvases and slider
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -151,7 +151,7 @@ export const ComparePageSideBySide: React.FC<ComparePageSideBySideProps> = ({
     if (!ctx) return;
 
     ctx.scale(outputScale, outputScale);
-    const renderContext = { canvasContext: ctx, viewport: currentViewport };
+    const renderContext = { canvasContext: ctx, viewport: currentViewport, canvas: canvasRef.current };
 
     let renderTask: ReturnType<typeof pdfPage.render> | null = null;
     try {

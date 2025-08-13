@@ -21,7 +21,7 @@
 .textInputContainer {
   position: absolute;
   border: 2px solid #3498db;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: rgb(255 255 255 / 0.8);
   padding: 0;
   box-sizing: border-box;
   display: flex;
@@ -52,7 +52,7 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
 }
 
 .resizeHandle {
@@ -63,13 +63,13 @@
   height: 15px;
   background-color: #3498db;
   cursor: nwse-resize;
-  border-radius: 2px 0 0 0;
+  border-radius: 2px 0 0;
   z-index: 20;
   transform: translate(30%, 30%);
   border: 2px solid white;
-  box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 3px rgb(0 0 0 / 0.5);
 
-  &:before {
+  &::before {
     content: '';
     position: absolute;
     bottom: 3px;
@@ -80,7 +80,7 @@
     transform: rotate(45deg);
   }
 
-  &:after {
+  &::after {
     content: '';
     position: absolute;
     bottom: 6px;

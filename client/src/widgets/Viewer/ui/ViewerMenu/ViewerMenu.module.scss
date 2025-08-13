@@ -2,7 +2,6 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  background-color: white;
   display: flex;
   align-items: center;
   padding: 8px 16px;
@@ -11,10 +10,10 @@
   gap: 8px;
   width: 100%;
   box-sizing: border-box;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.1);
   justify-content: flex-start;
   backdrop-filter: blur(5px);
-  background-color: rgba(245, 245, 245, 0.95);
+  background-color: rgb(245 245 245 / 0.95);
   grid-area: menu;
 }
 
@@ -47,13 +46,13 @@
     height: 18px;
   }
 
-  &:hover:not(:disabled) {
-    background-color: #f0f0f0;
-  }
-
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  &:hover:not(:disabled) {
+    background-color: #f0f0f0;
   }
 }
 
@@ -80,7 +79,7 @@
   &:focus {
     outline: none;
     border-color: #2196f3;
-    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+    box-shadow: 0 0 0 2px rgb(33 150 243 / 0.2);
   }
 }
 
@@ -105,14 +104,14 @@
     height: 18px;
   }
 
-  &:hover:not(:disabled) {
-    background-color: #e9ecef;
-  }
-
   &:disabled {
     color: #adb5bd;
     background-color: #f8f9fa;
     cursor: not-allowed;
+  }
+
+  &:hover:not(:disabled) {
+    background-color: #e9ecef;
   }
 
   &.active {
@@ -126,6 +125,7 @@
   font-size: 0.95rem;
   color: #495057;
   min-width: 48px;
+
   /* Ensure space for percentage */
   text-align: center;
   padding: 0 0.25rem;
@@ -141,7 +141,7 @@
 .toolPanel {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 0.75rem;
   margin-left: auto;
 }
 
@@ -151,40 +151,46 @@
   gap: 4px;
 }
 
-/* Style for individual button groups */
-.toolGroup {
-  display: flex;
-  /* Make buttons in a group horizontal */
-  align-items: center;
-  gap: 4px;
-  /* Same gap as between individual buttons */
-}
-
 .toolButton {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  background-color: #f5f5f5;
+  padding: 6px 8px;
+  border: none;
+  background: none;
   cursor: pointer;
-  transition: all 0.2s;
+  color: #495057;
+  transition: background-color 0.2s ease, color 0.2s ease;
   font-size: 12px;
+  justify-content: center;
 
   &:hover {
-    background-color: #e0e0e0;
+    background-color: #e9ecef;
   }
 
   &.active {
-    background-color: #e3f2fd;
-    border-color: #2196f3;
-    color: #2196f3;
+    background-color: #e7f3ff;
+    color: #0078d4;
   }
 
   svg {
     width: 16px;
     height: 16px;
+  }
+}
+
+/* Style for individual button groups */
+.toolGroup {
+  display: flex;
+  align-items: center;
+  background-color: white;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  overflow: hidden;
+  gap: 4px;
+
+  .toolButton:not(:last-child) {
+    border-right: 1px solid #dee2e6;
   }
 }
 
@@ -213,14 +219,14 @@
   font-size: 12px;
   color: #f44336;
 
-  &:hover:not(:disabled) {
-    background-color: #ffebee;
-    border-color: #f44336;
-  }
-
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  &:hover:not(:disabled) {
+    background-color: #ffebee;
+    border-color: #f44336;
   }
 }
 
@@ -250,8 +256,10 @@
 
   &.active {
     color: #0078d4;
+
     /* Highlight when active */
     background-color: #e7f3ff;
+
     /* Lighter blue background */
   }
 }
@@ -292,17 +300,21 @@
   font-size: 0.95rem;
   color: #495057;
   min-width: 36px;
+
   /* Ensure space for degrees */
   text-align: center;
 }
 
 .separator {
   height: 20px;
+
   /* Adjust height to match button height */
   width: 1px;
   background-color: #ccc;
+
   /* Separator color */
   margin: 0 6px;
+
   /* Spacing around separator */
 }
 
@@ -310,22 +322,16 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+
   /* Spacing between main and compare inputs */
   padding: 0 0.5rem;
 }
 
 .pageSeparator {
   color: #adb5bd;
+
   /* Lighter color for separator */
   font-weight: bold;
-}
-
-.toolPanel {
-  margin-left: auto;
-  /* Push tool panel to the right */
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
 }
 
 .drawingOptions {
@@ -398,63 +404,5 @@
 
 .lineWidthPreview {
   background-color: #495057;
-  /* Match text color */
   width: 80%;
-}
-
-.separator {
-  width: 1px;
-  height: 24px;
-  /* Match button heights */
-  background-color: #dee2e6;
-  margin: 0 0.25rem;
-}
-
-.toolButtons {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  /* Tight spacing for tool buttons */
-}
-
-.toolGroup {
-  display: flex;
-  align-items: center;
-  background-color: white;
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
-  overflow: hidden;
-  /* Clip corners properly */
-
-  .toolButton:not(:last-child) {
-    border-right: 1px solid #dee2e6;
-    /* Separator line */
-  }
-}
-
-.toolButton {
-  /* Shared style for tool buttons */
-  background: none;
-  border: none;
-  padding: 6px 8px;
-  cursor: pointer;
-  color: #495057;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s ease, color 0.2s ease;
-
-  &:hover {
-    background-color: #e9ecef;
-  }
-
-  &.active {
-    background-color: #e7f3ff;
-    color: #0078d4;
-  }
-
-  svg {
-    width: 16px;
-    height: 16px;
-  }
 }

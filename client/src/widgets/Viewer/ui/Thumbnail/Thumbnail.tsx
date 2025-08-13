@@ -87,6 +87,7 @@ export const Thumbnail = (props: ThumbnailProps) => {
         const renderContext = {
           canvasContext: ctx,
           viewport,
+          canvas: canvas,
         };
 
         await page.render(renderContext).promise;

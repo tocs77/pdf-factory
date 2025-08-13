@@ -44,9 +44,9 @@ export const ComparePageDiff = ({
   const { pageRotations, scale } = state;
 
   // Refs for the canvases
-  const primaryCanvasRef = useRef<HTMLCanvasElement>(null); // Hidden canvas for main page rendering
-  const compareCanvasRef = useRef<HTMLCanvasElement>(null); // Hidden canvas for comparison page rendering
-  const resultCanvasRef = useRef<HTMLCanvasElement>(null); // Visible canvas showing the comparison result
+  const primaryCanvasRef = useRef<HTMLCanvasElement>(null!); // Hidden canvas for main page rendering
+  const compareCanvasRef = useRef<HTMLCanvasElement>(null!); // Hidden canvas for comparison page rendering
+  const resultCanvasRef = useRef<HTMLCanvasElement>(null!); // Visible canvas showing the comparison result
 
   // Refs for DOM elements
   const containerRef = useRef<HTMLDivElement>(null);
@@ -314,7 +314,7 @@ export const ComparePageDiff = ({
     const { ctx, scale: renderScale } = canvasSetup; // Use the scale returned by setupCanvas
     ctx.scale(renderScale, renderScale); // Apply scaling for rendering
 
-    const renderContext = { canvasContext: ctx, viewport: currentViewport };
+    const renderContext = { canvasContext: ctx, viewport: currentViewport, canvas: canvasRef.current };
 
     const render = async () => {
       try {

@@ -253,6 +253,7 @@ export const ViewPage = ({
       const renderContext = {
         canvasContext: ctx,
         viewport: currentViewport,
+        canvas: canvas,
       };
 
       // Render PDF page to the canvas

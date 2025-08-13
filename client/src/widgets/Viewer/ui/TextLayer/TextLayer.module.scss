@@ -23,41 +23,30 @@
     display: inline-block;
     cursor: text;
     letter-spacing: 0.02em;
+
     /* Base letter spacing */
     margin: 0;
+
     /* Ensure no margins cause selection issues */
     padding: 0;
+
     /* Base padding - actual padding applied in JS */
 
     /* Improve selection behavior */
     box-decoration-break: clone;
-    -webkit-box-decoration-break: clone;
     user-select: text;
 
     /* Make selection visible but allow partial selection */
     &::selection {
-      background-color: rgba(0, 100, 255, 0.5);
+      background-color: rgb(0 100 255 / 0.5);
       color: transparent;
       text-shadow: none;
       padding: 2px;
-      /* Global selection padding */
-      box-shadow: 0 0 2px rgba(0, 100, 255, 0.3);
-      /* Add subtle shadow to improve visibility */
-    }
-
-    /* Ensure selection is visible in Firefox */
-    &::-moz-selection {
-      background-color: rgba(0, 100, 255, 0.5);
-      color: transparent;
-      text-shadow: none;
-      padding: 2px;
-      /* Global selection padding */
-      box-shadow: 0 0 2px rgba(0, 100, 255, 0.3);
-      /* Add subtle shadow to improve visibility */
+      box-shadow: 0 0 2px rgb(0 100 255 / 0.3);
     }
 
     &:hover {
-      outline: 1px solid rgba(0, 0, 0, 0.1);
+      outline: 1px solid rgb(0 0 0 / 0.1);
     }
   }
 }
@@ -68,7 +57,7 @@
   top: 10px;
   left: 10px;
   font-size: 14px;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: rgb(255 255 255 / 0.8);
   padding: 5px;
   border-radius: 3px;
 }
@@ -81,7 +70,7 @@
   padding: 8px 16px;
   font-size: 14px;
   cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 5px rgb(0 0 0 / 0.2);
   transition: background-color 0.2s ease;
 
   &:hover {
@@ -101,15 +90,15 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgb(255 255 255 / 0.9);
   border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
   padding: 10px;
-  animation: fadeIn 0.2s ease forwards;
+  animation: fade-in 0.2s ease forwards;
   user-select: none;
 }
 
-@keyframes fadeIn {
+@keyframes fade-in {
   from {
     opacity: 0;
     transform: translateY(5px);
@@ -123,9 +112,5 @@
 
 /* Global selection styles */
 ::selection {
-  background-color: rgba(0, 100, 255, 0.5);
-}
-
-::-moz-selection {
-  background-color: rgba(0, 100, 255, 0.5);
+  background-color: rgb(0 100 255 / 0.5);
 }

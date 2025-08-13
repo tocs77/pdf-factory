@@ -3,13 +3,18 @@
   top: 0;
   left: 0;
   width: 100%;
+
   /* Ensure canvas covers the entire container */
   height: 100%;
+
   /* Ensure canvas covers the entire container */
   z-index: 10;
+
   /* Adjust z-index as needed */
   cursor: crosshair;
+
   /* Always show crosshair when active */
   touch-action: none;
+
   /* Disable default touch actions like scrolling */
 }

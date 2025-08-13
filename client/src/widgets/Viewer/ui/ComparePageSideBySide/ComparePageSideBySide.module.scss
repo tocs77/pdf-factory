@@ -1,28 +1,34 @@
 .pageHalf {
   position: absolute;
+
   /* Overlay pages */
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
+
   /* Clip content */
   background-color: #fff;
+
   /* Add background to prevent underlying page showing through transparent areas */
 
   &.comparePage {
     z-index: 1;
+
     /* Render compare page below */
   }
 
   &.primaryPage {
     z-index: 2;
+
     /* Render primary page above compare */
   }
 }
 
 .canvasContainer {
   position: relative;
+
   /* For potential absolute layers (text/drawing) */
   width: 100%;
   height: 100%;
@@ -33,37 +39,48 @@
 
 .pageContainer {
   position: relative;
+
   /* Needed for IntersectionObserver and absolute children */
   margin-bottom: 10px;
+
   /* Spacing between pages */
   overflow: hidden;
+
   /* Prevent content spill */
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 200px;
+
   /* Give it some initial size */
 }
 
 .sideBySideWrapper {
   position: relative;
+
   /* Anchor for absolute positioning of slider and page halves */
   overflow: hidden;
+
   /* Ensures clip-path works correctly */
   line-height: 0;
+
   /* Prevent extra space below canvases */
   margin: 0 auto;
+
   /* Center the wrapper if container is wider */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+
   /* Optional shadow */
 }
 
 .pageCanvas {
   display: block;
+
   /* Remove extra space */
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+
   /* Adjust as needed */
 }
 
@@ -83,17 +100,22 @@
   top: 0;
   bottom: 0;
   width: 15px;
+
   /* Increased from 5px for larger hit area */
   cursor: col-resize;
+
   /* Use horizontal resize cursor */
   z-index: 3;
+
   /* Above both page halves */
   transform: translateX(-50%);
+
   /* Center the handle on the line */
   display: flex;
   justify-content: center;
   align-items: center;
   touch-action: none;
+
   /* Prevent touch scrolling */
 
   &:active {
@@ -106,15 +128,20 @@
   top: 0;
   bottom: 0;
   left: 50%;
+
   /* Center line within handle */
   width: 2px;
+
   /* Line thickness - kept at 2px, handle width above is click area */
-  background-color: rgba(128, 128, 128, 0.5);
+  background-color: rgb(128 128 128 / 0.5);
+
   /* Grey with 50% opacity */
-  box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 3px rgb(0 0 0 / 0.5);
   transform: translateX(-50%);
+
   /* Center the line */
   pointer-events: none;
+
   /* Allow clicks to pass through to handle */
 }
 
