@@ -1,20 +1,11 @@
 .drawingMenuContainer {
-  position: fixed;
-  top: 100px;
-
-  /* Position below ViewerMenu's page navigation area */
-  left: 50%;
-  transform: translateX(-50%);
-  height: fit-content;
+  height: 4rem;
+  width:fit-content;
+  max-width: 95vw;
   background-color: white;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 0.1);
-  padding: 0 16px;
+  padding: 8px 16px;
   display: flex;
   align-items: center;
-  z-index: 90;
-
-  /* Below ViewerMenu z-index */
-  border-bottom: 1px solid #eee;
   box-sizing: border-box;
 }
 
@@ -22,9 +13,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  width: 100%;
   justify-content: flex-start;
-  height: 100%;
   flex-wrap: wrap;
 }
 
