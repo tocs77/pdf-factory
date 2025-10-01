@@ -2,8 +2,8 @@ import { useParams, useSearchParams } from 'react-router';
 import { useEffect, useRef, useState } from 'react';
 import { useAppSelector } from '@/shared/hooks';
 import { useGetFileBlobUrlQuery } from '@/entities/File';
-import { convertDrawingDtoToDrawing, convertDrawingToDrawingDto, PdfViewer, PdfViewerRef } from '@/widgets/Viewer';
-import { Drawing } from '@/widgets/Viewer';
+import { convertDrawingDtoToDrawing, convertDrawingToDrawingDto, PdfViewer, PdfViewerRef, Drawing } from '@/widgets/Viewer';
+
 import { useAppDispatch } from '@/shared/hooks';
 
 import { viewerPageActions } from '../model/slice/viewerPageSlice';

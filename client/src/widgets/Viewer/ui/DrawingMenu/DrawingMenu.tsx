@@ -1,6 +1,6 @@
 import { useContext, useState } from 'react';
 
-import { DraggableDialog } from '@/shared/UI/DraggableDialog';
+import { DraggableDialog } from '@/shared/ui/DraggableDialog';
 
 import { ViewerContext } from '../../model/context/viewerContext';
 import { isLightColor } from '../../utils/textToolUtils';

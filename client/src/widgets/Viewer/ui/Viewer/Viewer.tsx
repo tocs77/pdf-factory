@@ -32,6 +32,7 @@ interface PdfViewerProps {
   drawingCreated: (drawing: Omit<Drawing, 'id'>) => void;
   onDrawingClicked?: (id: string) => void;
   isMobile?: boolean;
+  viewOnly?: boolean;
 }
 
 // Type for page override mapping
@@ -39,7 +40,7 @@ type PageOverrides = Record<number, number>;
 
 // Internal viewer component that will be wrapped with the provider
 const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) => {
-  const { url, drawings, drawingCreated, compareUrl, onDrawingClicked, isMobile = false } = props;
+  const { url, drawings, drawingCreated, compareUrl, onDrawingClicked, isMobile = false, viewOnly = false } = props;
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, showThumbnails, compareMode, drawingMode, currentPage } = state;
 
@@ -54,6 +55,13 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   useEffect(() => {
     dispatch({ type: 'setIsMobile', payload: isMobile });
   }, [isMobile, dispatch]);
+
+  // Set drawing mode to 'none' when viewOnly is true
+  useEffect(() => {
+    if (viewOnly && drawingMode !== 'none') {
+      dispatch({ type: 'setDrawingMode', payload: 'none' });
+    }
+  }, [viewOnly, drawingMode, dispatch]);
 
   // State for comparison page overrides
   const [pageOverrides, setPageOverrides] = useState<PageOverrides>({});
@@ -400,6 +408,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
           comparePage={currentComparePageNum}
           totalComparePages={comparePages.length}
           onComparePageChange={handleComparePageChange}
+          viewOnly={viewOnly}
         />
 
         <div
