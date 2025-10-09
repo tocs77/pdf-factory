@@ -315,7 +315,7 @@ export const TextLayer = (props: TextLayerProps) => {
 
   // Handle cancel drawing request from DrawingMenu
   useEffect(() => {
-    if (requestCancelDrawing && hasSelection) {
+    if (requestCancelDrawing) {
       setHasSelection(false);
       dispatch({ type: 'setDrawingMode', payload: 'none' });
     }

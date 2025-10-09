@@ -511,7 +511,7 @@ export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
             }}
           />
           <button className={classes.finishButton} onClick={handleFinishDrawing}>
-            Finish
+            {'Завершить'}
           </button>
           <div className={classes.resizeHandle} onMouseDown={handleResizeStart} />
         </div>

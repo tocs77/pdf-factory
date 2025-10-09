@@ -41,6 +41,7 @@ export const ViewerContext = createContext<ViewerContextType>({
 });
 
 const drawingTools: DrawingMode[] = ['freehand', 'rectangle', 'extensionLine', 'line', 'textArea', 'image'];
+const textDrawingTools: DrawingMode[] = ['textHighlight', 'textUnderline', 'textCrossedOut'];
 
 // Reducer function to handle state updates
 export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema => {
@@ -80,7 +81,10 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
         ...state,
         drawingMode: action.payload,
         compareMode:
-          drawingTools.includes(action.payload) || action.payload === 'zoomArea' || action.payload === 'ruler'
+          drawingTools.includes(action.payload) ||
+          textDrawingTools.includes(action.payload) ||
+          action.payload === 'zoomArea' ||
+          action.payload === 'ruler'
             ? 'none'
             : state.compareMode,
         currentDrawingPage: currentDrawingPage,
