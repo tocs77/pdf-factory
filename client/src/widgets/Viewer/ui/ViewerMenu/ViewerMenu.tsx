@@ -38,6 +38,7 @@ interface ViewerMenuProps {
   totalComparePages?: number;
   onComparePageChange?: (pageNumber: number) => void;
   viewOnly?: boolean;
+  extendedControls?: React.ReactNode;
 }
 
 const DEBOUNCE_TIME = 1000;
@@ -52,9 +53,10 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
     totalComparePages = 0,
     onComparePageChange,
     viewOnly = false,
+    extendedControls,
   } = props;
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingMode, showThumbnails, pageRotations, compareMode } = state;
+  const { scale, drawingMode, showThumbnails, compareMode } = state;
 
   const [pageInputValue, setPageInputValue] = useState<string>(currentPage.toString());
   const mainPageDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -323,8 +325,6 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
     }
   };
 
-  const currentRotation = pageRotations[currentPage] || 0;
-
   return (
     <div className={classes.zoomControls}>
       <div className={classes.pageControls}>
@@ -392,7 +392,6 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
         <button onClick={rotatePageCounterClockwise} className={classes.rotationButton} title='Повернуть против часовой стрелки'>
           <RotateCcwIcon />
         </button>
-        <span className={classes.rotationInfo}>{currentRotation}°</span>
         <button onClick={rotatePageClockwise} className={classes.rotationButton} title='Повернуть по часовой стрелке'>
           <RotateCwIcon />
         </button>
@@ -429,6 +428,8 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
       <button onClick={resetZoom} className={classes.zoomButton} title='Сбросить масштаб'>
         Сбросить
       </button>
+
+      {extendedControls}
 
       {hasCompare && (
         <>

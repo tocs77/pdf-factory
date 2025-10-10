@@ -33,6 +33,7 @@ interface PdfViewerProps {
   onDrawingClicked?: (id: string) => void;
   isMobile?: boolean;
   viewOnly?: boolean;
+  extendedControls?: React.ReactNode;
 }
 
 // Type for page override mapping
@@ -40,7 +41,16 @@ type PageOverrides = Record<number, number>;
 
 // Internal viewer component that will be wrapped with the provider
 const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) => {
-  const { url, drawings, drawingCreated, compareUrl, onDrawingClicked, isMobile = false, viewOnly = false } = props;
+  const {
+    url,
+    drawings,
+    drawingCreated,
+    compareUrl,
+    onDrawingClicked,
+    isMobile = false,
+    viewOnly = false,
+    extendedControls,
+  } = props;
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, showThumbnails, compareMode, drawingMode, currentPage } = state;
 
@@ -409,6 +419,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
           totalComparePages={comparePages.length}
           onComparePageChange={handleComparePageChange}
           viewOnly={viewOnly}
+          extendedControls={extendedControls}
         />
 
         <div
