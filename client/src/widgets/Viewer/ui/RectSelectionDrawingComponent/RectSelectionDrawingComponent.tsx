@@ -214,7 +214,6 @@ const RectSelectionDrawingComponent = (props: RectSelectionDrawingComponentProps
       onMouseUp={endDrawing}
       onMouseLeave={endDrawing} // End drawing if mouse leaves canvas
       data-testid='rect-selection-canvas'
-      style={{ zIndex: 20 }} // Ensure it's above other drawing layers but potentially below UI elements
     />
   );
 };

@@ -369,9 +369,9 @@ export const ImageLayer = (props: ImageLayerProps) => {
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}>
           <div className={classes.dialogContent}>
-            <span className={classes.dialogText}>Paste image or</span>
+            <span className={classes.dialogText}>{'Вставьте картинку или'}</span>
             <button onClick={handleSelectFileClick} className={classes.dialogButton}>
-              Select file...
+              {'Выберите файл...'}
             </button>
           </div>
         </div>
