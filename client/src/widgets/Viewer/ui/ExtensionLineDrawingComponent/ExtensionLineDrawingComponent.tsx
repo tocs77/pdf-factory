@@ -1,11 +1,12 @@
-import React, { useEffect, useRef, useContext, useState } from 'react';
+import React, { useEffect, useRef, useContext, useState, useCallback } from 'react';
 
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
-import { Drawing } from '../../model/types/Drawings';
+import { Drawing, ExtensionLine } from '../../model/types/Drawings';
 import classes from './ExtensionLineDrawingComponent.module.scss';
-import { renderExtensionLine } from '../../utils/extensionLineRenderer';
+import { renderExtensionLine } from '../../utils/renderers/renderExtensionLine';
+import { calculateExtensionLineBoundingBox } from '../../utils/calculateExtensionLineBoundingBox';
 
 interface ExtensionLineDrawingComponentProps {
   pageNumber: number;
@@ -60,7 +61,7 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
     }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }, [scale, pageNumber, rotation]);
+  }, []);
 
   // Reset drawing state when switching pages or drawing modes
   useEffect(() => {
@@ -158,7 +159,52 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
     }
     if (!pendingDrawingData) return;
 
-    const { normalizedPinPoint, normalizedBendPoint, normalizedBoundingBox, image } = pendingDrawingData;
+    const { normalizedPinPoint, normalizedBendPoint, canvas, currentCoords, pinPointPosition } = pendingDrawingData;
+
+    // Create a temporary extension line object with current coordinates for bounding box calculation
+    const tempExtensionLine = {
+      position: pinPointPosition,
+      bendPoint: currentCoords,
+      text,
+    };
+
+    // Calculate the accurate bounding box including text
+    const ctx = canvas.getContext('2d');
+    const boundingBox = calculateExtensionLineBoundingBox(
+      tempExtensionLine as ExtensionLine,
+      canvas.width,
+      canvas.height,
+      ctx || undefined,
+    );
+
+    // Normalize the bounding box coordinates
+    const boundPointTopLeft = normalizeCoordinatesToZeroRotation(
+      { x: boundingBox.left, y: boundingBox.top },
+      canvas.width,
+      canvas.height,
+      scale,
+      rotation,
+    );
+    const boundPointBottomRight = normalizeCoordinatesToZeroRotation(
+      { x: boundingBox.left + boundingBox.width, y: boundingBox.top + boundingBox.height },
+      canvas.width,
+      canvas.height,
+      scale,
+      rotation,
+    );
+
+    const normalizedBoundingBox = {
+      left: boundPointTopLeft.x,
+      top: boundPointTopLeft.y,
+      right: boundPointBottomRight.x,
+      bottom: boundPointBottomRight.y,
+    };
+
+    // Capture the image with the accurate bounding box
+    let image;
+    if (!draftMode) {
+      image = captureDrawingImage(pdfCanvasRef?.current || null, canvas, boundingBox);
+    }
 
     // Create a new extension line object with normalized coordinates
     const newExtensionLine: Drawing = {
@@ -180,7 +226,7 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
     resetDrawingState();
   };
 
-  const resetDrawingState = () => {
+  const resetDrawingState = useCallback(() => {
     setPinPointPosition(null);
     setCurrentMousePosition(null);
     setDrawingStage('initial');
@@ -196,7 +242,7 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
     }
-  };
+  }, []);
 
   // Focus textarea when it appears
   useEffect(() => {
@@ -206,14 +252,17 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
   }, [showTextInput]);
 
   // Handle clicks outside text input (cancel drawing)
-  const handleOutsideClick = (e: MouseEvent) => {
-    const isOutsideClick =
-      showTextInput && textInputContainerRef.current && !textInputContainerRef.current.contains(e.target as Node);
+  const handleOutsideClick = useCallback(
+    (e: MouseEvent) => {
+      const isOutsideClick =
+        showTextInput && textInputContainerRef.current && !textInputContainerRef.current.contains(e.target as Node);
 
-    if (isOutsideClick) {
-      resetDrawingState();
-    }
-  };
+      if (isOutsideClick) {
+        resetDrawingState();
+      }
+    },
+    [showTextInput, resetDrawingState],
+  );
 
   // Add/remove outside click listener
   useEffect(() => {
@@ -226,7 +275,7 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick);
     };
-  }, [showTextInput]);
+  }, [showTextInput, handleOutsideClick]);
 
   // Handle clicks for pin placement
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -260,50 +309,14 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
 
       const normalizedBendPoint = normalizeCoordinatesToZeroRotation(coords, canvas.width, canvas.height, scale, rotation);
 
-      // Calculate the bounding box for image capture
-      // Expand the area around the extension line
-      const padding = 50; // Extension lines need more padding for the arrow
-      const boundingBox = {
-        left: Math.max(0, Math.min(pinPointPosition.x, coords.x) - padding),
-        top: Math.max(0, Math.min(pinPointPosition.y, coords.y) - padding),
-        width: Math.min(canvas.width, Math.abs(coords.x - pinPointPosition.x) + padding * 2),
-        height: Math.min(canvas.height, Math.abs(coords.y - pinPointPosition.y) + padding * 2),
-      };
-
-      const boundPointTopLeft = normalizeCoordinatesToZeroRotation(
-        { x: boundingBox.left, y: boundingBox.top },
-        canvas.width,
-        canvas.height,
-        scale,
-        rotation,
-      );
-      const boundPointBottomRight = normalizeCoordinatesToZeroRotation(
-        { x: boundingBox.left + boundingBox.width, y: boundingBox.top + boundingBox.height },
-        canvas.width,
-        canvas.height,
-        scale,
-        rotation,
-      );
-
-      const normalizedBoundingBox = {
-        left: boundPointTopLeft.x,
-        top: boundPointTopLeft.y,
-        right: boundPointBottomRight.x,
-        bottom: boundPointBottomRight.y,
-      };
-
-      // Capture the image only if not in draft mode
-      let image;
-      if (!draftMode) {
-        image = captureDrawingImage(pdfCanvasRef?.current || null, canvas, boundingBox);
-      }
-
-      // Store the drawing data temporarily
+      // Store the drawing data temporarily (without bounding box and image)
+      // These will be calculated in handleFinishDrawing with the final text
       setPendingDrawingData({
         normalizedPinPoint,
         normalizedBendPoint,
-        normalizedBoundingBox,
-        image,
+        canvas,
+        currentCoords: coords,
+        pinPointPosition,
       });
 
       // Set drawing stage to textInput and show text input

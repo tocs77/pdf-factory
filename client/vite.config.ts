@@ -16,6 +16,7 @@ export default defineConfig(({  mode }) => {
     },
     server: {
       port: Number(env.APP_URL),
+      strictPort: true,
       proxy: {
         '/api': {
           target: env.SERVER_URL,

@@ -1,4 +1,4 @@
-import { ExtensionLine } from '../model/types/Drawings';
+import { ExtensionLine } from '../../model/types/Drawings';
 
 // Constants for pin rendering
 const MAX_ARROW_HEAD_LENGTH = 15; // Maximum length of the arrow head

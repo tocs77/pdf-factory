@@ -12,7 +12,7 @@ import {
   renderTextArea,
   renderpinSelection,
 } from '../../utils/renderers';
-import { renderExtensionLine } from '../../utils/extensionLineRenderer';
+import { renderExtensionLine } from '../../utils/renderers/renderExtensionLine';
 import { Drawing, ImageAnnotation, DrawingMisc } from '../../model/types/Drawings';
 import styles from './CompleteDrawings.module.scss';
 
