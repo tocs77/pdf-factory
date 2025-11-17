@@ -219,6 +219,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
   // Load PDF document
   const loadPdf = useCallback(async (pdfUrl: string): Promise<PDFDocumentProxy | null> => {
+    if (!pdfUrl) return null;
     try {
       const loadingTask = getDocument(pdfUrl);
       return await loadingTask.promise;

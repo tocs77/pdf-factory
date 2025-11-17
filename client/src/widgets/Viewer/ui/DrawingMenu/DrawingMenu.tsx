@@ -1,6 +1,6 @@
 import { useContext, useState } from 'react';
 
-import { DraggableDialog } from '@/shared/ui/DraggableDialog';
+import { DraggableDialog } from '@/shared/UI/DraggableDialog';
 
 import { ViewerContext } from '../../model/context/viewerContext';
 import { isLightColor } from '../../utils/textToolUtils';
@@ -58,7 +58,7 @@ export const DrawingMenu = () => {
   // Line width options
   const lineWidthOptions = [1, 2, 3, 5, 8];
 
-  // Opacity options (25%, 50%, 75%, 100%)
+  // Opacity options: 75% transparency (0.25 opacity), 50% transparency (0.5 opacity), 25% transparency (0.75 opacity), 0% transparency (1.0 opacity - fully opaque)
   const opacityOptions = [0.25, 0.5, 0.75, 1];
 
   return (
@@ -153,26 +153,29 @@ export const DrawingMenu = () => {
             <div className={styles.opacityPicker}>
               <span>Прозрачность:</span>
               <div className={styles.opacityOptions}>
-                {opacityOptions.map((opacity) => (
-                  <button
-                    key={opacity}
-                    className={`${styles.opacityOption} ${opacity === drawingOpacity ? styles.active : ''}`}
-                    onClick={() => changeOpacity(opacity)}
-                    title={`Установить прозрачность: ${Math.round(opacity * 100)}%`}
-                    aria-label={`Установить прозрачность: ${Math.round(opacity * 100)}%`}>
-                    <div
-                      style={{
-                        width: '20px',
-                        height: '16px',
-                        backgroundColor: drawingColor,
-                        opacity: opacity,
-                        border: '1px solid #ccc',
-                        borderRadius: '2px',
-                      }}
-                    />
-                    <span style={{ fontSize: '10px', marginTop: '2px' }}>{Math.round(opacity * 100)}%</span>
-                  </button>
-                ))}
+                {opacityOptions.map((opacity) => {
+                  const transparencyPercent = Math.round((1 - opacity) * 100);
+                  return (
+                    <button
+                      key={opacity}
+                      className={`${styles.opacityOption} ${opacity === drawingOpacity ? styles.active : ''}`}
+                      onClick={() => changeOpacity(opacity)}
+                      title={`Установить прозрачность: ${transparencyPercent}%`}
+                      aria-label={`Установить прозрачность: ${transparencyPercent}%`}>
+                      <div
+                        style={{
+                          width: '20px',
+                          height: '16px',
+                          backgroundColor: drawingColor,
+                          opacity: opacity,
+                          border: '1px solid #ccc',
+                          borderRadius: '2px',
+                        }}
+                      />
+                      <span style={{ fontSize: '10px', marginTop: '2px' }}>{transparencyPercent}%</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
