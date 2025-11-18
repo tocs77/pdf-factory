@@ -369,7 +369,7 @@ export const ImageLayer = (props: ImageLayerProps) => {
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}>
           <div className={classes.dialogContent}>
-            <span className={classes.dialogText}>{'Вставьте картинку или'}</span>
+            <span className={classes.dialogText}>{'Вставьте картинку из буфера или'}</span>
             <button onClick={handleSelectFileClick} className={classes.dialogButton}>
               {'Выберите файл...'}
             </button>

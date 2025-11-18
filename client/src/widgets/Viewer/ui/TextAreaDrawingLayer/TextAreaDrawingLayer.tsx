@@ -502,7 +502,7 @@ export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
             className={classes.textInput}
             value={text}
             onChange={handleTextChange}
-            placeholder='Enter text here...'
+            placeholder='Введите текст...'
             style={{
               fontSize: `${Math.max(baseFontSize * scale, 8)}px`, // Use calculated font size
               fontFamily: 'Arial', // Match the font used in renderTextArea
