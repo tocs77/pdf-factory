@@ -5,13 +5,14 @@ import styles from './ZoomAreaLayer.module.scss';
 
 interface ZoomAreaLayerProps {
   pageNumber: number;
+  pdfCanvasRef?: React.RefObject<HTMLCanvasElement>;
 }
 
 /**
  * Component for handling zoom area selection
  */
 export const ZoomAreaLayer = (props: ZoomAreaLayerProps) => {
-  const { pageNumber } = props;
+  const { pageNumber, pdfCanvasRef } = props;
   const { state, dispatch } = useContext(ViewerContext);
   const { drawingMode, scale, pageRotations } = state;
 
@@ -38,31 +39,25 @@ export const ZoomAreaLayer = (props: ZoomAreaLayerProps) => {
     }
   }, [drawingMode]);
 
-  // Set up drawing canvas whenever rotation, scale, or page changes
+  // Set up drawing canvas to match PDF canvas dimensions
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || !pdfCanvasRef?.current) return;
 
     const canvas = canvasRef.current;
+    const pdfCanvas = pdfCanvasRef.current;
 
-    // Set canvas dimensions based on parent container
-    const parent = canvas.parentElement;
-    if (parent) {
-      // Use parent dimensions directly without any transforms
-      canvas.width = parent.clientWidth;
-      canvas.height = parent.clientHeight;
-    } else {
-      console.warn('No parent element found for canvas');
-    }
+    // Match canvas size to PDF canvas
+    canvas.width = pdfCanvas.width;
+    canvas.height = pdfCanvas.height;
 
-    // Clear canvas
+    // Scale context according to device pixel ratio
     const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      console.error('Could not get canvas context');
-      return;
+    if (ctx) {
+      const scaleFactor = pdfCanvas.width / pdfCanvas.clientWidth;
+      ctx.scale(scaleFactor, scaleFactor);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }, [scale, pageNumber, rotation]);
+  }, [pdfCanvasRef]);
 
   // Get raw coordinates relative to canvas
   const getRawCoordinates = (clientX: number, clientY: number): { x: number; y: number } => {
@@ -136,7 +131,8 @@ export const ZoomAreaLayer = (props: ZoomAreaLayerProps) => {
     }
 
     const canvas = canvasRef.current;
-    if (!canvas) {
+    const pdfCanvas = pdfCanvasRef?.current;
+    if (!canvas || !pdfCanvas) {
       return;
     }
 
@@ -163,19 +159,32 @@ export const ZoomAreaLayer = (props: ZoomAreaLayerProps) => {
     const selectionWidth = Math.abs(endPoint.x - startPoint.x);
     const selectionHeight = Math.abs(endPoint.y - startPoint.y);
 
-    // Calculate the new scale based on the selection and parent element size
-    const parentElement = canvas.parentElement;
+    // Calculate the selection center
+    const selectionCenterX = left + selectionWidth / 2;
+    const selectionCenterY = top + selectionHeight / 2;
+
+    // Calculate the new scale based on the selection and viewport size
+    const parentElement = pdfCanvas.parentElement;
     if (!parentElement) return;
 
-    const parentWidth = parentElement.clientWidth;
-    const parentHeight = parentElement.clientHeight;
+    const viewportWidth = parentElement.clientWidth;
+    const viewportHeight = parentElement.clientHeight;
 
     // Calculate the scale necessary to fit the selection to the viewport
-    const scaleX = parentWidth / selectionWidth;
-    const scaleY = parentHeight / selectionHeight;
+    const scaleX = viewportWidth / selectionWidth;
+    const scaleY = viewportHeight / selectionHeight;
 
     // Use the smaller scale to ensure the entire selection is visible
     const newScale = Math.min(scaleX, scaleY) * scale;
+
+    // Normalize selection center coordinates to scale 1 and 0 degrees rotation
+    const normalizedCenter = normalizeCoordinatesToZeroRotation(
+      { x: selectionCenterX, y: selectionCenterY },
+      pdfCanvas.clientWidth,
+      pdfCanvas.clientHeight,
+      scale,
+      rotation,
+    );
 
     // Find the scrollable container
     let scrollContainer: HTMLElement | null = parentElement;
@@ -187,70 +196,48 @@ export const ZoomAreaLayer = (props: ZoomAreaLayerProps) => {
       scrollContainer = scrollContainer.parentElement;
     }
 
-    if (scrollContainer) {
-      // Normalize coordinates to scale 1 and 0 degrees rotation
-      const normalizedStartPoint = normalizeCoordinatesToZeroRotation(
-        { x: left, y: top },
-        canvas.width,
-        canvas.height,
-        scale,
+    // Update the scale first
+    dispatch({ type: 'setScale', payload: newScale });
+
+    // After scale change, recalculate the coordinates and scroll
+    setTimeout(() => {
+      if (!scrollContainer || !pdfCanvasRef?.current) return;
+
+      const updatedPdfCanvas = pdfCanvasRef.current;
+
+      // Transform the normalized center back to current scale and rotation
+      const transformedCenter = transformCoordinates(
+        normalizedCenter.x,
+        normalizedCenter.y,
+        updatedPdfCanvas.clientWidth,
+        updatedPdfCanvas.clientHeight,
+        newScale,
         rotation,
       );
 
-      const normalizedEndPoint = normalizeCoordinatesToZeroRotation(
-        { x: left + selectionWidth, y: top + selectionHeight },
-        canvas.width,
-        canvas.height,
-        scale,
-        rotation,
-      );
+      // Get the canvas position on screen
+      const canvasRect = updatedPdfCanvas.getBoundingClientRect();
+      const canvasScreenX = canvasRect.left;
+      const canvasScreenY = canvasRect.top;
 
-      // Update the scale first
-      dispatch({ type: 'setScale', payload: newScale });
+      // Calculate the absolute position of the center point on screen
+      const centerScreenX = canvasScreenX + transformedCenter.x;
+      const centerScreenY = canvasScreenY + transformedCenter.y;
 
-      // After scale change, recalculate the coordinates
-      setTimeout(() => {
-        // Transform coordinates back to current scale and rotation
-        const transformedStartPoint = transformCoordinates(
-          normalizedStartPoint.x,
-          normalizedStartPoint.y,
-          canvas.width,
-          canvas.height,
-          newScale,
-          rotation,
-        );
+      // Get the container's current dimensions and position
+      const containerRect = scrollContainer.getBoundingClientRect();
 
-        const transformedEndPoint = transformCoordinates(
-          normalizedEndPoint.x,
-          normalizedEndPoint.y,
-          canvas.width,
-          canvas.height,
-          newScale,
-          rotation,
-        );
+      // Calculate the scroll positions to center the selected area in the viewport
+      const scrollLeft = scrollContainer.scrollLeft + (centerScreenX - containerRect.left) - containerRect.width / 2;
+      const scrollTop = scrollContainer.scrollTop + (centerScreenY - containerRect.top) - containerRect.height / 2;
 
-        // Calculate drawing dimensions and center point
-        const drawingWidth = transformedEndPoint.x - transformedStartPoint.x;
-        const drawingHeight = transformedEndPoint.y - transformedStartPoint.y;
-        const drawingCenterX = transformedStartPoint.x + drawingWidth / 2;
-        const drawingCenterY = transformedStartPoint.y + drawingHeight / 2;
-
-        // Get the container's current dimensions
-        const containerRect = scrollContainer?.getBoundingClientRect();
-        if (!containerRect || !scrollContainer) return;
-
-        // Calculate the scroll positions to center the selected area in the viewport
-        const scrollLeft = scrollContainer.scrollLeft + (drawingCenterX - containerRect.left) - containerRect.width / 2;
-        const scrollTop = scrollContainer.scrollTop + (drawingCenterY - containerRect.top) - containerRect.height / 2;
-
-        // Smooth scroll to center the drawing in both directions
-        scrollContainer.scrollTo({
-          left: scrollLeft,
-          top: scrollTop,
-          behavior: 'smooth',
-        });
-      }, 100);
-    }
+      // Smooth scroll to center the drawing in both directions
+      scrollContainer.scrollTo({
+        left: scrollLeft,
+        top: scrollTop,
+        behavior: 'smooth',
+      });
+    }, 100);
 
     // Reset state and turn off zoomArea mode
     setIsSelecting(false);

@@ -597,7 +597,7 @@ export const ViewPage = ({
               {drawingMode === 'drawArea' && (
                 <DrawAreaLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
               )}
-              {drawingMode === 'zoomArea' && <ZoomAreaLayer pageNumber={pageNumber} />}
+              {drawingMode === 'zoomArea' && <ZoomAreaLayer pageNumber={pageNumber} pdfCanvasRef={canvasRef} />}
 
               {drawingMode === 'ruler' && (
                 <RulerDrawingLayer pageNumber={pageNumber} pdfCanvasRef={canvasRef} enableSnapPoints={false} />
