@@ -27,8 +27,9 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const textInputContainerRef = useRef<HTMLDivElement>(null);
 
-  // States for tracking the multi-stage drawing process
-  const [drawingStage, setDrawingStage] = useState<'initial' | 'positioning' | 'textInput'>('initial');
+  // States for tracking the drawing process
+  const [drawingStage, setDrawingStage] = useState<'initial' | 'textInput'>('initial');
+  const [isDragging, setIsDragging] = useState(false);
   const [pinPointPosition, setPinPointPosition] = useState<{ x: number; y: number } | null>(null);
   const [currentMousePosition, setCurrentMousePosition] = useState<{ x: number; y: number } | null>(null);
 
@@ -68,6 +69,7 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
     setPinPointPosition(null);
     setCurrentMousePosition(null);
     setDrawingStage('initial');
+    setIsDragging(false);
     setShowTextInput(false);
     setText('');
   }, [pageNumber, drawingMode]);
@@ -101,8 +103,8 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
     // Clear the canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if ((drawingStage === 'positioning' || drawingStage === 'textInput') && currentMousePosition) {
-      // If we're in the positioning or textInput stage, draw a preview of the arrow
+    if ((isDragging || drawingStage === 'textInput') && currentMousePosition) {
+      // If we're dragging or in textInput stage, draw a preview of the arrow
       const previewExtensionLine = {
         id: '',
         type: 'extensionLine' as const,
@@ -122,7 +124,7 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
       // Draw the pin with the current mouse position as the bend point
       renderExtensionLine(ctx, previewExtensionLine, pinPointPosition.x, pinPointPosition.y);
     }
-  }, [pinPointPosition, currentMousePosition, drawingStage, drawingColor, pageNumber, text]);
+  }, [pinPointPosition, currentMousePosition, drawingStage, isDragging, drawingColor, pageNumber, text]);
 
   // Get raw coordinates relative to canvas
   const getRawCoordinates = (clientX: number, clientY: number): { x: number; y: number } => {
@@ -140,7 +142,7 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
 
   // Handle mouse movement
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (drawingStage !== 'positioning') return;
+    if (!isDragging) return;
 
     // Update current mouse position
     setCurrentMousePosition(getRawCoordinates(e.clientX, e.clientY));
@@ -230,6 +232,7 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
     setPinPointPosition(null);
     setCurrentMousePosition(null);
     setDrawingStage('initial');
+    setIsDragging(false);
     setPendingDrawingData(null);
     setShowTextInput(false);
     setText('');
@@ -277,60 +280,73 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
     };
   }, [showTextInput, handleOutsideClick]);
 
-  // Handle clicks for pin placement
-  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    // Only process clicks when in extension line drawing mode
+  // Handle mouse down to start drawing
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0) return; // Only react to left mouse button
     if (drawingMode !== 'extensionLine') return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // Only start drawing if we're in the initial stage
+    if (drawingStage !== 'initial') return;
+
     // Get click coordinates relative to canvas
     const coords = getRawCoordinates(e.clientX, e.clientY);
 
-    // If this is the first click, set the pin point position
-    if (drawingStage === 'initial') {
-      setPinPointPosition(coords);
-      setDrawingStage('positioning');
-    }
-    // If this is the second click, save the bend point position and create extension line
-    else if (drawingStage === 'positioning' && pinPointPosition) {
-      // Set the bend point position to current mouse position
-      setCurrentMousePosition(coords);
+    // Set the pin point position and start dragging
+    setPinPointPosition(coords);
+    setCurrentMousePosition(coords);
+    setIsDragging(true);
+  };
 
-      // Normalize the pin and bend points to scale 1 and 0 degrees rotation
-      const normalizedPinPoint = normalizeCoordinatesToZeroRotation(
-        pinPointPosition,
-        canvas.width,
-        canvas.height,
-        scale,
-        rotation,
-      );
+  // Handle mouse up to finish positioning and show text input
+  const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDragging || drawingMode !== 'extensionLine') return;
 
-      const normalizedBendPoint = normalizeCoordinatesToZeroRotation(coords, canvas.width, canvas.height, scale, rotation);
+    const canvas = canvasRef.current;
+    if (!canvas || !pinPointPosition) return;
 
-      // Store the drawing data temporarily (without bounding box and image)
-      // These will be calculated in handleFinishDrawing with the final text
-      setPendingDrawingData({
-        normalizedPinPoint,
-        normalizedBendPoint,
-        canvas,
-        currentCoords: coords,
-        pinPointPosition,
-      });
+    // Get final coordinates
+    const coords = getRawCoordinates(e.clientX, e.clientY);
 
-      // Set drawing stage to textInput and show text input
-      setDrawingStage('textInput');
-      setShowTextInput(true);
+    // Set the bend point position to current mouse position
+    setCurrentMousePosition(coords);
+
+    // Normalize the pin and bend points to scale 1 and 0 degrees rotation
+    const normalizedPinPoint = normalizeCoordinatesToZeroRotation(pinPointPosition, canvas.width, canvas.height, scale, rotation);
+
+    const normalizedBendPoint = normalizeCoordinatesToZeroRotation(coords, canvas.width, canvas.height, scale, rotation);
+
+    // Store the drawing data temporarily (without bounding box and image)
+    // These will be calculated in handleFinishDrawing with the final text
+    setPendingDrawingData({
+      normalizedPinPoint,
+      normalizedBendPoint,
+      canvas,
+      currentCoords: coords,
+      pinPointPosition,
+    });
+
+    // Stop dragging and show text input
+    setIsDragging(false);
+    setDrawingStage('textInput');
+    setShowTextInput(true);
+  };
+
+  // Handle mouse leave to cancel drawing if dragging
+  const handleMouseLeave = () => {
+    if (isDragging) {
+      resetDrawingState();
     }
   };
 
   // Handle keyboard events for accessibility
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Trigger click handler when Enter or Space is pressed
-    if (e.key === 'Enter' || e.key === ' ') {
+    // Escape key cancels current drawing
+    if (e.key === 'Escape' && (isDragging || drawingStage === 'textInput')) {
       e.preventDefault();
-      handleClick(e as unknown as React.MouseEvent<HTMLCanvasElement>);
+      resetDrawingState();
     }
   };
 
@@ -339,8 +355,10 @@ export const ExtensionLineDrawingComponent = (props: ExtensionLineDrawingCompone
       <canvas
         ref={canvasRef}
         className={classes.extensionLineCanvas}
-        onClick={handleClick}
+        onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
         onKeyDown={handleKeyDown}
         tabIndex={0} // Make canvas focusable
         data-testid='extensionLine-drawing-canvas'
