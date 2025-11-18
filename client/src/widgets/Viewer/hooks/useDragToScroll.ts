@@ -13,6 +13,7 @@ export const useDragToScroll = ({ containerRef, isEnabled, isMobile = false }: U
   const dragStartYRef = useRef(0);
   const scrollStartXRef = useRef(0);
   const scrollStartYRef = useRef(0);
+  const dragButtonRef = useRef<number | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -47,10 +48,10 @@ export const useDragToScroll = ({ containerRef, isEnabled, isMobile = false }: U
         return; // Ignore drag initiation for specifically marked elements
       }
 
-      // Check conditions again: enabled, primary button, no ctrl, not slider
+      // Check conditions again: enabled, left or middle button, no ctrl, not slider
       if (
         !isEnabled || // Check isEnabled flag again inside handler
-        e.button !== 0 ||
+        (e.button !== 0 && e.button !== 1) || // Allow left (0) or middle (1) mouse button
         e.ctrlKey ||
         isSliderBeingDragged() ||
         document.body.classList.contains('slider-dragging') ||
@@ -71,6 +72,7 @@ export const useDragToScroll = ({ containerRef, isEnabled, isMobile = false }: U
       // If we get here, initiate drag
       dragStartXRef.current = e.clientX;
       dragStartYRef.current = e.clientY;
+      dragButtonRef.current = e.button; // Store which button initiated the drag
       // Read scroll position directly from containerRef.current
       scrollStartXRef.current = containerRef.current.scrollLeft;
       scrollStartYRef.current = containerRef.current.scrollTop;
@@ -91,9 +93,11 @@ export const useDragToScroll = ({ containerRef, isEnabled, isMobile = false }: U
       };
 
       const handleMouseUp = (upEvent: MouseEvent) => {
-        if (upEvent.button !== 0) return;
+        // Only handle mouseup for the button that initiated the drag
+        if (upEvent.button !== dragButtonRef.current) return;
 
         setIsDragging(false);
+        dragButtonRef.current = null; // Reset the button ref
         // Set cursor back to grab only if the hook is still enabled and container exists
         if (isEnabled && containerRef.current) {
           containerRef.current.style.cursor = 'grab';
