@@ -15,14 +15,21 @@ interface UseZoomToMouseProps {
   scale: number;
   dispatch: React.Dispatch<Action>;
   containerRef: React.RefObject<HTMLDivElement>;
+  zoomWithCtrl: boolean;
 }
 
-export const useZoomToMouse = ({ scale, dispatch, containerRef }: UseZoomToMouseProps) => {
+export const useZoomToMouse = ({ scale, dispatch, containerRef, zoomWithCtrl }: UseZoomToMouseProps) => {
   // Use ref to track scale without recreating event listeners
   const scaleRef = useRef(scale);
   useEffect(() => {
     scaleRef.current = scale;
   }, [scale]);
+
+  // Use ref to track zoomWithCtrl without recreating event listeners
+  const zoomWithCtrlRef = useRef(zoomWithCtrl);
+  useEffect(() => {
+    zoomWithCtrlRef.current = zoomWithCtrl;
+  }, [zoomWithCtrl]);
 
   // Add a lock to prevent concurrent zoom operations
   const isZoomingRef = useRef(false);
@@ -132,7 +139,10 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef }: UseZoomToMouse
   // Prevent browser zoom on Ctrl+wheel globally
   useEffect(() => {
     const preventBrowserZoom = (e: WheelEvent) => {
-      if (e.ctrlKey) {
+      // Check if zoom should be triggered based on zoomWithCtrl setting
+      const shouldZoom = zoomWithCtrlRef.current ? e.ctrlKey : true;
+
+      if (shouldZoom) {
         e.preventDefault();
         e.stopPropagation();
 

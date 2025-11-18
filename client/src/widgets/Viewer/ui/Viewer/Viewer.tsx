@@ -52,7 +52,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     extendedControls,
   } = props;
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, showThumbnails, compareMode, drawingMode, currentPage } = state;
+  const { scale, showThumbnails, compareMode, drawingMode, currentPage, zoomWithCtrl } = state;
 
   const [pdfRef, setPdfRef] = useState<PDFDocumentProxy | null>(null);
   const [comparePdfRef, setComparePdfRef] = useState<PDFDocumentProxy | null>(null);
@@ -127,7 +127,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   });
 
   // Setup zoom functionality using the custom hook
-  useZoomToMouse({ scale, dispatch, containerRef: pdfContainerRef });
+  useZoomToMouse({ scale, dispatch, containerRef: pdfContainerRef, zoomWithCtrl });
 
   // Setup pinch zoom functionality for mobile using the custom hook
   const { bind: pinchBind } = useZoomToPinch({

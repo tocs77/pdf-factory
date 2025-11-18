@@ -48,6 +48,7 @@ export interface ViewerSchema {
   isMobile: boolean;
   isPinchZooming: boolean;
   isWheelZooming: boolean; // Track if user is actively zooming with wheel
+  zoomWithCtrl: boolean; // Whether to require Ctrl key for wheel zoom
 }
 
 // Action types using discriminated unions
@@ -102,6 +103,11 @@ type SetIsWheelZoomingAction = {
   payload: boolean;
 };
 
+type SetZoomWithCtrlAction = {
+  type: 'setZoomWithCtrl';
+  payload: boolean;
+};
+
 export type IsDraftDrawing = boolean;
 // Remove obsolete toggleCompareMode action type
 export type Action =
@@ -126,4 +132,5 @@ export type Action =
   | SetCurrentPageAction
   | SetIsMobileAction
   | SetIsPinchZoomingAction
-  | SetIsWheelZoomingAction;
+  | SetIsWheelZoomingAction
+  | SetZoomWithCtrlAction;

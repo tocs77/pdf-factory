@@ -56,7 +56,7 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
     extendedControls,
   } = props;
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingMode, showThumbnails, compareMode } = state;
+  const { scale, drawingMode, showThumbnails, compareMode, zoomWithCtrl } = state;
 
   const [pageInputValue, setPageInputValue] = useState<string>(currentPage.toString());
   const mainPageDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -428,6 +428,15 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
       <button onClick={resetZoom} className={classes.zoomButton} title='Сбросить масштаб'>
         Сбросить
       </button>
+
+      <label className={classes.zoomCheckbox} title='Масштабирование колесиком мыши только с клавишей Ctrl'>
+        <input
+          type='checkbox'
+          checked={zoomWithCtrl}
+          onChange={(e) => dispatch({ type: 'setZoomWithCtrl', payload: e.target.checked })}
+        />
+        <span>Масштаб с Ctrl</span>
+      </label>
 
       {extendedControls}
 
