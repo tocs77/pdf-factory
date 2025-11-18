@@ -45,7 +45,7 @@ export const ViewPage = ({
   selectedPage,
 }: ViewPageProps) => {
   const { state } = useContext(ViewerContext);
-  const { drawingMode, pageRotations, scale, currentDrawingPage, isPinchZooming } = state;
+  const { drawingMode, pageRotations, scale, currentDrawingPage, isPinchZooming, isWheelZooming } = state;
 
   const canvasRef = useRef<HTMLCanvasElement>(null!);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -364,10 +364,10 @@ export const ViewPage = ({
         // Only do a full render if:
         // 1. Never rendered before, OR
         // 2. No high quality canvas available, OR
-        // 3. Scale difference exceeds threshold AND not currently pinch zooming, OR
+        // 3. Scale difference exceeds threshold AND not currently pinch/wheel zooming, OR
         // 4. Rotation changed
         !highQualityCanvasRef.current ||
-        (scaleDifference > SCALE_THRESHOLD && !isPinchZooming) ||
+        (scaleDifference > SCALE_THRESHOLD && !isPinchZooming && !isWheelZooming) ||
         rotationChanged
       ) {
         // Update the rotation ref
@@ -381,7 +381,7 @@ export const ViewPage = ({
     };
 
     handleRenderOrUpdate();
-  }, [page, rotation, scale, pageNumber, selectedPage, inView, baseScale, isPinchZooming]);
+  }, [page, rotation, scale, pageNumber, selectedPage, inView, baseScale, isPinchZooming, isWheelZooming]);
 
   // Re-render when rotation changes
   useEffect(() => {

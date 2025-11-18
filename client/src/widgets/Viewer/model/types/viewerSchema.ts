@@ -47,6 +47,7 @@ export interface ViewerSchema {
   calibration: CalibrationSettings;
   isMobile: boolean;
   isPinchZooming: boolean;
+  isWheelZooming: boolean; // Track if user is actively zooming with wheel
 }
 
 // Action types using discriminated unions
@@ -96,6 +97,11 @@ type SetIsPinchZoomingAction = {
   payload: boolean;
 };
 
+type SetIsWheelZoomingAction = {
+  type: 'setIsWheelZooming';
+  payload: boolean;
+};
+
 export type IsDraftDrawing = boolean;
 // Remove obsolete toggleCompareMode action type
 export type Action =
@@ -119,4 +125,5 @@ export type Action =
   | ResetCalibrationAction
   | SetCurrentPageAction
   | SetIsMobileAction
-  | SetIsPinchZoomingAction;
+  | SetIsPinchZoomingAction
+  | SetIsWheelZoomingAction;

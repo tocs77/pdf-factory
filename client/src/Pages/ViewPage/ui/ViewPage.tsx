@@ -24,7 +24,6 @@ const detectTouchscreen = (): boolean => {
   const hasPointerCoarse = window.matchMedia?.('(pointer: coarse)').matches;
 
   // Device is considered touchscreen if it has touch capabilities
-  console.log(hasTouchStart, hasMaxTouchPoints, hasPointerCoarse);
   return hasTouchStart || hasMaxTouchPoints || hasPointerCoarse;
 };
 

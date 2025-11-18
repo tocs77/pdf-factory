@@ -32,6 +32,7 @@ export const initialViewerState: ViewerSchema = {
   },
   isMobile: false,
   isPinchZooming: false,
+  isWheelZooming: false,
 };
 
 // Create the context with default values
@@ -212,6 +213,11 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
       return {
         ...state,
         isPinchZooming: action.payload,
+      };
+    case 'setIsWheelZooming':
+      return {
+        ...state,
+        isWheelZooming: action.payload,
       };
     default:
       return state;
