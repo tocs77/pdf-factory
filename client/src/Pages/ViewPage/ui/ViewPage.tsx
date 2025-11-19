@@ -42,11 +42,13 @@ export const ViewPage = () => {
   const [createDrawing] = useCreateDrawingMutation();
   const [deleteDrawing] = useDeleteDrawingMutation();
   const [deleteAllDrawings] = useDeleteDrawingsByFileMutation();
+  console.log(isMobile);
 
   // Detect touchscreen capability on component mount
   useEffect(() => {
-    const touchscreenDetected = detectTouchscreen();
-    setIsMobile(touchscreenDetected);
+    detectTouchscreen();
+    //setIsMobile(touchscreenDetected);
+    setIsMobile(isMobile);
   }, []);
 
   useEffect(() => {

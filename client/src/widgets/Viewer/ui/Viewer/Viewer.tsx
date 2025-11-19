@@ -8,6 +8,7 @@ import { Thumbnail } from '../Thumbnail/Thumbnail';
 import { ViewerMenu } from '../ViewerMenu/ViewerMenu';
 import { Page } from '../Page/Page';
 import { DrawingMenu } from '../DrawingMenu/DrawingMenu';
+import { DrawingMenuMobile } from '../DrawingMenuMobile';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { ViewerProvider } from '../../model/context/ViewerProvider';
 import { scrollToPage } from '../../utils/pageScrollUtils';
@@ -437,7 +438,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
           }}>
           <div className={classes.pdfContentWrapper}>{renderPages()}</div>
 
-          {drawingMode !== 'none' && drawingMode !== 'zoomArea' && <DrawingMenu />}
+          {drawingMode !== 'none' && drawingMode !== 'zoomArea' && (isMobile ? <DrawingMenuMobile /> : <DrawingMenu />)}
         </div>
       </div>
     </div>
