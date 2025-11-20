@@ -1,0 +1,62 @@
+.toolPanel {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.toolButtons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #495057;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  font-size: 12px;
+  justify-content: center;
+
+  &:hover {
+    background-color: #e9ecef;
+  }
+
+  &.active {
+    background-color: #e7f3ff;
+    color: #0078d4;
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.toolGroup {
+  display: flex;
+  align-items: center;
+  background-color: white;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  overflow: hidden;
+  gap: 4px;
+
+  .toolButton:not(:last-child) {
+    border-right: 1px solid #dee2e6;
+  }
+}
+
+.separator {
+  height: 20px;
+  width: 1px;
+  background-color: #ccc;
+  margin: 0 6px;
+}
+
