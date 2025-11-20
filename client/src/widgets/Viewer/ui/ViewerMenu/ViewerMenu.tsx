@@ -64,6 +64,7 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
 
   const zoomIn = () => dispatch({ type: 'setScale', payload: scale + 0.25 });
   const zoomOut = () => dispatch({ type: 'setScale', payload: scale - 0.25 });
+  console.log('view only', viewOnly);
 
   const rotatePageClockwise = () => {
     // Prevent rapid clicks by checking if rotation is already in progress
