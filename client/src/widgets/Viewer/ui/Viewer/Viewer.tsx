@@ -422,6 +422,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
           onComparePageChange={handleComparePageChange}
           viewOnly={viewOnly}
           extendedControls={extendedControls}
+          mobile={isMobile}
         />
 
         <div

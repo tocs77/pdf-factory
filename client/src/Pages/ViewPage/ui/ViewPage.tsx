@@ -32,7 +32,7 @@ export const ViewPage = () => {
   const [searchParams] = useSearchParams();
   const compare = searchParams.get('compare');
   const dispatch = useAppDispatch();
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(true);
   const { data: fileBlobUrl, isLoading } = useGetFileBlobUrlQuery(id || '');
   const { data: compareFileBlobUrl, isLoading: isCompareLoading } = useGetFileBlobUrlQuery(compare || '', { skip: !compare });
   const drawings = useAppSelector(viewerPageSelectors.getDrawings);
@@ -42,7 +42,6 @@ export const ViewPage = () => {
   const [createDrawing] = useCreateDrawingMutation();
   const [deleteDrawing] = useDeleteDrawingMutation();
   const [deleteAllDrawings] = useDeleteDrawingsByFileMutation();
-  console.log(isMobile);
 
   // Detect touchscreen capability on component mount
   useEffect(() => {

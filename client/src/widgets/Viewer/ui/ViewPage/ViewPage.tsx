@@ -589,14 +589,16 @@ export const ViewPage = ({
             )}
 
           {/* Drawing components - only render when respective tool is selected */}
+          {(currentDrawingPage === 0 || currentDrawingPage === -1 || currentDrawingPage === pageNumber) && (
+            <DraftLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
+          )}
+          {drawingMode === 'drawArea' &&
+            (currentDrawingPage === 0 || currentDrawingPage === -1 || currentDrawingPage === pageNumber) && (
+              <DrawAreaLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
+            )}
+
           {inView && (
             <>
-              {(currentDrawingPage === 0 || currentDrawingPage === pageNumber) && (
-                <DraftLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
-              )}
-              {drawingMode === 'drawArea' && (
-                <DrawAreaLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
-              )}
               {drawingMode === 'zoomArea' && <ZoomAreaLayer pageNumber={pageNumber} pdfCanvasRef={canvasRef} />}
 
               {drawingMode === 'ruler' && (
@@ -623,7 +625,7 @@ export const ViewPage = ({
             </>
           )}
 
-          {inView && <CompleteDrawings pageNumber={pageNumber} drawings={drawings} />}
+          <CompleteDrawings pageNumber={pageNumber} drawings={drawings} />
         </div>
       </div>
     </div>

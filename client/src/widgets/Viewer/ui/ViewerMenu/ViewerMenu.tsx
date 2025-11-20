@@ -30,6 +30,7 @@ interface ViewerMenuProps {
   onComparePageChange?: (pageNumber: number) => void;
   viewOnly?: boolean;
   extendedControls?: React.ReactNode;
+  mobile: boolean;
 }
 
 export const ViewerMenu = (props: ViewerMenuProps) => {
@@ -43,6 +44,7 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
     onComparePageChange,
     viewOnly = false,
     extendedControls,
+    mobile,
   } = props;
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, drawingMode, showThumbnails, compareMode, zoomWithCtrl } = state;
@@ -212,14 +214,12 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
         totalComparePages={totalComparePages}
         onComparePageChange={onComparePageChange}
       />
-
       <button
         className={classNames(classes.thumbnailToggle, { [classes.active]: showThumbnails }, [])}
         onClick={() => dispatch({ type: 'toggleThumbnails' })}
         title={showThumbnails ? 'Скрыть миниатюры' : 'Показать миниатюры'}>
         <ThumbnailToggleIcon />
       </button>
-
       <div className={classes.rotationControls}>
         <button onClick={rotatePageCounterClockwise} className={classes.rotationButton} title='Повернуть против часовой стрелки'>
           <RotateCcwIcon />
@@ -228,7 +228,6 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
           <RotateCwIcon />
         </button>
       </div>
-
       <button onClick={zoomOut} className={classes.zoomButton} title='Уменьшить масштаб'>
         <ZoomOutIcon />
       </button>
@@ -236,7 +235,6 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
       <button onClick={zoomIn} className={classes.zoomButton} title='Увеличить масштаб'>
         <ZoomInIcon />
       </button>
-
       {!viewOnly && (
         <button
           onClick={() => changeDrawingMode('zoomArea')}
@@ -246,7 +244,6 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
           <ZoomAreaIcon />
         </button>
       )}
-
       {!viewOnly && (
         <button
           onClick={toggleRuler}
@@ -256,18 +253,18 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
           <RulerIcon />
         </button>
       )}
-
-      <label className={classes.zoomCheckbox} title='Масштабирование колесиком мыши только с клавишей Ctrl'>
-        <input
-          type='checkbox'
-          checked={zoomWithCtrl}
-          onChange={(e) => dispatch({ type: 'setZoomWithCtrl', payload: e.target.checked })}
-        />
-        <span>Масштаб с Ctrl</span>
-      </label>
+      {!mobile && (
+        <label className={classes.zoomCheckbox} title='Масштабирование колесиком мыши только с клавишей Ctrl'>
+          <input
+            type='checkbox'
+            checked={zoomWithCtrl}
+            onChange={(e) => dispatch({ type: 'setZoomWithCtrl', payload: e.target.checked })}
+          />
+          <span>Масштаб с Ctrl</span>
+        </label>
+      )}
 
       {extendedControls}
-
       {hasCompare && (
         <>
           {/* Diff Compare Button */}
@@ -296,7 +293,6 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
           </button>
         </>
       )}
-
       {!viewOnly && <ToolsPanel />}
     </div>
   );

@@ -55,10 +55,6 @@ export const ToolsPanel = () => {
 
   return (
     <div className={classes.toolPanel}>
-      {drawingMode !== 'none' && drawingMode !== 'zoomArea' && drawingMode !== 'ruler' && drawingMode !== 'pinSelection' && (
-        <div className={classes.separator}></div>
-      )}
-
       <div className={classes.toolButtons}>
         <div className={classes.toolGroup}>
           <button

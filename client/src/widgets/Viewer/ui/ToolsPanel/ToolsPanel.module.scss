@@ -3,12 +3,14 @@
   align-items: center;
   gap: 0.75rem;
   margin-left: auto;
+  flex-wrap: wrap;
 }
 
 .toolButtons {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-wrap: wrap;
 }
 
 .toolButton {
