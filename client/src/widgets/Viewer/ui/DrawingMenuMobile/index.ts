@@ -1,2 +1,1 @@
 export { DrawingMenuMobile } from './DrawingMenuMobile';
-

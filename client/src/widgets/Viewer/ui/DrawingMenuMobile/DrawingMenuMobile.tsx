@@ -25,7 +25,7 @@ export const DrawingMenuMobile = () => {
   const widthButtonRef = useRef<HTMLButtonElement>(null);
   const opacityButtonRef = useRef<HTMLButtonElement>(null);
 
-  const getDropdownPosition = (buttonRef: React.RefObject<HTMLButtonElement>) => {
+  const getDropdownPosition = (buttonRef: React.RefObject<HTMLButtonElement | null>) => {
     if (!buttonRef.current) return { top: 0, left: 0 };
     const rect = buttonRef.current.getBoundingClientRect();
     // Offset by padding to align content with button
