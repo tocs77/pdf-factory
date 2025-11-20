@@ -48,16 +48,16 @@ const PinSelectionDrawingComponent = (props: PinSelectionDrawingComponentProps) 
     return { x, y };
   };
 
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (e.button !== 0 || drawingMode !== 'pinSelection' || !canvasRef.current || !pdfCanvasRef?.current) {
-      return; // Only left button, correct mode, and refs available
+  const createPinSelection = (clientX: number, clientY: number) => {
+    if (drawingMode !== 'pinSelection' || !canvasRef.current || !pdfCanvasRef?.current) {
+      return; // Correct mode and refs available
     }
 
     const canvas = canvasRef.current;
     const pdfCanvas = pdfCanvasRef.current;
 
     // 1. Get click coordinates
-    const clickPoint = getRawCoordinates(e.clientX, e.clientY);
+    const clickPoint = getRawCoordinates(clientX, clientY);
 
     // 2. Calculate initial capture area (centered around click point)
     let captureLeft = clickPoint.x - CAPTURE_AREA_WIDTH / 2;
@@ -135,11 +135,32 @@ const PinSelectionDrawingComponent = (props: PinSelectionDrawingComponentProps) 
     // dispatch({ type: 'setDrawingMode', payload: 'none' });
   };
 
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0) {
+      return; // Only left button
+    }
+    createPinSelection(e.clientX, e.clientY);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    // Prevent default to avoid mouse events firing after touch
+    e.preventDefault();
+
+    // Only handle single touch
+    if (e.changedTouches.length !== 1) {
+      return;
+    }
+
+    const touch = e.changedTouches[0];
+    createPinSelection(touch.clientX, touch.clientY);
+  };
+
   return (
     <canvas
       ref={canvasRef}
       className={styles.drawingCanvas} // Apply cursor style
-      onClick={handleCanvasClick} // Use onClick for simplicity
+      onClick={handleCanvasClick}
+      onTouchEnd={handleTouchEnd}
       data-testid='pin-selection-canvas'
     />
   );

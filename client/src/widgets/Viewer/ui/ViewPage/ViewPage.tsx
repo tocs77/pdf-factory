@@ -596,6 +596,24 @@ export const ViewPage = ({
             (currentDrawingPage === 0 || currentDrawingPage === -1 || currentDrawingPage === pageNumber) && (
               <DrawAreaLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
             )}
+          {/* Add rectSelection Layer */}
+          {drawingMode === 'rectSelection' && (
+            <RectSelectionDrawingComponent
+              pageNumber={pageNumber}
+              onDrawingCreated={handleDrawingCreated}
+              pdfCanvasRef={canvasRef}
+            />
+          )}
+
+          {/* Add pinSelection Layer */}
+          {drawingMode === 'pinSelection' &&
+            (currentDrawingPage === 0 || currentDrawingPage === -1 || currentDrawingPage === pageNumber) && (
+              <PinSelectionDrawingComponent
+                pageNumber={pageNumber}
+                onDrawingCreated={handleDrawingCreated}
+                pdfCanvasRef={canvasRef}
+              />
+            )}
 
           {inView && (
             <>
@@ -603,24 +621,6 @@ export const ViewPage = ({
 
               {drawingMode === 'ruler' && (
                 <RulerDrawingLayer pageNumber={pageNumber} pdfCanvasRef={canvasRef} enableSnapPoints={false} />
-              )}
-
-              {/* Add rectSelection Layer */}
-              {drawingMode === 'rectSelection' && (
-                <RectSelectionDrawingComponent
-                  pageNumber={pageNumber}
-                  onDrawingCreated={handleDrawingCreated}
-                  pdfCanvasRef={canvasRef}
-                />
-              )}
-
-              {/* Add pinSelection Layer */}
-              {drawingMode === 'pinSelection' && (
-                <PinSelectionDrawingComponent
-                  pageNumber={pageNumber}
-                  onDrawingCreated={handleDrawingCreated}
-                  pdfCanvasRef={canvasRef}
-                />
               )}
             </>
           )}

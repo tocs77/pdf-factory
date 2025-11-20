@@ -49,11 +49,11 @@ export const ImageLayer = (props: ImageLayerProps) => {
     return { x: clientX - rect.left, y: clientY - rect.top };
   };
 
-  // Start drawing selection rectangle
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (e.button !== 0 || drawingMode !== 'image') return;
+  // Common logic to start drawing
+  const beginDrawing = (clientX: number, clientY: number) => {
+    if (drawingMode !== 'image') return;
 
-    const clickCoords = getRawCoordinates(e.clientX, e.clientY);
+    const clickCoords = getRawCoordinates(clientX, clientY);
     if (!clickCoords) return;
 
     setIsDrawing(true);
@@ -61,11 +61,24 @@ export const ImageLayer = (props: ImageLayerProps) => {
     setEndPoint(clickCoords);
   };
 
-  // Update the selection rectangle as mouse moves
-  const drawSelectionRectangle = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // Start drawing selection rectangle (mouse)
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0) return;
+    beginDrawing(e.clientX, e.clientY);
+  };
+
+  // Start drawing selection rectangle (touch)
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (e.touches.length !== 1) return; // Only single touch
+    const touch = e.touches[0];
+    beginDrawing(touch.clientX, touch.clientY);
+  };
+
+  // Common logic to update selection
+  const updateSelection = (clientX: number, clientY: number) => {
     if (!isDrawing || !startPoint || drawingMode !== 'image') return;
 
-    const moveCoords = getRawCoordinates(e.clientX, e.clientY);
+    const moveCoords = getRawCoordinates(clientX, clientY);
     if (!moveCoords) return;
 
     setEndPoint(moveCoords);
@@ -98,11 +111,24 @@ export const ImageLayer = (props: ImageLayerProps) => {
     ctx.setLineDash([]);
   };
 
-  // Finish drawing and show the dialog
-  const endDrawing = (_e: React.MouseEvent<HTMLCanvasElement>) => {
+  // Update the selection rectangle as mouse moves
+  const drawSelectionRectangle = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    updateSelection(e.clientX, e.clientY);
+  };
+
+  // Update the selection rectangle as touch moves
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (e.touches.length !== 1) return; // Only single touch
+    e.preventDefault(); // Prevent scrolling while drawing
+    const touch = e.touches[0];
+    updateSelection(touch.clientX, touch.clientY);
+  };
+
+  // Common logic to finish drawing
+  const finishDrawing = () => {
     if (!isDrawing) return;
 
-    // Set drawing state to false immediately to stop tracking mouse
+    // Set drawing state to false immediately to stop tracking
     setIsDrawing(false);
 
     if (!startPoint || !endPoint || drawingMode !== 'image') {
@@ -138,6 +164,17 @@ export const ImageLayer = (props: ImageLayerProps) => {
 
     // Keep the selection rectangle visible even after releasing the mouse
     drawStaticSelectionRectangle();
+  };
+
+  // Finish drawing (mouse)
+  const endDrawing = (_e: React.MouseEvent<HTMLCanvasElement>) => {
+    finishDrawing();
+  };
+
+  // Finish drawing (touch)
+  const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    finishDrawing();
   };
 
   // Draw a static selection rectangle (doesn't follow mouse)
@@ -186,6 +223,13 @@ export const ImageLayer = (props: ImageLayerProps) => {
   // Handler for the "Select File" button in the dialog
   const handleSelectFileClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
+    fileInputRef.current?.click();
+  };
+
+  // Handler for touch on the "Select File" button
+  const handleSelectFileTouch = (e: React.TouchEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    e.preventDefault(); // Prevent the click event from firing after touch
     fileInputRef.current?.click();
   };
 
@@ -352,6 +396,10 @@ export const ImageLayer = (props: ImageLayerProps) => {
           onMouseMove={drawSelectionRectangle}
           onMouseUp={endDrawing}
           onMouseLeave={endDrawing}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchEnd}
           data-testid={`image-layer-canvas-${pageNumber}`}
         />
       )}
@@ -370,7 +418,7 @@ export const ImageLayer = (props: ImageLayerProps) => {
           onMouseDown={(e) => e.stopPropagation()}>
           <div className={classes.dialogContent}>
             <span className={classes.dialogText}>{'Вставьте картинку из буфера или'}</span>
-            <button onClick={handleSelectFileClick} className={classes.dialogButton}>
+            <button onClick={handleSelectFileClick} onTouchEnd={handleSelectFileTouch} className={classes.dialogButton}>
               {'Выберите файл...'}
             </button>
           </div>
