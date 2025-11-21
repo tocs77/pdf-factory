@@ -16,6 +16,7 @@
   height: 100%;
   pointer-events: auto;
   cursor: crosshair;
+  touch-action: none;
 }
 
 .textInputContainer {
@@ -68,6 +69,7 @@
   transform: translate(30%, 30%);
   border: 2px solid white;
   box-shadow: 0 0 3px rgb(0 0 0 / 0.5);
+  touch-action: none;
 
   &::before {
     content: '';

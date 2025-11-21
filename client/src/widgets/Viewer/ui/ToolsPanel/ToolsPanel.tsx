@@ -20,7 +20,11 @@ import { DrawingMode } from '../../model/types/viewerSchema';
 
 import classes from './ToolsPanel.module.scss';
 
-export const ToolsPanel = () => {
+interface ToolsPanelProps {
+  mobile: boolean;
+}
+
+export const ToolsPanel = ({ mobile }: ToolsPanelProps) => {
   const { state, dispatch } = useContext(ViewerContext);
   const { drawingMode } = state;
 
@@ -87,26 +91,32 @@ export const ToolsPanel = () => {
             <PencilIcon />
           </button>
 
-          <button
-            className={`${classes.toolButton} ${drawingMode === 'rectangle' ? classes.active : ''}`}
-            onClick={() => changeDrawingMode('rectangle')}
-            title={drawingMode === 'rectangle' ? 'Отключить инструмент прямоугольник' : 'Включить инструмент прямоугольник'}>
-            <RectangleIcon />
-          </button>
+          {!mobile && (
+            <button
+              className={`${classes.toolButton} ${drawingMode === 'rectangle' ? classes.active : ''}`}
+              onClick={() => changeDrawingMode('rectangle')}
+              title={drawingMode === 'rectangle' ? 'Отключить инструмент прямоугольник' : 'Включить инструмент прямоугольник'}>
+              <RectangleIcon />
+            </button>
+          )}
 
-          <button
-            className={`${classes.toolButton} ${drawingMode === 'extensionLine' ? classes.active : ''}`}
-            onClick={() => changeDrawingMode('extensionLine')}
-            title={drawingMode === 'extensionLine' ? 'Отключить инструмент выноска' : 'Включить инструмент выноска'}>
-            <ExtensionLineIcon />
-          </button>
+          {!mobile && (
+            <button
+              className={`${classes.toolButton} ${drawingMode === 'extensionLine' ? classes.active : ''}`}
+              onClick={() => changeDrawingMode('extensionLine')}
+              title={drawingMode === 'extensionLine' ? 'Отключить инструмент выноска' : 'Включить инструмент выноска'}>
+              <ExtensionLineIcon />
+            </button>
+          )}
 
-          <button
-            className={`${classes.toolButton} ${drawingMode === 'line' ? classes.active : ''}`}
-            onClick={() => changeDrawingMode('line')}
-            title={drawingMode === 'line' ? 'Отключить инструмент линия' : 'Включить инструмент линия'}>
-            <LineIcon />
-          </button>
+          {!mobile && (
+            <button
+              className={`${classes.toolButton} ${drawingMode === 'line' ? classes.active : ''}`}
+              onClick={() => changeDrawingMode('line')}
+              title={drawingMode === 'line' ? 'Отключить инструмент линия' : 'Включить инструмент линия'}>
+              <LineIcon />
+            </button>
+          )}
 
           <button
             className={`${classes.toolButton} ${drawingMode === 'textArea' ? classes.active : ''}`}
@@ -134,16 +144,18 @@ export const ToolsPanel = () => {
             }>
             <DrawAreaIcon />
           </button>
-          <button
-            className={`${classes.toolButton} ${drawingMode === 'rectSelection' ? classes.active : ''}`}
-            onClick={() => changeDrawingMode('rectSelection')}
-            title={
-              drawingMode === 'rectSelection'
-                ? 'Отключить инструмент выделения прямоугольником'
-                : 'Включить инструмент выделения прямоугольником'
-            }>
-            <RectSelectionIcon />
-          </button>
+          {!mobile && (
+            <button
+              className={`${classes.toolButton} ${drawingMode === 'rectSelection' ? classes.active : ''}`}
+              onClick={() => changeDrawingMode('rectSelection')}
+              title={
+                drawingMode === 'rectSelection'
+                  ? 'Отключить инструмент выделения прямоугольником'
+                  : 'Включить инструмент выделения прямоугольником'
+              }>
+              <RectSelectionIcon />
+            </button>
+          )}
           <button
             className={`${classes.toolButton} ${drawingMode === 'pinSelection' ? classes.active : ''}`}
             onClick={() => changeDrawingMode('pinSelection')}

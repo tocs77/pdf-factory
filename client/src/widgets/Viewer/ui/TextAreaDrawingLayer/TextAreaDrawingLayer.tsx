@@ -100,6 +100,14 @@ export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
     };
   };
 
+  // Common logic to start drawing
+  const beginDrawing = (clientX: number, clientY: number) => {
+    const point = getCanvasCoordinates(clientX, clientY);
+    setIsDrawing(true);
+    setStartPoint(point);
+    setEndPoint(point);
+  };
+
   // Clear the canvas
   const clearCanvas = () => {
     if (!canvasRef.current) return;
@@ -131,27 +139,42 @@ export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
     ctx.stroke();
   };
 
-  // Handle starting a new drawing
+  // Handle starting a new drawing (mouse)
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (e.button !== 0) return; // Only react to left mouse button
-
-    const point = getCanvasCoordinates(e.clientX, e.clientY);
-    setIsDrawing(true);
-    setStartPoint(point);
-    setEndPoint(point);
+    beginDrawing(e.clientX, e.clientY);
   };
 
-  // Handle drawing update during mouse move
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // Handle starting a new drawing (touch)
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (e.touches.length !== 1) return; // Only single touch
+    const touch = e.touches[0];
+    beginDrawing(touch.clientX, touch.clientY);
+  };
+
+  // Common logic to update drawing
+  const updateDrawing = (clientX: number, clientY: number) => {
     if (!isDrawing || !startPoint) return;
 
-    const point = getCanvasCoordinates(e.clientX, e.clientY);
+    const point = getCanvasCoordinates(clientX, clientY);
     setEndPoint(point);
     drawRectangle();
   };
 
-  // Handle completing the initial drawing
-  const handleMouseUp = () => {
+  // Handle drawing update during mouse move
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    updateDrawing(e.clientX, e.clientY);
+  };
+
+  // Handle drawing update during touch move
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (e.touches.length !== 1) return; // Only single touch
+    const touch = e.touches[0];
+    updateDrawing(touch.clientX, touch.clientY);
+  };
+
+  // Common logic to finish drawing
+  const finishDrawing = () => {
     if (!isDrawing || !startPoint || !endPoint) return;
     setIsDrawing(false);
 
@@ -163,6 +186,16 @@ export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
     }
 
     setShowTextInput(true);
+  };
+
+  // Handle completing the initial drawing (mouse)
+  const handleMouseUp = () => {
+    finishDrawing();
+  };
+
+  // Handle completing the initial drawing (touch)
+  const handleTouchEnd = (_e: React.TouchEvent<HTMLCanvasElement>) => {
+    finishDrawing();
   };
 
   // Reset drawing state
@@ -339,11 +372,8 @@ export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
     };
   }, [showTextInput, isResizing]);
 
-  // Start resizing operation
-  const handleResizeStart = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-
+  // Common logic to start resizing
+  const beginResize = () => {
     if (!startPoint || !endPoint || !textInputContainerRef.current) return;
 
     setIsResizing(true);
@@ -363,17 +393,22 @@ export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
     }
 
     // Handler for resizing movement
-    const handleResizeMove = (moveEvent: MouseEvent) => {
+    const handleResizeMove = (moveEvent: MouseEvent | TouchEvent) => {
       moveEvent.preventDefault();
 
       if (!shadowRectRef.current || !startPoint) return;
 
-      // Get mouse position
+      // Get position from mouse or touch
+      const isTouchEvent = 'touches' in moveEvent;
+      const currentClientX = isTouchEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const currentClientY = isTouchEvent ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+      // Get canvas position
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) return;
 
-      const mouseX = moveEvent.clientX - rect.left;
-      const mouseY = moveEvent.clientY - rect.top;
+      const mouseX = currentClientX - rect.left;
+      const mouseY = currentClientY - rect.top;
 
       // Calculate dimensions from start point
       const left = Math.min(startPoint.x, endPoint!.x);
@@ -442,11 +477,29 @@ export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
       // Remove event listeners
       document.removeEventListener('mousemove', handleResizeMove);
       document.removeEventListener('mouseup', handleResizeEnd);
+      document.removeEventListener('touchmove', handleResizeMove, { passive: false } as EventListenerOptions);
+      document.removeEventListener('touchend', handleResizeEnd);
     };
 
-    // Add event listeners
+    // Add event listeners for both mouse and touch
     document.addEventListener('mousemove', handleResizeMove);
     document.addEventListener('mouseup', handleResizeEnd);
+    document.addEventListener('touchmove', handleResizeMove, { passive: false });
+    document.addEventListener('touchend', handleResizeEnd);
+  };
+
+  // Start resizing operation (mouse)
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    beginResize();
+  };
+
+  // Start resizing operation (touch)
+  const handleResizeTouchStart = (e: React.TouchEvent) => {
+    e.stopPropagation();
+    if (e.touches.length !== 1) return;
+    beginResize();
   };
 
   // Handle finish drawing request
@@ -472,6 +525,10 @@ export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
       />
 
       {/* Shadow rectangle for resize operations */}
@@ -510,10 +567,10 @@ export const TextAreaDrawingLayer = (props: TextAreaDrawingLayerProps) => {
               color: drawingColor, // Match the text color with the drawing color
             }}
           />
-          <button className={classes.finishButton} onClick={handleFinishDrawing}>
+          <button className={classes.finishButton} onClick={handleFinishDrawing} onTouchEnd={handleFinishDrawing}>
             {'Завершить'}
           </button>
-          <div className={classes.resizeHandle} onMouseDown={handleResizeStart} />
+          <div className={classes.resizeHandle} onMouseDown={handleResizeStart} onTouchStart={handleResizeTouchStart} />
         </div>
       )}
     </div>
