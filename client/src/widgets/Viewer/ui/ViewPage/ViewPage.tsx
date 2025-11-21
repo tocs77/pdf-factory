@@ -27,6 +27,7 @@ interface ViewPageProps {
   onDrawingCreated: (drawing: Omit<Drawing, 'id'>) => void;
   onDrawingClicked?: (id: string) => void;
   selectedPage: number; // current selected page from parent
+  mobile: boolean;
 }
 
 // Threshold for determining when to re-render at the current scale
@@ -43,6 +44,7 @@ export const ViewPage = ({
   onBecameVisible,
   onDrawingClicked,
   selectedPage,
+  mobile,
 }: ViewPageProps) => {
   const { state } = useContext(ViewerContext);
   const { drawingMode, pageRotations, scale, currentDrawingPage, isPinchZooming, isWheelZooming } = state;
@@ -585,6 +587,7 @@ export const ViewPage = ({
                 pageNumber={pageNumber}
                 onDrawingCreated={handleDrawingCreated}
                 pdfCanvasRef={canvasRef}
+                mobile={mobile}
               />
             )}
 

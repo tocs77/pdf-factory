@@ -16,6 +16,7 @@ interface PageProps {
   drawingCreated: (drawing: Omit<Drawing, 'id'>) => void;
   onDrawingClicked?: (id: string) => void;
   className?: string;
+  mobile: boolean;
 }
 
 export const Page = (props: PageProps) => {
@@ -28,6 +29,7 @@ export const Page = (props: PageProps) => {
     drawingCreated,
     onDrawingClicked,
     className,
+    mobile,
   } = props;
 
   const { state, dispatch } = useContext(ViewerContext);
@@ -150,6 +152,7 @@ export const Page = (props: PageProps) => {
       onBecameVisible={handlePageBecameVisible}
       onDrawingClicked={onDrawingClicked}
       selectedPage={currentPage}
+      mobile={mobile}
     />
   );
 };

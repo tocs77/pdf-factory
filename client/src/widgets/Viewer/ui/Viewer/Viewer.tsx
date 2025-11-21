@@ -371,6 +371,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
           drawingCreated={drawingCreated}
           onDrawingClicked={onDrawingClicked}
           className={classes.pageItem}
+          mobile={isMobile}
         />
       );
     });

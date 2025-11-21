@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState, useContext } from 'react';
+
 import type { PDFPageProxy } from 'pdfjs-dist';
+
 import classes from './TextLayer.module.scss';
 import { Drawing, TextHighlight, TextUnderline, TextCrossedOut } from '../../model/types/Drawings';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { renderTextLayer } from '../../utils/renderTextLayer';
 import { getLineSegments, getHighlightRects, captureTextAnnotationImage } from '../../utils/textToolUtils';
+import { useRectangleTextSelection } from '../../hooks/useRectangleTextSelection';
 
 interface TextLayerProps {
   page: PDFPageProxy;
@@ -14,10 +17,11 @@ interface TextLayerProps {
   pageNumber: number;
   onDrawingCreated: (drawing: Drawing) => void;
   pdfCanvasRef?: React.RefObject<HTMLCanvasElement>;
+  mobile?: boolean;
 }
 
 export const TextLayer = (props: TextLayerProps) => {
-  const { page, viewport, scale, rotation, pageNumber, onDrawingCreated, pdfCanvasRef } = props;
+  const { page, viewport, scale, rotation, pageNumber, onDrawingCreated, pdfCanvasRef, mobile = false } = props;
   const textLayerRef = useRef<HTMLDivElement>(null);
   const [hasSelection, setHasSelection] = useState(false);
 
@@ -30,8 +34,10 @@ export const TextLayer = (props: TextLayerProps) => {
     setHasSelection(false);
   };
 
-  // Handle text selection changes
+  // Handle text selection changes (only for non-mobile mode)
   useEffect(() => {
+    if (mobile) return; // Skip for mobile mode, we handle selection manually
+
     const handleSelectionChange = () => {
       const selection = window.getSelection();
       if (selection && textLayerRef.current) {
@@ -47,10 +53,12 @@ export const TextLayer = (props: TextLayerProps) => {
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
     };
-  }, []);
+  }, [mobile]);
 
-  // Handle document clicks to detect clicks outside the selection
+  // Handle document clicks to detect clicks outside the selection (only for non-mobile mode)
   useEffect(() => {
+    if (mobile) return; // Skip for mobile mode
+
     const handleDocumentClick = () => {
       setTimeout(() => {
         const selection = window.getSelection();
@@ -81,7 +89,7 @@ export const TextLayer = (props: TextLayerProps) => {
     return () => {
       document.removeEventListener('click', handleDocumentClick);
     };
-  }, [pageNumber]);
+  }, [pageNumber, mobile]);
 
   // Create text underline drawing
   const createTextUnderline = () => {
@@ -248,6 +256,45 @@ export const TextLayer = (props: TextLayerProps) => {
     hideToolsAfterApplying();
   };
 
+  // Handle finish click, will be triggered by the DrawingMenu
+  const handleFinishClick = () => {
+    switch (state.drawingMode) {
+      case 'textUnderline':
+        createTextUnderline();
+        break;
+      case 'textCrossedOut':
+        createTextCrossedOut();
+        break;
+      case 'textHighlight':
+        createTextHighlight();
+        break;
+      default:
+        break;
+    }
+    setHasSelection(false);
+    dispatch({ type: 'setDrawingMode', payload: 'none' });
+  };
+
+  // Use rectangle selection hook for mobile mode
+  const {
+    selectionCanvasRef,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+    resetSelection,
+  } = useRectangleTextSelection({
+    mobile,
+    textLayerRef,
+    drawingColor,
+    viewport,
+    drawingMode: state.drawingMode,
+    onSelectionComplete: handleFinishClick,
+    onHasSelectionChange: setHasSelection,
+  });
+
   // Initial rendering of text layer
   useEffect(() => {
     const handleRenderTextLayer = async () => {
@@ -287,43 +334,42 @@ export const TextLayer = (props: TextLayerProps) => {
     // No rotation transforms needed as PDF.js viewport already handles rotation
   }, [rotation, viewport]);
 
-  // Handle finish click, will be triggered by the DrawingMenu
-  const handleFinishClick = () => {
-    switch (state.drawingMode) {
-      case 'textUnderline':
-        createTextUnderline();
-        break;
-      case 'textCrossedOut':
-        createTextCrossedOut();
-        break;
-      case 'textHighlight':
-        createTextHighlight();
-        break;
-      default:
-        break;
-    }
-    setHasSelection(false);
-    dispatch({ type: 'setDrawingMode', payload: 'none' });
-  };
-
   // Handle finish drawing request from DrawingMenu
   useEffect(() => {
     if (requestFinishDrawing && hasSelection) {
       handleFinishClick();
     }
-  }, [requestFinishDrawing]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestFinishDrawing, hasSelection]);
 
   // Handle cancel drawing request from DrawingMenu
   useEffect(() => {
     if (requestCancelDrawing) {
       setHasSelection(false);
+      if (mobile) {
+        resetSelection();
+      }
       dispatch({ type: 'setDrawingMode', payload: 'none' });
     }
-  }, [requestCancelDrawing]);
+  }, [requestCancelDrawing, mobile, resetSelection, dispatch]);
 
   return (
     <>
       <div className={classes.textLayer} ref={textLayerRef} data-page-number={pageNumber}></div>
+      {mobile && (
+        <canvas
+          ref={selectionCanvasRef}
+          className={classes.selectionCanvas}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchEnd}
+        />
+      )}
     </>
   );
 };
