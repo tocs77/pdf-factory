@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { Action } from '../model/types/viewerSchema';
 
-interface ZoomData {
-  oldScale: number;
-  newScale: number;
-  pageElement: HTMLElement;
-  mouseXPercentPage: number;
-  mouseYPercentPage: number;
-  mouseClientX: number;
-  mouseClientY: number;
-}
+// Zoom configuration constants
+const WHEEL_ZOOM_DELTA = 0.2; // 20% zoom per wheel event (increased from 15%)
+const ZOOM_FINALIZE_DELAY_MS = 300; // Wait 300ms after last wheel event before finalizing
+const MIN_ZOOM_SCALE = 0.5; // Minimum zoom level (50%)
+const MAX_ZOOM_SCALE = 5; // Maximum zoom level (500%)
+const ZOOM_TRANSITION_DURATION = '0.05s'; // CSS transition duration (faster, was 0.08s)
+
+// Acceleration configuration - makes zoom faster when scrolling rapidly
+const ENABLE_ZOOM_ACCELERATION = true; // Enable/disable acceleration feature
+const ACCELERATION_THRESHOLD_MS = 200; // Time window to detect rapid scrolling (more forgiving, was 100ms)
+const ACCELERATION_MULTIPLIER = 1.8; // Speed multiplier per rapid event (was 2.5)
+const MAX_ACCELERATION_MULTIPLIER = 5; // Maximum acceleration cap (increased from 4x)
 
 interface UseZoomToMouseProps {
   scale: number;
@@ -21,8 +24,11 @@ interface UseZoomToMouseProps {
 export const useZoomToMouse = ({ scale, dispatch, containerRef, zoomWithCtrl }: UseZoomToMouseProps) => {
   // Use ref to track scale without recreating event listeners
   const scaleRef = useRef(scale);
+  const lastLoggedScaleRef = useRef(scale);
+
   useEffect(() => {
     scaleRef.current = scale;
+    lastLoggedScaleRef.current = scale;
   }, [scale]);
 
   // Use ref to track zoomWithCtrl without recreating event listeners
@@ -36,6 +42,18 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef, zoomWithCtrl }: 
 
   // Ref to track the debounce timeout for wheel zooming end detection
   const zoomEndTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Track cumulative CSS transform scale during zoom gesture
+  const cumulativeTransformScaleRef = useRef<number>(1);
+  const activeZoomPageRef = useRef<HTMLElement | null>(null);
+  const zoomMousePositionRef = useRef<{ x: number; y: number; percentX: number; percentY: number } | null>(null);
+
+  // Track wheel event timing for acceleration
+  const lastWheelEventTimeRef = useRef<number>(0);
+  const accelerationMultiplierRef = useRef<number>(1);
+
+  // Track if finalization is in progress
+  const isFinalizingRef = useRef<boolean>(false);
 
   useEffect(() => {
     return () => {
@@ -94,47 +112,108 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef, zoomWithCtrl }: 
       clearTimeout(zoomEndTimeoutRef.current);
     }
 
-    // Set new timeout to mark zooming as complete after 300ms of no wheel events
+    // Set new timeout to finalize zoom after configured delay
     zoomEndTimeoutRef.current = setTimeout(() => {
-      dispatch({ type: 'setIsWheelZooming', payload: false });
+      isFinalizingRef.current = true;
+
+      const pageElement = activeZoomPageRef.current;
+      const mousePos = zoomMousePositionRef.current;
+      const container = containerRef.current;
+
+      if (pageElement && mousePos && container) {
+        // Calculate final scale
+        const baseScale = scaleRef.current;
+        const finalScale = Math.max(MIN_ZOOM_SCALE, Math.min(MAX_ZOOM_SCALE, baseScale * cumulativeTransformScaleRef.current));
+        const scaleRatio = finalScale / baseScale;
+
+        // Get current page dimensions BEFORE removing transform
+        const pageRectBeforeFinalize = pageElement.getBoundingClientRect();
+
+        // Remove CSS transform smoothly
+        pageElement.style.transition = '';
+        pageElement.style.transform = '';
+        pageElement.style.transformOrigin = '';
+
+        // Reset cumulative scale BEFORE applying new React scale
+        // This prevents the next wheel event from seeing stale cumulative value
+        cumulativeTransformScaleRef.current = 1;
+
+        // Apply final scale to React state (triggers re-render)
+        dispatch({ type: 'setScale', payload: finalScale });
+
+        // Wait for React to render new scale, then adjust scroll
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            // Get page position and dimensions after render
+            const finalPageRect = pageElement.getBoundingClientRect();
+
+            // Check if dimensions have actually changed
+            const expectedWidth = pageRectBeforeFinalize.width * scaleRatio;
+            const expectedHeight = pageRectBeforeFinalize.height * scaleRatio;
+            const widthChanged = Math.abs(finalPageRect.width - expectedWidth) > 1;
+            const heightChanged = Math.abs(finalPageRect.height - expectedHeight) > 1;
+
+            // Use calculated dimensions if DOM hasn't updated yet
+            const effectivePageWidth = widthChanged ? finalPageRect.width : expectedWidth;
+            const effectivePageHeight = heightChanged ? finalPageRect.height : expectedHeight;
+
+            // Calculate the point on the scaled page (in page-local coordinates)
+            const pointXInPage = effectivePageWidth * mousePos.percentX;
+            const pointYInPage = effectivePageHeight * mousePos.percentY;
+
+            // Calculate where this point currently is in viewport coordinates
+            const currentPointX = finalPageRect.left + pointXInPage;
+            const currentPointY = finalPageRect.top + pointYInPage;
+
+            // Calculate where we want the point to be (original mouse position in viewport)
+            const targetPointX = mousePos.x;
+            const targetPointY = mousePos.y;
+
+            // Calculate the difference
+            const deltaX = currentPointX - targetPointX;
+            const deltaY = currentPointY - targetPointY;
+
+            // Apply scroll adjustment
+            const maxScrollLeft = container.scrollWidth - container.clientWidth;
+            const maxScrollTop = container.scrollHeight - container.clientHeight;
+
+            const newScrollLeft = Math.max(0, Math.min(maxScrollLeft, container.scrollLeft + deltaX));
+            const newScrollTop = Math.max(0, Math.min(maxScrollTop, container.scrollTop + deltaY));
+
+            container.scrollLeft = newScrollLeft;
+            container.scrollTop = newScrollTop;
+
+            // Mark finalization complete
+            isFinalizingRef.current = false;
+
+            // Check if a new zoom gesture has already started (cumulative scale != 1)
+            if (cumulativeTransformScaleRef.current === 1) {
+              // No new zoom started - safe to clean up completely
+              dispatch({ type: 'setIsWheelZooming', payload: false });
+              activeZoomPageRef.current = null;
+              zoomMousePositionRef.current = null;
+              isZoomingRef.current = false;
+              lastWheelEventTimeRef.current = 0;
+              accelerationMultiplierRef.current = 1;
+            }
+            // If new zoom already in progress, keep refs alive and don't set isWheelZooming to false
+          });
+        });
+      } else {
+        // No active zoom data, just mark as complete
+        isFinalizingRef.current = false;
+        dispatch({ type: 'setIsWheelZooming', payload: false });
+        cumulativeTransformScaleRef.current = 1;
+        activeZoomPageRef.current = null;
+        zoomMousePositionRef.current = null;
+        isZoomingRef.current = false;
+        lastWheelEventTimeRef.current = 0;
+        accelerationMultiplierRef.current = 1;
+      }
+
       zoomEndTimeoutRef.current = null;
-    }, 300); // Reduced from 500ms to 300ms for faster high-quality render
-  }, [dispatch]);
-
-  // Function to adjust scroll position after zoom, keeping the point under the cursor fixed
-  const adjustScrollPositionAfterZoomOnPage = useCallback((container: HTMLDivElement, zoomData: ZoomData) => {
-    const { pageElement, mouseXPercentPage, mouseYPercentPage, mouseClientX, mouseClientY } = zoomData;
-
-    // Get the updated page position and dimensions after scale change
-    const updatedPageRect = pageElement.getBoundingClientRect();
-
-    // Calculate where the point should be on the scaled page (in pixels from page's top-left)
-    const pointXOnScaledPage = updatedPageRect.width * mouseXPercentPage;
-    const pointYOnScaledPage = updatedPageRect.height * mouseYPercentPage;
-
-    // Calculate where this point currently is in viewport coordinates
-    const currentPointX = updatedPageRect.left + pointXOnScaledPage;
-    const currentPointY = updatedPageRect.top + pointYOnScaledPage;
-
-    // Calculate the offset from where we want it (mouse position)
-    const deltaX = currentPointX - mouseClientX;
-    const deltaY = currentPointY - mouseClientY;
-
-    // Calculate maximum scroll limits
-    const maxScrollLeft = container.scrollWidth - container.clientWidth;
-    const maxScrollTop = container.scrollHeight - container.clientHeight;
-
-    // Calculate target scroll position and clamp to valid range
-    const targetScrollLeft = container.scrollLeft + deltaX;
-    const targetScrollTop = container.scrollTop + deltaY;
-
-    const clampedScrollLeft = Math.max(0, Math.min(maxScrollLeft, targetScrollLeft));
-    const clampedScrollTop = Math.max(0, Math.min(maxScrollTop, targetScrollTop));
-
-    // Adjust scroll to eliminate this offset
-    container.scrollLeft = clampedScrollLeft;
-    container.scrollTop = clampedScrollTop;
-  }, []);
+    }, ZOOM_FINALIZE_DELAY_MS);
+  }, [dispatch, containerRef]);
 
   // Prevent browser zoom on Ctrl+wheel globally
   useEffect(() => {
@@ -177,47 +256,81 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef, zoomWithCtrl }: 
         const mouseClientX = e.clientX;
         const mouseClientY = e.clientY;
 
-        // Handle our custom zoom functionality
-        const delta = e.deltaY > 0 ? -0.1 : 0.1;
-        const oldScale = scaleRef.current;
-        const newScale = Math.max(0.5, Math.min(5, oldScale + delta));
+        // SIMPLIFIED APPROACH: Use CSS transform during zoom gesture, finalize on zoom end
 
-        // Store the zoom data for use after the scale change
-        const zoomData: ZoomData = {
-          oldScale,
-          newScale,
-          pageElement,
-          mouseXPercentPage,
-          mouseYPercentPage,
-          mouseClientX,
-          mouseClientY,
+        // Calculate acceleration based on wheel event frequency
+        const now = performance.now();
+        const timeSinceLastWheel = now - lastWheelEventTimeRef.current;
+        lastWheelEventTimeRef.current = now;
+
+        let currentAcceleration = 1;
+        if (ENABLE_ZOOM_ACCELERATION && timeSinceLastWheel > 0) {
+          if (timeSinceLastWheel < ACCELERATION_THRESHOLD_MS) {
+            // User is scrolling rapidly - increase acceleration
+            accelerationMultiplierRef.current = Math.min(
+              accelerationMultiplierRef.current * ACCELERATION_MULTIPLIER,
+              MAX_ACCELERATION_MULTIPLIER,
+            );
+            currentAcceleration = accelerationMultiplierRef.current;
+          } else {
+            // Reset acceleration on slow scroll
+            accelerationMultiplierRef.current = 1;
+            currentAcceleration = 1;
+          }
+        }
+
+        // Apply acceleration to zoom delta
+        const baseDelta = e.deltaY > 0 ? -WHEEL_ZOOM_DELTA : WHEEL_ZOOM_DELTA;
+        const delta = baseDelta * currentAcceleration;
+
+        // Mark that wheel zooming is active (prevents expensive page re-renders)
+        if (!isZoomingRef.current) {
+          dispatch({ type: 'setIsWheelZooming', payload: true });
+          isZoomingRef.current = true;
+        }
+
+        // Check if this is a continuation or new gesture
+        const isSamePage = activeZoomPageRef.current === pageElement;
+        const isNewGesture = !activeZoomPageRef.current || !isSamePage;
+
+        if (isNewGesture) {
+          // New zoom gesture on a different page OR first gesture ever
+          activeZoomPageRef.current = pageElement;
+
+          // Set transform origin once at start of zoom gesture
+          const transformOriginX = (mouseXPercentPage * 100).toFixed(2);
+          const transformOriginY = (mouseYPercentPage * 100).toFixed(2);
+          pageElement.style.transformOrigin = `${transformOriginX}% ${transformOriginY}%`;
+        }
+
+        // Always update mouse position for accurate scroll adjustment during finalization
+        zoomMousePositionRef.current = {
+          x: mouseClientX,
+          y: mouseClientY,
+          percentX: mouseXPercentPage,
+          percentY: mouseYPercentPage,
         };
 
-        // Update scale in context
-        if (newScale !== oldScale) {
-          // Mark that wheel zooming is active (prevents page re-renders)
-          dispatch({ type: 'setIsWheelZooming', payload: true });
+        // Update cumulative transform scale
+        const scaleDelta = 1 + delta;
+        cumulativeTransformScaleRef.current *= scaleDelta;
 
-          // Set the lock to prevent concurrent zooms
-          isZoomingRef.current = true;
+        // Clamp cumulative scale to configured limits
+        const currentBaseScale = scaleRef.current;
+        const proposedFinalScale = currentBaseScale * cumulativeTransformScaleRef.current;
 
-          // First update the scale
-          dispatch({ type: 'setScale', payload: newScale });
-
-          // Then adjust the scroll position in the next render cycle
-          // Need DOUBLE RAF: first for React state update, second for CSS to fully apply
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              adjustScrollPositionAfterZoomOnPage(container, zoomData);
-
-              // Release the lock after scroll adjustment is complete
-              isZoomingRef.current = false;
-
-              // Start/reset the debounce timer for zoom end detection
-              handleZoomEnd();
-            });
-          });
+        if (proposedFinalScale < MIN_ZOOM_SCALE) {
+          cumulativeTransformScaleRef.current = MIN_ZOOM_SCALE / currentBaseScale;
+        } else if (proposedFinalScale > MAX_ZOOM_SCALE) {
+          cumulativeTransformScaleRef.current = MAX_ZOOM_SCALE / currentBaseScale;
         }
+
+        // Apply smooth CSS transform for instant visual feedback
+        pageElement.style.transform = `scale(${cumulativeTransformScaleRef.current})`;
+        pageElement.style.transition = `transform ${ZOOM_TRANSITION_DURATION} ease-out`;
+
+        // Reset zoom end timer (will finalize when wheel stops)
+        handleZoomEnd();
 
         return false;
       }
@@ -235,7 +348,7 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef, zoomWithCtrl }: 
       document.removeEventListener('wheel', preventBrowserZoom, { capture: true });
       window.removeEventListener('wheel', preventBrowserZoom, { capture: true });
     };
-  }, [dispatch, adjustScrollPositionAfterZoomOnPage, containerRef, handleZoomEnd]);
+  }, [dispatch, containerRef, handleZoomEnd]);
 
   // Prevent browser zoom shortcuts
   useEffect(() => {
@@ -292,38 +405,29 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef, zoomWithCtrl }: 
           newScale = 1.5;
         }
 
-        // Store the zoom data for use after the scale change
-        const zoomData: ZoomData = {
-          oldScale,
-          newScale,
-          pageElement,
-          mouseXPercentPage: centerXPercentPage,
-          mouseYPercentPage: centerYPercentPage,
-          mouseClientX: viewportCenterX,
-          mouseClientY: viewportCenterY,
-        };
-
         if (newScale !== oldScale) {
-          // Mark that wheel zooming is active (prevents page re-renders)
-          dispatch({ type: 'setIsWheelZooming', payload: true });
-
-          // Set the lock to prevent concurrent zooms
-          isZoomingRef.current = true;
-
-          // First update the scale
+          // For keyboard shortcuts, just update scale and adjust scroll
           dispatch({ type: 'setScale', payload: newScale });
 
-          // Then adjust the scroll position in the next render cycle
-          // Need DOUBLE RAF: first for React state update, second for CSS to fully apply
+          // Adjust scroll after render to keep viewport center fixed
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-              adjustScrollPositionAfterZoomOnPage(container, zoomData);
+              const updatedPageRect = pageElement.getBoundingClientRect();
 
-              // Release the lock after scroll adjustment is complete
-              isZoomingRef.current = false;
+              // Calculate where the center point should be
+              const pointX = updatedPageRect.left + updatedPageRect.width * centerXPercentPage;
+              const pointY = updatedPageRect.top + updatedPageRect.height * centerYPercentPage;
 
-              // Start/reset the debounce timer for zoom end detection
-              handleZoomEnd();
+              // Calculate scroll adjustment
+              const deltaX = pointX - viewportCenterX;
+              const deltaY = pointY - viewportCenterY;
+
+              // Apply scroll adjustment
+              const maxScrollLeft = container.scrollWidth - container.clientWidth;
+              const maxScrollTop = container.scrollHeight - container.clientHeight;
+
+              container.scrollLeft = Math.max(0, Math.min(maxScrollLeft, container.scrollLeft + deltaX));
+              container.scrollTop = Math.max(0, Math.min(maxScrollTop, container.scrollTop + deltaY));
             });
           });
         }
@@ -340,7 +444,7 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef, zoomWithCtrl }: 
     return () => {
       document.removeEventListener('keydown', preventBrowserZoomShortcuts, { capture: true });
     };
-  }, [dispatch, findVisiblePageElement, adjustScrollPositionAfterZoomOnPage, containerRef, handleZoomEnd]);
+  }, [dispatch, findVisiblePageElement, containerRef, handleZoomEnd]);
 
   // Function to handle scale changes and preserve scroll position
   const handleScaleChange = useCallback(() => {
@@ -431,7 +535,6 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef, zoomWithCtrl }: 
 
   return {
     findVisiblePageElement,
-    adjustScrollPositionAfterZoomOnPage,
     handleScaleChange,
   };
 };
