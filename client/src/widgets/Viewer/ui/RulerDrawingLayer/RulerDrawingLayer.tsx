@@ -15,6 +15,34 @@ const throttle = (fn: Function, delay: number) => {
   };
 };
 
+// Helper function to convert color string to rgba with opacity
+const colorToRgba = (color: string, opacity: number = 0.95): string => {
+  // If already rgba, extract rgb values and apply new opacity
+  if (color.startsWith('rgba')) {
+    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (match) {
+      return `rgba(${match[1]}, ${match[2]}, ${match[3]}, ${opacity})`;
+    }
+  }
+  // If rgb, extract values and add opacity
+  if (color.startsWith('rgb')) {
+    const match = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/);
+    if (match) {
+      return `rgba(${match[1]}, ${match[2]}, ${match[3]}, ${opacity})`;
+    }
+  }
+  // If hex color
+  if (color.startsWith('#')) {
+    const hex = color.slice(1);
+    const r = Number.parseInt(hex.slice(0, 2), 16);
+    const g = Number.parseInt(hex.slice(2, 4), 16);
+    const b = Number.parseInt(hex.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  }
+  // Fallback: return color as-is (might be a named color)
+  return color;
+};
+
 interface RulerDrawingLayerProps {
   pageNumber: number;
   pdfCanvasRef?: React.RefObject<HTMLCanvasElement>;
@@ -27,6 +55,7 @@ interface Ruler {
   endPoint: { x: number; y: number };
   distance: number;
   angle: number;
+  color: string;
 }
 
 export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
@@ -186,9 +215,6 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
 
     // Draw all existing rulers
     rulers.forEach((ruler) => {
-      // All rulers are drawn with the active style
-      const isActive = true; // Previously was checking draggingRulerIndex === index
-
       // Transform points based on current scale and rotation
       const transformedStartPoint = transformCoordinates(
         ruler.startPoint.x,
@@ -211,19 +237,20 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
       ctx.beginPath();
       ctx.moveTo(transformedStartPoint.x, transformedStartPoint.y);
       ctx.lineTo(transformedEndPoint.x, transformedEndPoint.y);
-      ctx.strokeStyle = isActive ? 'rgba(255, 165, 0, 0.9)' : drawingColor; // Highlight active ruler
-      ctx.lineWidth = isActive ? drawingLineWidth + 1 : drawingLineWidth;
+      ctx.strokeStyle = ruler.color; // Use the ruler's stored color
+      ctx.lineWidth = drawingLineWidth;
       ctx.stroke();
 
       // Draw markers at endpoints - use fixed size instead of scale-dependent size
       const markerSize = 12; // Increased from 10 to 12 for better visibility
       const innerSize = 5; // Increased from 4 to 5 for better visibility
+      const markerColor = colorToRgba(ruler.color, 0.95); // Convert ruler color to rgba with opacity
 
-      // Draw start point marker with white center and blue ring
-      // First draw the outer blue circle
+      // Draw start point marker with white center and colored ring
+      // First draw the outer colored circle
       ctx.beginPath();
       ctx.arc(transformedStartPoint.x, transformedStartPoint.y, markerSize, 0, 2 * Math.PI);
-      ctx.fillStyle = 'rgba(33, 150, 243, 0.95)'; // More opaque blue
+      ctx.fillStyle = markerColor; // Use ruler's color
       ctx.fill();
       ctx.strokeStyle = 'rgba(255, 255, 255, 1)'; // Solid white stroke
       ctx.lineWidth = 2; // Increased stroke width
@@ -235,11 +262,11 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
       ctx.fillStyle = 'white';
       ctx.fill();
 
-      // Draw end point marker with white center and blue ring
-      // First draw the outer blue circle
+      // Draw end point marker with white center and colored ring
+      // First draw the outer colored circle
       ctx.beginPath();
       ctx.arc(transformedEndPoint.x, transformedEndPoint.y, markerSize, 0, 2 * Math.PI);
-      ctx.fillStyle = 'rgba(33, 150, 243, 0.95)'; // More opaque blue
+      ctx.fillStyle = markerColor; // Use ruler's color
       ctx.fill();
       ctx.strokeStyle = 'rgba(255, 255, 255, 1)'; // Solid white stroke
       ctx.lineWidth = 2; // Increased stroke width
@@ -302,7 +329,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
 
       ctx.moveTo(transformedStartPoint.x, transformedStartPoint.y);
       ctx.lineTo(transformedEndPoint.x, transformedEndPoint.y);
-      ctx.strokeStyle = 'rgba(33, 150, 243, 0.9)';
+      ctx.strokeStyle = colorToRgba(drawingColor, 0.9); // Use current drawing color for preview
       ctx.lineWidth = drawingLineWidth;
       ctx.stroke();
       ctx.setLineDash([]); // Reset to solid line
@@ -310,12 +337,13 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
       // Draw markers at endpoints - use fixed size instead of scale-dependent size
       const markerSize = 12; // Increased from 10 to 12 for better visibility
       const innerSize = 5; // Increased from 4 to 5 for better visibility
+      const previewMarkerColor = colorToRgba(drawingColor, 0.95); // Use current drawing color for preview
 
-      // Draw start point marker with white center and blue ring
-      // First draw the outer blue circle
+      // Draw start point marker with white center and colored ring
+      // First draw the outer colored circle
       ctx.beginPath();
       ctx.arc(transformedStartPoint.x, transformedStartPoint.y, markerSize, 0, 2 * Math.PI);
-      ctx.fillStyle = 'rgba(33, 150, 243, 0.95)'; // More opaque blue
+      ctx.fillStyle = previewMarkerColor; // Use current drawing color
       ctx.fill();
       ctx.strokeStyle = 'rgba(255, 255, 255, 1)'; // Solid white stroke
       ctx.lineWidth = 2; // Increased stroke width
@@ -327,11 +355,11 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
       ctx.fillStyle = 'white';
       ctx.fill();
 
-      // Draw end point marker with white center and blue ring
-      // First draw the outer blue circle
+      // Draw end point marker with white center and colored ring
+      // First draw the outer colored circle
       ctx.beginPath();
       ctx.arc(transformedEndPoint.x, transformedEndPoint.y, markerSize, 0, 2 * Math.PI);
-      ctx.fillStyle = 'rgba(33, 150, 243, 0.95)'; // More opaque blue
+      ctx.fillStyle = previewMarkerColor; // Use current drawing color
       ctx.fill();
       ctx.strokeStyle = 'rgba(255, 255, 255, 1)'; // Solid white stroke
       ctx.lineWidth = 2; // Increased stroke width
@@ -754,6 +782,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
           endPoint: normalizedEndPoint,
           distance: calculateDistance(normalizedStartPoint, normalizedEndPoint),
           angle: calculateAngle(normalizedStartPoint, normalizedEndPoint),
+          color: drawingColor, // Store the current drawing color
         };
 
         setRulers((prevRulers) => {
@@ -1681,8 +1710,9 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
 
               // Use smaller marker size for DOM elements to match canvas markers
               const markerSize = 8; // Increased from 6 to 8
+              const markerColor = colorToRgba(ruler.color, 0.95); // Convert ruler color to rgba with opacity
 
-              // Create marker with white center and blue ring using box-shadow
+              // Create marker with white center and colored ring using box-shadow
               return {
                 left: `${transformed.x}px`,
                 top: `${transformed.y}px`,
@@ -1691,7 +1721,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
                 transform: 'translate(-50%, -50%)',
                 backgroundColor: 'white', // White center
                 border: 'none', // No border
-                boxShadow: '0 0 0 3px rgba(33, 150, 243, 0.95)', // Thicker, more opaque blue ring
+                boxShadow: `0 0 0 3px ${markerColor}`, // Use ruler's color for ring
                 borderRadius: '50%',
                 cursor: 'pointer',
                 zIndex: 10,
@@ -1718,8 +1748,9 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
 
               // Use smaller marker size for DOM elements to match canvas markers
               const markerSize = 8; // Increased from 6 to 8
+              const markerColor = colorToRgba(ruler.color, 0.95); // Convert ruler color to rgba with opacity
 
-              // Create marker with white center and blue ring using box-shadow
+              // Create marker with white center and colored ring using box-shadow
               return {
                 left: `${transformed.x}px`,
                 top: `${transformed.y}px`,
@@ -1728,7 +1759,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
                 transform: 'translate(-50%, -50%)',
                 backgroundColor: 'white', // White center
                 border: 'none', // No border
-                boxShadow: '0 0 0 3px rgba(33, 150, 243, 0.95)', // Thicker, more opaque blue ring
+                boxShadow: `0 0 0 3px ${markerColor}`, // Use ruler's color for ring
                 borderRadius: '50%',
                 cursor: 'pointer',
                 zIndex: 10,
@@ -1837,8 +1868,9 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
 
               // Use smaller marker size for DOM elements to match canvas markers
               const markerSize = 8; // Increased from 6 to 8
+              const previewMarkerColor = colorToRgba(drawingColor, 0.95); // Use current drawing color for preview
 
-              // Create marker with white center and blue ring using box-shadow
+              // Create marker with white center and colored ring using box-shadow
               return {
                 left: `${transformed.x}px`,
                 top: `${transformed.y}px`,
@@ -1847,7 +1879,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
                 transform: 'translate(-50%, -50%)',
                 backgroundColor: 'white', // White center
                 border: 'none', // No border
-                boxShadow: '0 0 0 3px rgba(33, 150, 243, 0.95)', // Thicker, more opaque blue ring
+                boxShadow: `0 0 0 3px ${previewMarkerColor}`, // Use current drawing color for ring
                 borderRadius: '50%',
                 cursor: 'pointer',
                 zIndex: 10,
@@ -1882,8 +1914,9 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
 
               // Use smaller marker size for DOM elements to match canvas markers
               const markerSize = 8; // Increased from 6 to 8
+              const previewMarkerColor = colorToRgba(drawingColor, 0.95); // Use current drawing color for preview
 
-              // Create marker with white center and blue ring using box-shadow
+              // Create marker with white center and colored ring using box-shadow
               return {
                 left: `${transformed.x}px`,
                 top: `${transformed.y}px`,
@@ -1892,7 +1925,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
                 transform: 'translate(-50%, -50%)',
                 backgroundColor: 'white', // White center
                 border: 'none', // No border
-                boxShadow: '0 0 0 3px rgba(33, 150, 243, 0.95)', // Thicker, more opaque blue ring
+                boxShadow: `0 0 0 3px ${previewMarkerColor}`, // Use current drawing color for ring
                 borderRadius: '50%',
                 cursor: 'pointer',
                 zIndex: 10,
