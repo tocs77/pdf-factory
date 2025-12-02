@@ -78,6 +78,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
   const [rulers, setRulers] = useState<Ruler[]>([]);
   const [nextRulerId, setNextRulerId] = useState(1);
   const [isDrawing, setIsDrawing] = useState(false);
+
   // Use a ref to track the drawing state more reliably
   const isDrawingRef = useRef(false);
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
@@ -455,7 +456,6 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
 
     // Force a clean redraw when scale or rotation changes to ensure old artifacts are removed
     if (rotationChanged) {
-      console.log('Page rotation changed, redrawing rulers');
       // Force complete redraw on rotation change
       drawRuler(true);
       // Delay by a small amount and redraw again to ensure all artifacts are removed
@@ -833,6 +833,192 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
     }
   };
 
+  // Touch event handlers for mobile support
+  const handleTouchStart = useCallback(
+    (e: TouchEvent) => {
+      if (drawingMode !== 'ruler') {
+        return;
+      }
+      if (e.touches.length !== 1) {
+        return; // Only handle single touch
+      }
+
+      // Prevent default touch behavior to avoid scrolling
+      e.preventDefault();
+
+      const touch = e.touches[0];
+      const { x, y } = getRawCoordinates(touch.clientX, touch.clientY);
+
+      setIsMouseButtonDown(true);
+
+      // Check if touched on an existing ruler marker
+      const nearestMarker = getNearestRulerMarker(x, y);
+
+      if (nearestMarker) {
+        // Set active ruler and initiate dragging
+        setDraggingRulerIndex(nearestMarker.rulerIndex);
+        if (nearestMarker.isStart) {
+          setIsDraggingStart(true);
+          const ruler = rulers[nearestMarker.rulerIndex];
+          const scaledStartPoint = {
+            x: ruler.startPoint.x * scale,
+            y: ruler.startPoint.y * scale,
+          };
+          const scaledEndPoint = {
+            x: ruler.endPoint.x * scale,
+            y: ruler.endPoint.y * scale,
+          };
+          setStartPoint(scaledStartPoint);
+          setEndPoint(scaledEndPoint);
+          startPointRef.current = scaledStartPoint;
+          endPointRef.current = scaledEndPoint;
+        } else {
+          setIsDraggingEnd(true);
+          const ruler = rulers[nearestMarker.rulerIndex];
+          const scaledStartPoint = {
+            x: ruler.startPoint.x * scale,
+            y: ruler.startPoint.y * scale,
+          };
+          const scaledEndPoint = {
+            x: ruler.endPoint.x * scale,
+            y: ruler.endPoint.y * scale,
+          };
+          setStartPoint(scaledStartPoint);
+          setEndPoint(scaledEndPoint);
+          startPointRef.current = scaledStartPoint;
+          endPointRef.current = scaledEndPoint;
+        }
+        if (enableSnapPoints) {
+          throttledFindPoints(x, y);
+        }
+        return;
+      }
+
+      // Clear any previous drawing state
+      setStartPoint(null);
+      setEndPoint(null);
+      startPointRef.current = null;
+      endPointRef.current = null;
+
+      // Start a new measurement with dragging mode
+      updateIsDrawing(true);
+
+      const newStartPoint = { x, y };
+      const newEndPoint = { x, y };
+      setStartPoint(newStartPoint);
+      setEndPoint(newEndPoint);
+      startPointRef.current = newStartPoint;
+      endPointRef.current = newEndPoint;
+      setDraggingRulerIndex(null);
+
+      if (enableSnapPoints) {
+        throttledFindPoints(x, y);
+      }
+
+      drawRuler();
+    },
+    [drawingMode, rulers, scale, enableSnapPoints, throttledFindPoints],
+  );
+
+  const handleTouchMove = useCallback(
+    (e: TouchEvent) => {
+      if (drawingMode !== 'ruler') {
+        return;
+      }
+      if (e.touches.length !== 1) {
+        return;
+      }
+
+      e.preventDefault();
+
+      const touch = e.touches[0];
+      const { x, y } = getRawCoordinates(touch.clientX, touch.clientY);
+
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        return;
+      }
+
+      if (isDraggingStart && endPointRef.current && draggingRulerIndex !== null) {
+        const newStartPoint = { x, y };
+        setStartPoint(newStartPoint);
+        startPointRef.current = newStartPoint;
+
+        const normalizedPoint = normalizeCoordinatesToZeroRotation(newStartPoint, canvas.width, canvas.height, scale, rotation);
+        updateRuler(draggingRulerIndex, normalizedPoint);
+        drawRuler();
+      } else if (isDraggingEnd && startPointRef.current && draggingRulerIndex !== null) {
+        const newEndPoint = { x, y };
+        setEndPoint(newEndPoint);
+        endPointRef.current = newEndPoint;
+
+        const normalizedPoint = normalizeCoordinatesToZeroRotation(newEndPoint, canvas.width, canvas.height, scale, rotation);
+        updateRuler(draggingRulerIndex, undefined, normalizedPoint);
+        drawRuler();
+      } else if (isDrawingRef.current && startPointRef.current && isMouseButtonDown) {
+        const newEndPoint = { x, y };
+        setEndPoint(newEndPoint);
+        endPointRef.current = newEndPoint;
+        drawRuler();
+        if (enableSnapPoints) {
+          throttledFindPoints(x, y);
+        }
+      }
+    },
+    [
+      drawingMode,
+      isDraggingStart,
+      isDraggingEnd,
+      draggingRulerIndex,
+      scale,
+      rotation,
+      isMouseButtonDown,
+      enableSnapPoints,
+      throttledFindPoints,
+    ],
+  );
+
+  const handleTouchEnd = useCallback(
+    (e: TouchEvent) => {
+      e.preventDefault();
+
+      if (drawingMode !== 'ruler') {
+        return;
+      }
+
+      // Call the same logic as mouse up
+      handleMouseUp();
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [drawingMode],
+  );
+
+  // Set up touch event listeners
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+
+    // Only add touch listeners when in ruler mode
+    if (drawingMode !== 'ruler') {
+      return;
+    }
+
+    // Add actual handlers
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+    canvas.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+
+    return () => {
+      canvas.removeEventListener('touchstart', handleTouchStart);
+      canvas.removeEventListener('touchmove', handleTouchMove);
+      canvas.removeEventListener('touchend', handleTouchEnd);
+      canvas.removeEventListener('touchcancel', handleTouchEnd);
+    };
+  }, [drawingMode, handleTouchStart, handleTouchMove, handleTouchEnd]);
+
   // Handle double click to reset or delete ruler
   const handleDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = getRawCoordinates(e.clientX, e.clientY);
@@ -930,6 +1116,99 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
     endPointRef.current = transformedEndPoint;
 
     // Delay point detection for smoother initial drag
+    if (enableSnapPoints) {
+      setTimeout(() => {
+        if (rulers[rulerIndex] && canvas) {
+          throttledFindPoints(transformedEndPoint.x, transformedEndPoint.y);
+        }
+      }, 100);
+    }
+  };
+
+  // Touch handlers for markers
+  const handleStartMarkerTouchStart = (e: React.TouchEvent, rulerIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.touches.length !== 1) {
+      return;
+    }
+
+    setIsDraggingStart(true);
+    setDraggingRulerIndex(rulerIndex);
+    setIsMouseButtonDown(true);
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const transformedStartPoint = transformCoordinates(
+      rulers[rulerIndex].startPoint.x,
+      rulers[rulerIndex].startPoint.y,
+      canvas.width,
+      canvas.height,
+      scale,
+      rotation,
+    );
+
+    const transformedEndPoint = transformCoordinates(
+      rulers[rulerIndex].endPoint.x,
+      rulers[rulerIndex].endPoint.y,
+      canvas.width,
+      canvas.height,
+      scale,
+      rotation,
+    );
+
+    setStartPoint(transformedStartPoint);
+    setEndPoint(transformedEndPoint);
+    startPointRef.current = transformedStartPoint;
+    endPointRef.current = transformedEndPoint;
+
+    if (enableSnapPoints) {
+      setTimeout(() => {
+        if (rulers[rulerIndex] && canvas) {
+          throttledFindPoints(transformedStartPoint.x, transformedStartPoint.y);
+        }
+      }, 100);
+    }
+  };
+
+  const handleEndMarkerTouchStart = (e: React.TouchEvent, rulerIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.touches.length !== 1) {
+      return;
+    }
+
+    setIsDraggingEnd(true);
+    setDraggingRulerIndex(rulerIndex);
+    setIsMouseButtonDown(true);
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const transformedStartPoint = transformCoordinates(
+      rulers[rulerIndex].startPoint.x,
+      rulers[rulerIndex].startPoint.y,
+      canvas.width,
+      canvas.height,
+      scale,
+      rotation,
+    );
+
+    const transformedEndPoint = transformCoordinates(
+      rulers[rulerIndex].endPoint.x,
+      rulers[rulerIndex].endPoint.y,
+      canvas.width,
+      canvas.height,
+      scale,
+      rotation,
+    );
+
+    setStartPoint(transformedStartPoint);
+    setEndPoint(transformedEndPoint);
+    startPointRef.current = transformedStartPoint;
+    endPointRef.current = transformedEndPoint;
+
     if (enableSnapPoints) {
       setTimeout(() => {
         if (rulers[rulerIndex] && canvas) {
@@ -1063,12 +1342,95 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
       }, 300);
     };
 
+    // Touch event handlers for document-level dragging
+    const handleDocumentTouchMove = (e: TouchEvent) => {
+      if (!canvasRef.current || e.touches.length !== 1) {
+        return;
+      }
+
+      const touch = e.touches[0];
+      const newCoords = getRawCoordinates(touch.clientX, touch.clientY);
+
+      const moveDistance = Math.sqrt(Math.pow(newCoords.x - lastCoords.x, 2) + Math.pow(newCoords.y - lastCoords.y, 2));
+
+      if (moveDistance < 1) return;
+
+      lastCoords = newCoords;
+
+      if (!animationFrameId) {
+        animationFrameId = requestAnimationFrame(updatePosition);
+      }
+    };
+
+    const handleDocumentTouchEnd = () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+
+      if (!canvasRef.current || draggingRulerIndex === null) {
+        return;
+      }
+
+      // Apply snapping if a snap target exists
+      if (snapTarget !== null && pointsOfInterest[snapTarget.index]) {
+        const point = pointsOfInterest[snapTarget.index];
+        const normalizedPoint = normalizeCoordinatesToZeroRotation(
+          point,
+          canvasRef.current.width,
+          canvasRef.current.height,
+          scale,
+          rotation,
+        );
+
+        if (isDraggingStart) {
+          setStartPoint({ x: point.x, y: point.y });
+          updateRuler(draggingRulerIndex, normalizedPoint);
+        } else {
+          setEndPoint({ x: point.x, y: point.y });
+          updateRuler(draggingRulerIndex, undefined, normalizedPoint);
+        }
+      } else if (highlightedPointIndex !== null && pointsOfInterest[highlightedPointIndex]) {
+        const point = pointsOfInterest[highlightedPointIndex];
+        const normalizedPoint = normalizeCoordinatesToZeroRotation(
+          point,
+          canvasRef.current.width,
+          canvasRef.current.height,
+          scale,
+          rotation,
+        );
+
+        if (isDraggingStart) {
+          setStartPoint({ x: point.x, y: point.y });
+          updateRuler(draggingRulerIndex, normalizedPoint);
+        } else {
+          setEndPoint({ x: point.x, y: point.y });
+          updateRuler(draggingRulerIndex, undefined, normalizedPoint);
+        }
+      }
+
+      setIsDraggingStart(false);
+      setIsDraggingEnd(false);
+      setIsMouseButtonDown(false);
+      setHighlightedPointIndex(null);
+      setSnapTarget(null);
+
+      setTimeout(() => {
+        setPointsOfInterest([]);
+      }, 300);
+    };
+
     document.addEventListener('mousemove', handleDocumentMouseMove);
     document.addEventListener('mouseup', handleDocumentMouseUp);
+    document.addEventListener('touchmove', handleDocumentTouchMove, { passive: false });
+    document.addEventListener('touchend', handleDocumentTouchEnd);
+    document.addEventListener('touchcancel', handleDocumentTouchEnd);
 
     return () => {
       document.removeEventListener('mousemove', handleDocumentMouseMove);
       document.removeEventListener('mouseup', handleDocumentMouseUp);
+      document.removeEventListener('touchmove', handleDocumentTouchMove);
+      document.removeEventListener('touchend', handleDocumentTouchEnd);
+      document.removeEventListener('touchcancel', handleDocumentTouchEnd);
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
       }
@@ -1252,12 +1614,11 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
   };
 
   // Function to handle click on ruler distance label
-  const handleRulerLabelClick = (e: React.MouseEvent, rulerIndex: number) => {
+  const handleRulerLabelClick = (e: React.MouseEvent, _rulerIndex: number) => {
     e.stopPropagation(); // Prevent event from reaching canvas
     e.preventDefault();
 
     // You can add additional functionality here for single clicks
-    console.log(`Ruler ${rulerIndex} label clicked`);
   };
 
   // Function to format distance using calibration
@@ -1337,6 +1698,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
               };
             })()}
             onMouseDown={(e) => handleStartMarkerMouseDown(e, index)}
+            onTouchStart={(e) => handleStartMarkerTouchStart(e, index)}
             draggable='false'
           />
           <div
@@ -1373,6 +1735,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
               };
             })()}
             onMouseDown={(e) => handleEndMarkerMouseDown(e, index)}
+            onTouchStart={(e) => handleEndMarkerTouchStart(e, index)}
             draggable='false'
           />
           <div
@@ -1609,11 +1972,9 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
               })()}
               onClick={(e) => {
                 e.stopPropagation(); // Prevent click from reaching canvas
-                console.log('Drawing ruler label clicked');
               }}
               onDoubleClick={(e) => {
                 e.stopPropagation(); // Prevent double-click from reaching canvas
-                console.log('Cannot calibrate an incomplete ruler');
                 // Only allow calibration for completed rulers
               }}>
               {formatDistance(distance)}

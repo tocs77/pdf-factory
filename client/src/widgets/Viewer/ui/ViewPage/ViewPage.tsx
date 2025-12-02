@@ -618,15 +618,17 @@ export const ViewPage = ({
               />
             )}
 
-          {inView && (
-            <>
-              {drawingMode === 'zoomArea' && <ZoomAreaLayer pageNumber={pageNumber} pdfCanvasRef={canvasRef} />}
+          {/* Add ruler Layer */}
+          {drawingMode === 'ruler' &&
+            (currentDrawingPage === 0 || currentDrawingPage === -1 || currentDrawingPage === pageNumber) && (
+              <RulerDrawingLayer pageNumber={pageNumber} pdfCanvasRef={canvasRef} enableSnapPoints={false} />
+            )}
 
-              {drawingMode === 'ruler' && (
-                <RulerDrawingLayer pageNumber={pageNumber} pdfCanvasRef={canvasRef} enableSnapPoints={false} />
-              )}
-            </>
-          )}
+          {/* Add zoomArea Layer */}
+          {drawingMode === 'zoomArea' &&
+            (currentDrawingPage === 0 || currentDrawingPage === -1 || currentDrawingPage === pageNumber) && (
+              <ZoomAreaLayer pageNumber={pageNumber} pdfCanvasRef={canvasRef} />
+            )}
 
           <CompleteDrawings pageNumber={pageNumber} drawings={drawings} />
         </div>

@@ -208,8 +208,8 @@ export const DraggableDialog = (props: PropsWithChildren<DraggableDialogProps>):
         style={{
           left: position.x,
           top: position.y,
-          width: shouldAutoSize && size.width === 0 ? 'auto' : size.width,
-          height: shouldAutoSize && size.height === 0 ? 'auto' : size.height,
+          width: shouldAutoSize && size.width === 0 ? 'fit-content' : size.width,
+          height: shouldAutoSize && size.height === 0 ? 'fit-content' : size.height,
         }}>
         {/* Header - conditionally rendered */}
         {showHeader && (

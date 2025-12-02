@@ -69,9 +69,20 @@
 .autoSize {
   width: fit-content !important;
   height: fit-content !important;
-  min-width: 200px;
+  min-width: 0;
   max-width: 90vw;
   max-height: 90vh;
+  overflow: visible;
+
+  .header {
+    width: auto;
+    min-width: fit-content;
+    flex-shrink: 0;
+  }
+
+  .title {
+    flex: none;
+  }
 
   .content {
     flex: none;
@@ -213,6 +224,10 @@
 @media (width <= 768px) {
   .dialog {
     min-width: 280px;
+  }
+
+  .autoSize {
+    min-width: 0;
   }
   
   .header {
