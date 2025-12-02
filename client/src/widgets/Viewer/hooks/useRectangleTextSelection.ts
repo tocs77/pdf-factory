@@ -82,7 +82,7 @@ const getElementsInRectangle = (container: HTMLElement, rect: Rectangle): HTMLEl
 
 interface UseRectangleTextSelectionProps {
   mobile: boolean;
-  textLayerRef: RefObject<HTMLDivElement>;
+  textLayerRef: RefObject<HTMLDivElement | null>;
   drawingColor: string;
   viewport: any;
   drawingMode: string;
