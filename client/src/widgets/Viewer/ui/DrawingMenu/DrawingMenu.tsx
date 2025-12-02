@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+import { useContext } from 'react';
 
 import { DraggableDialog } from '@/shared/UI/DraggableDialog';
 
@@ -9,8 +9,7 @@ import { DrawingMode } from '../../model/types/viewerSchema';
 
 export const DrawingMenu = () => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { drawingMode, drawingColor, drawingLineWidth, drawingOpacity } = state;
-  const [dialogPosition, setDialogPosition] = useState({ x: 100, y: 100 });
+  const { drawingMode, drawingColor, drawingLineWidth, drawingOpacity, drawingMenuPosition } = state;
 
   // Don't need to check visibility as the parent component (Viewer) handles this
   if (drawingMode === 'none') {
@@ -52,6 +51,10 @@ export const DrawingMenu = () => {
     dispatch({ type: 'setDrawingOpacity', payload: opacity });
   };
 
+  const handlePositionChange = (position: { x: number; y: number }) => {
+    dispatch({ type: 'setDrawingMenuPosition', payload: position });
+  };
+
   // Color options
   const colorOptions = ['#2196f3', '#4caf50', '#f44336', '#ff9800', '#9c27b0', '#000000'];
 
@@ -63,11 +66,11 @@ export const DrawingMenu = () => {
 
   return (
     <DraggableDialog
-      initialXPos={dialogPosition.x}
-      initialYPos={dialogPosition.y}
+      initialXPos={drawingMenuPosition.x}
+      initialYPos={drawingMenuPosition.y}
       showHeader={false}
       grabAreas={['left', 'right']}
-      onPositionChange={setDialogPosition}
+      onPositionChange={handlePositionChange}
       resizable={false}>
       <div className={styles.drawingMenuContainer} data-dragscroll-ignore='true'>
         <div className={styles.drawingOptions}>

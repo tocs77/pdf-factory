@@ -27,12 +27,19 @@ export interface CalibrationSettings {
   unitName: string;
 }
 
+// Interface for drawing menu position
+export interface MenuPosition {
+  x: number;
+  y: number;
+}
+
 export interface ViewerSchema {
   scale: number;
   drawingColor: string;
   drawingLineWidth: number;
   drawingOpacity: number; // Drawing opacity value from 0.25 to 1
   drawingMode: DrawingMode;
+  drawingMenuPosition: MenuPosition; // Position of the drawing menu dialog
   showThumbnails: boolean;
   // Map of page numbers to rotation angles
   pageRotations: Record<number, RotationAngle>;
@@ -108,6 +115,11 @@ type SetZoomWithCtrlAction = {
   payload: boolean;
 };
 
+type SetDrawingMenuPositionAction = {
+  type: 'setDrawingMenuPosition';
+  payload: MenuPosition;
+};
+
 export type IsDraftDrawing = boolean;
 // Remove obsolete toggleCompareMode action type
 export type Action =
@@ -133,4 +145,5 @@ export type Action =
   | SetIsMobileAction
   | SetIsPinchZoomingAction
   | SetIsWheelZoomingAction
-  | SetZoomWithCtrlAction;
+  | SetZoomWithCtrlAction
+  | SetDrawingMenuPositionAction;

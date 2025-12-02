@@ -18,6 +18,7 @@ export const initialViewerState: ViewerSchema = {
   drawingLineWidth: 3,
   drawingOpacity: 1,
   drawingMode: 'none',
+  drawingMenuPosition: { x: 100, y: 100 },
   showThumbnails: false,
   pageRotations: {},
   textLayerEnabled: true,
@@ -224,6 +225,11 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
       return {
         ...state,
         zoomWithCtrl: action.payload,
+      };
+    case 'setDrawingMenuPosition':
+      return {
+        ...state,
+        drawingMenuPosition: action.payload,
       };
     default:
       return state;
