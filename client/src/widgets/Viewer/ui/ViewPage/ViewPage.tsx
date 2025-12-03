@@ -34,18 +34,9 @@ interface ViewPageProps {
 // If scale difference is greater than this, re-render at the current scale
 const SCALE_THRESHOLD = 0.5;
 
-export const ViewPage = ({
-  page,
-  pageNumber,
-  id,
-  className,
-  drawings,
-  onDrawingCreated,
-  onBecameVisible,
-  onDrawingClicked,
-  selectedPage,
-  mobile,
-}: ViewPageProps) => {
+export const ViewPage = (props: ViewPageProps) => {
+  const { page, pageNumber, id, className, drawings, onDrawingCreated, onBecameVisible, onDrawingClicked, selectedPage, mobile } =
+    props;
   const { state } = useContext(ViewerContext);
   const { drawingMode, pageRotations, scale, currentDrawingPage, isPinchZooming, isWheelZooming } = state;
 

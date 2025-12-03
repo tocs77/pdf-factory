@@ -3,6 +3,7 @@ import { transformCoordinates, normalizeCoordinatesToZeroRotation } from '../../
 import { ViewerContext } from '../../model/context/viewerContext';
 import { useSnapPoints } from '../../hooks/useSnapPoints';
 import { renderRuler, colorToRgba } from '../../utils/renderers/renderRuler';
+import { RulerCalibrationMenu } from '../RulerCalibrationMenu/RulerCalibrationMenu';
 import styles from './RulerDrawingLayer.module.scss';
 
 // Add throttle utility function
@@ -33,8 +34,9 @@ interface Ruler {
 
 export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
   const { pageNumber, pdfCanvasRef, enableSnapPoints = true } = props;
-  const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations, calibration } = state;
+  const { state } = useContext(ViewerContext);
+  const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations, calibration, currentPage } = state;
+  console.log('render ruker for page', pageNumber);
 
   // Get the rotation angle for this page - used in dependency array for redraw
   const rotation = pageRotations[pageNumber] || 0;
@@ -50,11 +52,8 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
   const MOUSE_MOVE_THRESHOLD = 8; // Minimum mouse movement in pixels to trigger snap point update
   const MARKER_SELECTION_RADIUS = 15; // Radius in pixels to detect clicks on markers
 
-  // Add state for calibration dialog
-  const [showCalibrationDialog, setShowCalibrationDialog] = useState(false);
+  // State for calibration menu - track which ruler is selected for calibration
   const [selectedRulerForCalibration, setSelectedRulerForCalibration] = useState<number | null>(null);
-  const [calibrationActualSize, setCalibrationActualSize] = useState('');
-  const [calibrationUnit, setCalibrationUnit] = useState('');
 
   // Use the custom snap points hook (conditionally based on enableSnapPoints)
   const {
@@ -556,7 +555,10 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
         setRulers((prevRulers) => {
           const updatedRulers = [...prevRulers, newRuler];
           // Set active ruler index based on the new length
-          setDraggingRulerIndex(updatedRulers.length - 1);
+          const newIndex = updatedRulers.length - 1;
+          setDraggingRulerIndex(newIndex);
+          // Select the new ruler for calibration menu
+          setSelectedRulerForCalibration(newIndex);
           return updatedRulers;
         });
 
@@ -1327,6 +1329,9 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
 
     updatedRulers[index] = ruler;
     setRulers(updatedRulers);
+
+    // Select the updated ruler for calibration menu
+    setSelectedRulerForCalibration(index);
   };
 
   // Delete a ruler
@@ -1371,51 +1376,15 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
     };
   }, []);
 
-  // Function to handle calibration dialog submission
-  const handleCalibrationSubmit = () => {
-    if (selectedRulerForCalibration === null) return;
-
-    const actualSize = Number.parseFloat(calibrationActualSize);
-    if (isNaN(actualSize) || actualSize <= 0) {
-      alert('Please enter a valid positive number for the actual size');
-      return;
-    }
-
-    // Get the pixel distance of the selected ruler
-    const pixelDistance = rulers[selectedRulerForCalibration].distance;
-
-    // Apply the calibration using the dispatch method
-    dispatch({
-      type: 'applyCalibration',
-      payload: {
-        actualSize,
-        unitName: calibrationUnit.trim() || '',
-        pixelDistance,
-      },
-    });
-
-    // Close the dialog
-    setShowCalibrationDialog(false);
-    setSelectedRulerForCalibration(null);
-  };
-
-  // Function to cancel calibration
-  const handleCalibrationCancel = () => {
-    setShowCalibrationDialog(false);
-    setSelectedRulerForCalibration(null);
-  };
-
-  // Function to reset calibration - update to use dispatch
-  const resetCalibration = () => {
-    dispatch({ type: 'resetCalibration' });
-  };
-
   // Function to handle click on ruler distance label
-  const handleRulerLabelClick = (e: React.MouseEvent, _rulerIndex: number) => {
+  const handleRulerLabelClick = (e: React.MouseEvent, rulerIndex: number) => {
     e.stopPropagation(); // Prevent event from reaching canvas
     e.preventDefault();
 
-    // You can add additional functionality here for single clicks
+    // Select the ruler for calibration menu
+    if (rulerIndex >= 0 && rulerIndex < rulers.length) {
+      setSelectedRulerForCalibration(rulerIndex);
+    }
   };
 
   // Function to format distance using calibration
@@ -1439,10 +1408,153 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
 
     if (rulerIndex < 0 || rulerIndex >= rulers.length) return;
 
+    // Select the ruler for calibration menu
     setSelectedRulerForCalibration(rulerIndex);
-    setCalibrationActualSize('');
-    setCalibrationUnit('');
-    setShowCalibrationDialog(true);
+  };
+
+  // Helper function to get marker style
+  const getMarkerStyle = (point: { x: number; y: number }, color: string): React.CSSProperties => {
+    const canvas = canvasRef.current;
+    if (!canvas) return {};
+
+    const transformed = transformCoordinates(point.x, point.y, canvas.width, canvas.height, scale, rotation);
+
+    const markerSize = 8;
+    const markerColor = colorToRgba(color, 0.95);
+
+    return {
+      left: `${transformed.x}px`,
+      top: `${transformed.y}px`,
+      width: `${markerSize}px`,
+      height: `${markerSize}px`,
+      transform: 'translate(-50%, -50%)',
+      backgroundColor: 'white',
+      border: 'none',
+      boxShadow: `0 0 0 3px ${markerColor}`,
+      borderRadius: '50%',
+      cursor: 'pointer',
+      zIndex: 10,
+    };
+  };
+
+  // Helper function to get marker style for drawing (with normalization)
+  const getDrawingMarkerStyle = (point: { x: number; y: number }, color: string): React.CSSProperties => {
+    const canvas = canvasRef.current;
+    if (!canvas) return {};
+
+    const normalizedPoint = normalizeCoordinatesToZeroRotation(point, canvas.width, canvas.height, scale, rotation);
+    const transformed = transformCoordinates(normalizedPoint.x, normalizedPoint.y, canvas.width, canvas.height, scale, rotation);
+
+    const markerSize = 8;
+    const markerColor = colorToRgba(color, 0.95);
+
+    return {
+      left: `${transformed.x}px`,
+      top: `${transformed.y}px`,
+      width: `${markerSize}px`,
+      height: `${markerSize}px`,
+      transform: 'translate(-50%, -50%)',
+      backgroundColor: 'white',
+      border: 'none',
+      boxShadow: `0 0 0 3px ${markerColor}`,
+      borderRadius: '50%',
+      cursor: 'pointer',
+      zIndex: 10,
+    };
+  };
+
+  // Helper function to get distance label style for completed rulers
+  const getDistanceLabelStyle = (
+    startPoint: { x: number; y: number },
+    endPoint: { x: number; y: number },
+  ): React.CSSProperties => {
+    const canvas = canvasRef.current;
+    if (!canvas) return {};
+
+    // Calculate angle and midpoint
+    const dx = endPoint.x - startPoint.x;
+    const dy = endPoint.y - startPoint.y;
+    let textAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+    // Adjust angle for readability (ensure text is not upside down)
+    if (textAngle > 90 || textAngle < -90) {
+      textAngle += 180;
+    }
+
+    // Position in the center of the line
+    const midPointX = (startPoint.x + endPoint.x) / 2;
+    const midPointY = (startPoint.y + endPoint.y) / 2;
+
+    // Transform the midpoint back to screen space
+    const transformedMidPoint = transformCoordinates(midPointX, midPointY, canvas.width, canvas.height, scale, rotation);
+
+    // Calculate offset to position text above the line
+    const offsetX = Math.sin((textAngle * Math.PI) / 180) * 15;
+    const offsetY = -Math.cos((textAngle * Math.PI) / 180) * 15;
+
+    return {
+      left: `${transformedMidPoint.x + offsetX}px`,
+      top: `${transformedMidPoint.y + offsetY}px`,
+      transform: `translate(-50%, -50%) rotate(${textAngle}deg)`,
+      padding: '6px 14px',
+      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+      border: '1px solid rgba(0, 0, 0, 0.2)',
+      borderRadius: '4px',
+      fontSize: '12px',
+      fontWeight: 'bold',
+      whiteSpace: 'nowrap',
+      zIndex: 15,
+      cursor: 'default',
+    };
+  };
+
+  // Helper function to get distance label style for drawing ruler (with normalization)
+  const getDrawingDistanceLabelStyle = (
+    startPoint: { x: number; y: number },
+    endPoint: { x: number; y: number },
+  ): React.CSSProperties => {
+    const canvas = canvasRef.current;
+    if (!canvas) return {};
+
+    // Normalize start and end points
+    const normalizedStartPoint = normalizeCoordinatesToZeroRotation(startPoint, canvas.width, canvas.height, scale, rotation);
+    const normalizedEndPoint = normalizeCoordinatesToZeroRotation(endPoint, canvas.width, canvas.height, scale, rotation);
+
+    // Calculate angle and midpoint using normalized points
+    const dx = normalizedEndPoint.x - normalizedStartPoint.x;
+    const dy = normalizedEndPoint.y - normalizedStartPoint.y;
+    let textAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+    // Adjust angle for readability (ensure text is not upside down)
+    if (textAngle > 90 || textAngle < -90) {
+      textAngle += 180;
+    }
+
+    // Position in the center of the line using normalized coordinates
+    const midPointX = (normalizedStartPoint.x + normalizedEndPoint.x) / 2;
+    const midPointY = (normalizedStartPoint.y + normalizedEndPoint.y) / 2;
+
+    // Transform the midpoint back to screen space
+    const transformedMidPoint = transformCoordinates(midPointX, midPointY, canvas.width, canvas.height, scale, rotation);
+
+    // Calculate offset to position text above the line
+    const offsetX = Math.sin((textAngle * Math.PI) / 180) * 15;
+    const offsetY = -Math.cos((textAngle * Math.PI) / 180) * 15;
+
+    return {
+      left: `${transformedMidPoint.x + offsetX}px`,
+      top: `${transformedMidPoint.y + offsetY}px`,
+      transform: `translate(-50%, -50%) rotate(${textAngle}deg)`,
+      padding: '6px 14px',
+      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+      border: '1px solid rgba(0, 0, 0, 0.2)',
+      borderRadius: '4px',
+      fontSize: '12px',
+      fontWeight: 'bold',
+      whiteSpace: 'nowrap',
+      zIndex: 3,
+      cursor: 'default',
+    };
   };
 
   return (
@@ -1463,136 +1575,21 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
         <React.Fragment key={ruler.id}>
           <div
             className={styles.rulerMarker}
-            style={(() => {
-              const canvas = canvasRef.current;
-              if (!canvas) return {};
-
-              const transformed = transformCoordinates(
-                ruler.startPoint.x,
-                ruler.startPoint.y,
-                canvas.width,
-                canvas.height,
-                scale,
-                rotation,
-              );
-
-              // Use smaller marker size for DOM elements to match canvas markers
-              const markerSize = 8; // Increased from 6 to 8
-              const markerColor = colorToRgba(ruler.color, 0.95); // Convert ruler color to rgba with opacity
-
-              // Create marker with white center and colored ring using box-shadow
-              return {
-                left: `${transformed.x}px`,
-                top: `${transformed.y}px`,
-                width: `${markerSize}px`,
-                height: `${markerSize}px`,
-                transform: 'translate(-50%, -50%)',
-                backgroundColor: 'white', // White center
-                border: 'none', // No border
-                boxShadow: `0 0 0 3px ${markerColor}`, // Use ruler's color for ring
-                borderRadius: '50%',
-                cursor: 'pointer',
-                zIndex: 10,
-              };
-            })()}
+            style={getMarkerStyle(ruler.startPoint, ruler.color)}
             onMouseDown={(e) => handleStartMarkerMouseDown(e, index)}
             onTouchStart={(e) => handleStartMarkerTouchStart(e, index)}
             draggable='false'
           />
           <div
             className={styles.rulerMarker}
-            style={(() => {
-              const canvas = canvasRef.current;
-              if (!canvas) return {};
-
-              const transformed = transformCoordinates(
-                ruler.endPoint.x,
-                ruler.endPoint.y,
-                canvas.width,
-                canvas.height,
-                scale,
-                rotation,
-              );
-
-              // Use smaller marker size for DOM elements to match canvas markers
-              const markerSize = 8; // Increased from 6 to 8
-              const markerColor = colorToRgba(ruler.color, 0.95); // Convert ruler color to rgba with opacity
-
-              // Create marker with white center and colored ring using box-shadow
-              return {
-                left: `${transformed.x}px`,
-                top: `${transformed.y}px`,
-                width: `${markerSize}px`,
-                height: `${markerSize}px`,
-                transform: 'translate(-50%, -50%)',
-                backgroundColor: 'white', // White center
-                border: 'none', // No border
-                boxShadow: `0 0 0 3px ${markerColor}`, // Use ruler's color for ring
-                borderRadius: '50%',
-                cursor: 'pointer',
-                zIndex: 10,
-              };
-            })()}
+            style={getMarkerStyle(ruler.endPoint, ruler.color)}
             onMouseDown={(e) => handleEndMarkerMouseDown(e, index)}
             onTouchStart={(e) => handleEndMarkerTouchStart(e, index)}
             draggable='false'
           />
           <div
             className={styles.rulerDistance}
-            style={(() => {
-              const canvas = canvasRef.current;
-              if (!canvas) return {};
-
-              // Normalize start and end points
-              const normalizedStartPoint = ruler.startPoint;
-              const normalizedEndPoint = ruler.endPoint;
-
-              // Calculate angle and midpoint using normalized points
-              const dx = normalizedEndPoint.x - normalizedStartPoint.x;
-              const dy = normalizedEndPoint.y - normalizedStartPoint.y;
-              let textAngle = Math.atan2(dy, dx) * (180 / Math.PI);
-
-              // Adjust angle for readability (ensure text is not upside down)
-              if (textAngle > 90 || textAngle < -90) {
-                textAngle += 180;
-              }
-
-              // Position in the center of the line using normalized coordinates
-              const midPointX = (normalizedStartPoint.x + normalizedEndPoint.x) / 2;
-              const midPointY = (normalizedStartPoint.y + normalizedEndPoint.y) / 2;
-
-              // Transform the midpoint back to screen space
-              const transformedMidPoint = transformCoordinates(
-                midPointX,
-                midPointY,
-                canvas.width,
-                canvas.height,
-                scale,
-                rotation,
-              );
-
-              // Calculate offset to position text above the line
-              const offsetX = Math.sin((textAngle * Math.PI) / 180) * 15; // 15px offset
-              const offsetY = -Math.cos((textAngle * Math.PI) / 180) * 15; // 15px offset
-
-              // Adjust font size based on scale
-              const fontSize = Math.max(12, Math.min(12 * scale, 18));
-
-              return {
-                left: `${transformedMidPoint.x + offsetX}px`,
-                top: `${transformedMidPoint.y + offsetY}px`,
-                transform: `translate(-50%, -50%) rotate(${textAngle}deg)`,
-                padding: '3px 8px',
-                backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                border: '1px solid rgba(0, 0, 0, 0.2)',
-                borderRadius: '4px',
-                fontSize: `${fontSize}px`,
-                fontWeight: 'bold',
-                whiteSpace: 'nowrap',
-                zIndex: 15,
-                cursor: 'pointer', // Add cursor pointer to indicate clickable
-              };
-            })()}
+            style={getDistanceLabelStyle(ruler.startPoint, ruler.endPoint)}
             onDoubleClick={(e) => {
               e.stopPropagation(); // Prevent double-click from reaching canvas
               handleRulerLabelDoubleClick(e, index);
@@ -1609,168 +1606,12 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
       {/* Render markers for ruler currently being drawn */}
       {isDrawing && startPoint && endPoint && (
         <>
-          <div
-            className={styles.rulerMarker}
-            style={(() => {
-              const canvas = canvasRef.current;
-              if (!canvas) return {};
-
-              // Normalize coordinates before transforming to ensure
-              // preview markers appear in the same location as final rulers
-              const normalizedPoint = normalizeCoordinatesToZeroRotation(
-                { x: startPoint.x, y: startPoint.y },
-                canvas.width,
-                canvas.height,
-                scale,
-                rotation,
-              );
-
-              const transformed = transformCoordinates(
-                normalizedPoint.x,
-                normalizedPoint.y,
-                canvas.width,
-                canvas.height,
-                scale,
-                rotation,
-              );
-
-              // Use smaller marker size for DOM elements to match canvas markers
-              const markerSize = 8; // Increased from 6 to 8
-              const previewMarkerColor = colorToRgba(drawingColor, 0.95); // Use current drawing color for preview
-
-              // Create marker with white center and colored ring using box-shadow
-              return {
-                left: `${transformed.x}px`,
-                top: `${transformed.y}px`,
-                width: `${markerSize}px`,
-                height: `${markerSize}px`,
-                transform: 'translate(-50%, -50%)',
-                backgroundColor: 'white', // White center
-                border: 'none', // No border
-                boxShadow: `0 0 0 3px ${previewMarkerColor}`, // Use current drawing color for ring
-                borderRadius: '50%',
-                cursor: 'pointer',
-                zIndex: 10,
-              };
-            })()}
-            draggable='false'
-          />
-          <div
-            className={styles.rulerMarker}
-            style={(() => {
-              const canvas = canvasRef.current;
-              if (!canvas) return {};
-
-              // Normalize coordinates before transforming to ensure
-              // preview markers appear in the same location as final rulers
-              const normalizedPoint = normalizeCoordinatesToZeroRotation(
-                { x: endPoint.x, y: endPoint.y },
-                canvas.width,
-                canvas.height,
-                scale,
-                rotation,
-              );
-
-              const transformed = transformCoordinates(
-                normalizedPoint.x,
-                normalizedPoint.y,
-                canvas.width,
-                canvas.height,
-                scale,
-                rotation,
-              );
-
-              // Use smaller marker size for DOM elements to match canvas markers
-              const markerSize = 8; // Increased from 6 to 8
-              const previewMarkerColor = colorToRgba(drawingColor, 0.95); // Use current drawing color for preview
-
-              // Create marker with white center and colored ring using box-shadow
-              return {
-                left: `${transformed.x}px`,
-                top: `${transformed.y}px`,
-                width: `${markerSize}px`,
-                height: `${markerSize}px`,
-                transform: 'translate(-50%, -50%)',
-                backgroundColor: 'white', // White center
-                border: 'none', // No border
-                boxShadow: `0 0 0 3px ${previewMarkerColor}`, // Use current drawing color for ring
-                borderRadius: '50%',
-                cursor: 'pointer',
-                zIndex: 10,
-              };
-            })()}
-            draggable='false'
-          />
+          <div className={styles.rulerMarker} style={getDrawingMarkerStyle(startPoint, drawingColor)} draggable='false' />
+          <div className={styles.rulerMarker} style={getDrawingMarkerStyle(endPoint, drawingColor)} draggable='false' />
           {distance !== null && angle !== null && (
             <div
               className={styles.rulerDistance}
-              style={(() => {
-                const canvas = canvasRef.current;
-                if (!canvas) return {};
-
-                // Normalize start and end points
-                const normalizedStartPoint = normalizeCoordinatesToZeroRotation(
-                  startPoint,
-                  canvas.width,
-                  canvas.height,
-                  scale,
-                  rotation,
-                );
-
-                const normalizedEndPoint = normalizeCoordinatesToZeroRotation(
-                  endPoint,
-                  canvas.width,
-                  canvas.height,
-                  scale,
-                  rotation,
-                );
-
-                // Calculate angle and midpoint using normalized points
-                const dx = normalizedEndPoint.x - normalizedStartPoint.x;
-                const dy = normalizedEndPoint.y - normalizedStartPoint.y;
-                let textAngle = Math.atan2(dy, dx) * (180 / Math.PI);
-
-                // Adjust angle for readability (ensure text is not upside down)
-                if (textAngle > 90 || textAngle < -90) {
-                  textAngle += 180;
-                }
-
-                // Position in the center of the line using normalized coordinates
-                const midPointX = (normalizedStartPoint.x + normalizedEndPoint.x) / 2;
-                const midPointY = (normalizedStartPoint.y + normalizedEndPoint.y) / 2;
-
-                // Transform the midpoint back to screen space
-                const transformedMidPoint = transformCoordinates(
-                  midPointX,
-                  midPointY,
-                  canvas.width,
-                  canvas.height,
-                  scale,
-                  rotation,
-                );
-
-                // Calculate offset to position text above the line
-                const offsetX = Math.sin((textAngle * Math.PI) / 180) * 15; // 15px offset
-                const offsetY = -Math.cos((textAngle * Math.PI) / 180) * 15; // 15px offset
-
-                // Adjust font size based on scale
-                const fontSize = Math.max(12, Math.min(12 * scale, 18));
-
-                return {
-                  left: `${transformedMidPoint.x + offsetX}px`,
-                  top: `${transformedMidPoint.y + offsetY}px`,
-                  transform: `translate(-50%, -50%) rotate(${textAngle}deg)`,
-                  padding: '3px 8px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                  border: '1px solid rgba(0, 0, 0, 0.2)',
-                  borderRadius: '4px',
-                  fontSize: `${fontSize}px`,
-                  fontWeight: 'bold',
-                  whiteSpace: 'nowrap',
-                  zIndex: 15,
-                  cursor: 'pointer', // Add cursor pointer to indicate clickable
-                };
-              })()}
+              style={getDrawingDistanceLabelStyle(startPoint, endPoint)}
               onClick={(e) => {
                 e.stopPropagation(); // Prevent click from reaching canvas
               }}
@@ -1784,144 +1625,17 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
         </>
       )}
 
-      {/* Calibration Dialog */}
-      {showCalibrationDialog && (
-        <div className={styles.calibrationDialog}>
-          <div
-            className={styles.calibrationDialogContent}
-            style={{
-              fontSize: '14px',
-              fontFamily:
-                '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif',
-              padding: '24px',
-            }}>
-            <h3
-              style={{
-                fontSize: '20px',
-                fontWeight: 600,
-                marginTop: 0,
-                marginBottom: '20px',
-              }}>
-              Калибровка линейки
-            </h3>
-
-            <p
-              style={{
-                fontSize: '14px',
-                marginBottom: '24px',
-                lineHeight: '1.5',
-              }}>
-              Введите реальный размер этого измерения:
-            </p>
-
-            <div className={styles.calibrationInputGroup} style={{ marginBottom: '20px' }}>
-              <label
-                htmlFor='actualSize'
-                style={{
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  marginBottom: '8px',
-                  display: 'block',
-                }}>
-                Реальный размер:
-              </label>
-              <input
-                id='actualSize'
-                type='number'
-                step='any'
-                min='0.001'
-                value={calibrationActualSize}
-                onChange={(e) => setCalibrationActualSize(e.target.value)}
-                placeholder='Введите значение'
-                style={{
-                  fontSize: '14px',
-                  padding: '10px',
-                  width: '100%',
-                  borderRadius: '4px',
-                  border: '1px solid #ccc',
-                }}
-              />
-            </div>
-
-            <div className={styles.calibrationInputGroup} style={{ marginBottom: '28px' }}>
-              <label
-                htmlFor='unitName'
-                style={{
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  marginBottom: '8px',
-                  display: 'block',
-                }}>
-                Единица измерения (необязательно):
-              </label>
-              <input
-                id='unitName'
-                type='text'
-                value={calibrationUnit}
-                onChange={(e) => setCalibrationUnit(e.target.value)}
-                placeholder='например, см, мм, дюйм (или оставьте пустым)'
-                style={{
-                  fontSize: '14px',
-                  padding: '10px',
-                  width: '100%',
-                  borderRadius: '4px',
-                  border: '1px solid #ccc',
-                }}
-              />
-            </div>
-
-            <div
-              className={styles.calibrationButtons}
-              style={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: '12px',
-                marginTop: '20px',
-              }}>
-              <button
-                onClick={handleCalibrationSubmit}
-                style={{
-                  fontSize: '14px',
-                  padding: '10px 16px',
-                  backgroundColor: '#2196F3',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                }}>
-                Применить
-              </button>
-              <button
-                onClick={handleCalibrationCancel}
-                style={{
-                  fontSize: '14px',
-                  padding: '10px 16px',
-                  backgroundColor: '#f5f5f5',
-                  color: '#333',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                }}>
-                Отмена
-              </button>
-              {(calibration.pixelsPerUnit !== 1 || calibration.unitName !== 'px') && (
-                <button
-                  onClick={resetCalibration}
-                  style={{
-                    fontSize: '14px',
-                    padding: '10px 16px',
-                    backgroundColor: '#f44336',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                  }}>
-                  Сбросить калибровку
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+      {/* Calibration Menu - Only show for current page to avoid multiple dialogs */}
+      {drawingMode === 'ruler' && pageNumber === currentPage && (
+        <RulerCalibrationMenu
+          pixelValue={
+            selectedRulerForCalibration !== null && rulers[selectedRulerForCalibration]
+              ? rulers[selectedRulerForCalibration].distance
+              : rulers.length > 0
+                ? rulers[rulers.length - 1].distance
+                : 0
+          }
+        />
       )}
     </>
   );
