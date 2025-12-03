@@ -1,16 +1,18 @@
 import { useContext, useState, useRef, useEffect } from 'react';
+
 import { ViewerContext } from '../../model/context/viewerContext';
 import { Drawing, DrawingMisc } from '../../model/types/Drawings';
+import { transformCoordinates } from '../../utils/rotationUtils';
+import { captureDrawingImage } from '../../utils/captureDrawingImage';
 
 import { LineDrawingLayer } from '../LineDrawingLayer/LineDrawingLayer';
 import TextAreaDrawingLayer from '../TextAreaDrawingLayer/TextAreaDrawingLayer';
 import { FreeHandLayer } from '../FreeHandLayer/FreeHandLayer';
 import DrawRect from '../DrawRect/DrawRect';
 import CompleteDrawings from '../CompleteDrawings/CompleteDrawings';
-import { transformCoordinates } from '../../utils/rotationUtils';
-import { captureDrawingImage } from '../../utils/captureDrawingImage';
 import { ExtensionLineDrawingComponent } from '../ExtensionLineDrawingComponent/ExtensionLineDrawingComponent';
 import { ImageLayer } from '../ImageLayer/ImageLayer';
+import { RulerDrawingLayer } from '../RulerDrawingLayer/RulerDrawingLayer';
 
 interface DraftLayerProps {
   pageNumber: number;
@@ -33,6 +35,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
     lines: [],
     textAreas: [],
     images: [],
+    rulers: [],
     pageNumber: pageNumber,
     boundingBox: { left: 0, top: 0, right: 0, bottom: 0 },
   });
@@ -42,15 +45,18 @@ export const DraftLayer = (props: DraftLayerProps) => {
     if (requestFinishDrawing && (currentDrawingPage === pageNumber || currentDrawingPage === 0)) {
       handleFinish();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestFinishDrawing]);
 
   useEffect(() => {
     if (requestCancelDrawing && (currentDrawingPage === pageNumber || currentDrawingPage === 0)) {
       handleCancel();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestCancelDrawing]);
 
   const handleDrawingAdded = (drawing: Drawing) => {
+    console.log('add drawing', drawing);
     switch (drawing.type) {
       case 'freehand':
         setDraftDrawing((prev) => ({ ...prev, pathes: [...prev.pathes, drawing] }));
@@ -69,6 +75,9 @@ export const DraftLayer = (props: DraftLayerProps) => {
         break;
       case 'image':
         setDraftDrawing((prev) => ({ ...prev, images: [...prev.images, drawing] }));
+        break;
+      case 'rulers':
+        setDraftDrawing((prev) => ({ ...prev, rulers: [...prev.rulers, drawing] }));
         break;
       default:
         break;
@@ -95,7 +104,8 @@ export const DraftLayer = (props: DraftLayerProps) => {
       draftDrawing.extensionLines.length > 0 ||
       draftDrawing.lines.length > 0 ||
       draftDrawing.textAreas.length > 0 ||
-      draftDrawing.images.length > 0;
+      draftDrawing.images.length > 0 ||
+      draftDrawing.rulers.length > 0;
 
     if (hasDrawing) {
       createDraftDrawing();
@@ -112,6 +122,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
       lines: [],
       textAreas: [],
       images: [],
+      rulers: [],
       pageNumber: pageNumber,
       boundingBox: { left: 0, top: 0, right: 0, bottom: 0 },
     });
@@ -133,6 +144,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
         lines: draftDrawing.lines,
         textAreas: draftDrawing.textAreas,
         images: draftDrawing.images,
+        rulers: draftDrawing.rulers,
         image: '',
         boundingBox: { left: 0, top: 0, right: 0, bottom: 0 }, // Default empty bounds
       };
@@ -155,6 +167,11 @@ export const DraftLayer = (props: DraftLayerProps) => {
     draftDrawing.lines.forEach((drawing) => updateBoundsFromBox(combinedNormalizedBounds, drawing.boundingBox));
     draftDrawing.textAreas.forEach((drawing) => updateBoundsFromBox(combinedNormalizedBounds, drawing.boundingBox));
     draftDrawing.images.forEach((drawing) => updateBoundsFromBox(combinedNormalizedBounds, drawing.boundingBox));
+
+    // Add rulers to bounding box calculation - use the bounding box from the rulers drawing
+    draftDrawing.rulers.forEach((rulersDrawing) => {
+      updateBoundsFromBox(combinedNormalizedBounds, rulersDrawing.boundingBox);
+    });
 
     // Create the final bounding box for the DrawingMisc object
     const finalMiscBoundingBox = {
@@ -222,6 +239,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
       lines: draftDrawing.lines,
       textAreas: draftDrawing.textAreas,
       images: draftDrawing.images,
+      rulers: draftDrawing.rulers,
       image: image,
       boundingBox: finalMiscBoundingBox, // Add the calculated combined bounds
     };
@@ -240,6 +258,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
       lines: [],
       textAreas: [],
       images: [],
+      rulers: [],
       pageNumber: pageNumber,
       boundingBox: { left: 0, top: 0, right: 0, bottom: 0 },
     });
@@ -274,6 +293,14 @@ export const DraftLayer = (props: DraftLayerProps) => {
       )}
       {drawingMode === 'image' && (
         <ImageLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingAdded} pdfCanvasRef={pdfCanvasRef} draftMode />
+      )}
+      {drawingMode === 'ruler' && (
+        <RulerDrawingLayer
+          pageNumber={pageNumber}
+          pdfCanvasRef={pdfCanvasRef}
+          enableSnapPoints={false}
+          onDrawingCreated={handleDrawingAdded}
+        />
       )}
       <CompleteDrawings ref={completeDrawingsCanvasRef} pageNumber={pageNumber} drawings={[draftDrawing]} />
     </>

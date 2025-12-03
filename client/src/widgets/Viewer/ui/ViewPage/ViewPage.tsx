@@ -8,7 +8,6 @@ import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import CompleteDrawings from '../CompleteDrawings/CompleteDrawings';
 import { DraftLayer } from '../DraftLayer/DraftLayer';
 import { DrawAreaLayer } from '../DrawAreaLayer/DrawAreaLayer';
-import { RulerDrawingLayer } from '../RulerDrawingLayer/RulerDrawingLayer';
 import { TextLayer } from '../TextLayer/TextLayer';
 import RectSelectionDrawingComponent from '../RectSelectionDrawingComponent/RectSelectionDrawingComponent';
 import PinSelectionDrawingComponent from '../PinSelectionDrawingComponent/PinSelectionDrawingComponent';
@@ -616,11 +615,6 @@ export const ViewPage = (props: ViewPageProps) => {
               onDrawingCreated={handleDrawingCreated}
               pdfCanvasRef={canvasRef}
             />
-          )}
-
-          {/* Add ruler Layer */}
-          {shouldRenderDrawingLayers() && drawingMode === 'ruler' && (
-            <RulerDrawingLayer pageNumber={pageNumber} pdfCanvasRef={canvasRef} enableSnapPoints={false} />
           )}
 
           {/* Add zoomArea Layer */}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useContext, forwardRef, useMemo, useLayoutEffect } from 'react';
+
 import { ViewerContext } from '../../model/context/viewerContext';
 import { transformCoordinates } from '../../utils/rotationUtils';
 import {
@@ -13,7 +14,9 @@ import {
   renderpinSelection,
 } from '../../utils/renderers';
 import { renderExtensionLine } from '../../utils/renderers/renderExtensionLine';
+import { renderRulerCompleted } from '../../utils/renderers/renderRulerCompleted';
 import { Drawing, ImageAnnotation, DrawingMisc } from '../../model/types/Drawings';
+
 import styles from './CompleteDrawings.module.scss';
 
 interface CompleteDrawingsProps {
@@ -343,6 +346,7 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
             d.type === 'textCrossedOut' ||
             d.type === 'textHighlight' ||
             d.type === 'textArea' ||
+            d.type === 'rulers' ||
             d.type === 'misc'),
       );
 
@@ -597,6 +601,25 @@ const CompleteDrawings = forwardRef<HTMLCanvasElement, CompleteDrawingsProps>(({
               if (drawing.textAreas && drawing.textAreas.length > 0) {
                 drawing.textAreas.forEach((textArea) => {
                   renderTextArea(ctx, textArea, canvas.width, canvas.height, currentScale, currentRotation);
+                });
+              }
+
+              if (drawing.rulers && drawing.rulers.length > 0) {
+                // Render each Rulers drawing in this misc drawing
+                drawing.rulers.forEach((rulersDrawing) => {
+                  if (rulersDrawing.rulers && rulersDrawing.rulers.length > 0) {
+                    renderRulerCompleted(ctx, canvas.width, canvas.height, currentScale, currentRotation, {
+                      rulers: rulersDrawing.rulers.map((ruler, index) => ({
+                        ...ruler,
+                        id: index,
+                      })),
+                      drawingLineWidth: 2,
+                      calibration: {
+                        pixelsPerUnit: rulersDrawing.pixelsPerUnit,
+                        unitName: rulersDrawing.units,
+                      },
+                    });
+                  }
                 });
               }
               break;

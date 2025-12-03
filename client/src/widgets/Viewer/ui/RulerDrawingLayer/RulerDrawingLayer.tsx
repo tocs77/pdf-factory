@@ -1,9 +1,12 @@
 import React, { useEffect, useRef, useState, useContext, useCallback } from 'react';
+
 import { transformCoordinates, normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { useSnapPoints } from '../../hooks/useSnapPoints';
 import { renderRuler, colorToRgba } from '../../utils/renderers/renderRuler';
 import { RulerCalibrationMenu } from '../RulerCalibrationMenu/RulerCalibrationMenu';
+import { Ruler as RulerType, Drawing } from '../../model/types/Drawings';
+
 import styles from './RulerDrawingLayer.module.scss';
 
 // Add throttle utility function
@@ -21,21 +24,16 @@ interface RulerDrawingLayerProps {
   pageNumber: number;
   pdfCanvasRef?: React.RefObject<HTMLCanvasElement>;
   enableSnapPoints?: boolean; // Enable/disable snap points detection
+  onDrawingCreated: (drawing: Drawing) => void; // Callback when Rulers drawing is completed
 }
 
-interface Ruler {
-  id: number;
-  startPoint: { x: number; y: number };
-  endPoint: { x: number; y: number };
-  distance: number;
-  angle: number;
-  color: string;
-}
+type Ruler = RulerType & { id: number };
 
 export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
-  const { pageNumber, pdfCanvasRef, enableSnapPoints = true } = props;
-  const { state } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations, calibration, currentPage } = state;
+  const { pageNumber, pdfCanvasRef, enableSnapPoints = true, onDrawingCreated } = props;
+  const { state, dispatch } = useContext(ViewerContext);
+  const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations, calibration, currentPage, requestCancelDrawing } =
+    state;
 
   // Get the rotation angle for this page - used in dependency array for redraw
   const rotation = pageRotations[pageNumber] || 0;
@@ -93,6 +91,28 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
   const [isMouseButtonDown, setIsMouseButtonDown] = useState(false);
   // Add draggingRulerIndex to track which ruler is being dragged
   const [draggingRulerIndex, setDraggingRulerIndex] = useState<number | null>(null);
+
+  // Handle cancel drawing request from DrawingMenu
+  useEffect(() => {
+    if (requestCancelDrawing && drawingMode === 'ruler') {
+      cancelAllRulers();
+      dispatch({ type: 'requestCancelDrawing', payload: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestCancelDrawing, drawingMode]);
+
+  // Function to cancel all rulers
+  const cancelAllRulers = () => {
+    setRulers([]);
+    setNextRulerId(1);
+    resetRuler();
+  };
+
+  // Function to clear rulers (called from RulerCalibrationMenu)
+  const clearRulers = () => {
+    setRulers([]);
+    setNextRulerId(1);
+  };
 
   // Wrap setIsDrawing to update both state and ref
   const updateIsDrawing = (value: boolean) => {
@@ -1634,6 +1654,10 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
                 ? rulers[rulers.length - 1].distance
                 : 0
           }
+          rulers={rulers}
+          pageNumber={pageNumber}
+          onDrawingCreated={onDrawingCreated}
+          onClearRulers={clearRulers}
         />
       )}
     </>

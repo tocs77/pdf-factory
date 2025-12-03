@@ -19,6 +19,14 @@ export interface DrawingStyle {
   opacity?: number; // Opacity value from 0 to 1, defaults to 1 if not specified
 }
 
+export interface Ruler {
+  startPoint: { x: number; y: number };
+  endPoint: { x: number; y: number };
+  distance: number;
+  angle: number;
+  color: string;
+}
+
 export interface DrawingPath extends BaseDrawing {
   type: 'freehand';
   /**
@@ -216,6 +224,7 @@ export interface DrawingMisc extends BaseDrawing {
   lines: Line[];
   textAreas: TextArea[];
   images: ImageAnnotation[];
+  rulers: Rulers[];
 }
 
 export interface ImageAnnotation extends BaseDrawing {
@@ -232,6 +241,13 @@ export interface ImageAnnotation extends BaseDrawing {
   endPoint: { x: number; y: number };
 }
 
+export interface Rulers extends BaseDrawing {
+  type: 'rulers';
+  rulers: Ruler[];
+  pixelsPerUnit: number;
+  units: string;
+}
+
 // Union type for all drawings
 export type Drawing =
   | DrawingPath
@@ -246,4 +262,5 @@ export type Drawing =
   | DrawingMisc
   | RectSelection
   | PinSelection
-  | ImageAnnotation;
+  | ImageAnnotation
+  | Rulers;

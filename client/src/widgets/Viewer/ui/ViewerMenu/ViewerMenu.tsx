@@ -5,7 +5,6 @@ import {
   CompareSideBySideIcon,
   RotateCcwIcon,
   RotateCwIcon,
-  RulerIcon,
   ThumbnailToggleIcon,
   ZoomAreaIcon,
   ZoomInIcon,
@@ -193,8 +192,6 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
     }
   };
 
-  const toggleRuler = () => dispatch({ type: 'toggleRuler' });
-
   const changeDrawingMode = (mode: DrawingMode) => {
     if (mode === drawingMode) {
       dispatch({ type: 'setDrawingMode', payload: 'none' });
@@ -242,15 +239,6 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
           style={{ padding: '4px' }}
           title='Увеличить выбранную область'>
           <ZoomAreaIcon />
-        </button>
-      )}
-      {!viewOnly && (
-        <button
-          onClick={toggleRuler}
-          className={`${classes.zoomButton} ${drawingMode === 'ruler' ? classes.active : ''}`}
-          style={{ padding: '4px' }}
-          title='Инструмент линейка'>
-          <RulerIcon />
         </button>
       )}
       {!mobile && (

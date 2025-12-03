@@ -7,3 +7,4 @@ export { renderTextCrossedOut } from './renderTextCrossedOut';
 export { renderTextHighlight } from './renderTextHighlight';
 export { renderTextArea } from './renderTextArea';
 export { renderpinSelection } from './renderPinSelection';
+export { renderRulerCompleted } from './renderRulerCompleted';

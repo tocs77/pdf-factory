@@ -9,6 +9,7 @@ import {
   PinSelectionIcon,
   RectangleIcon,
   RectSelectionIcon,
+  RulerIcon,
   TextAreaIcon,
   TextHighlightIcon,
   TextStrikethroughIcon,
@@ -117,6 +118,13 @@ export const ToolsPanel = ({ mobile }: ToolsPanelProps) => {
               <LineIcon />
             </button>
           )}
+
+          <button
+            className={`${classes.toolButton} ${drawingMode === 'ruler' ? classes.active : ''}`}
+            onClick={() => changeDrawingMode('ruler')}
+            title={drawingMode === 'ruler' ? 'Отключить инструмент линейка' : 'Включить инструмент линейка'}>
+            <RulerIcon />
+          </button>
 
           <button
             className={`${classes.toolButton} ${drawingMode === 'textArea' ? classes.active : ''}`}

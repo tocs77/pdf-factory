@@ -17,7 +17,7 @@ export const DrawingMenu = () => {
   }
 
   // Check if we're in a selection-only mode
-  const selectionModes: DrawingMode[] = ['rectSelection', 'pinSelection', 'drawArea', 'ruler'];
+  const selectionModes: DrawingMode[] = ['rectSelection', 'pinSelection', 'drawArea'];
   const isSelectionMode = selectionModes.includes(drawingMode);
 
   // Check if we're in textArea mode
