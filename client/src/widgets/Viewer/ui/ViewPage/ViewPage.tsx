@@ -38,7 +38,7 @@ export const ViewPage = (props: ViewPageProps) => {
   const { page, pageNumber, id, className, drawings, onDrawingCreated, onBecameVisible, onDrawingClicked, selectedPage, mobile } =
     props;
   const { state } = useContext(ViewerContext);
-  const { drawingMode, pageRotations, scale, currentDrawingPage, isPinchZooming, isWheelZooming } = state;
+  const { drawingMode, pageRotations, scale, currentDrawingPage, isPinchZooming, isWheelZooming, currentPage } = state;
 
   const canvasRef = useRef<HTMLCanvasElement>(null!);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -523,6 +523,17 @@ export const ViewPage = (props: ViewPageProps) => {
     }
   };
 
+  // Helper function to check if drawing layers should be rendered for this page
+  const shouldRenderDrawingLayers = (): boolean => {
+    // If currentDrawingPage is set (not 0 or -1), use existing logic
+    if (currentDrawingPage !== 0 && currentDrawingPage !== -1) {
+      return currentDrawingPage === pageNumber;
+    }
+    // If no currentDrawingPage, only render for current page ± 3 pages
+    const pageDiff = Math.abs(pageNumber - currentPage);
+    return pageDiff <= 3;
+  };
+
   // Cleanup render task on unmount or when page changes
   useEffect(() => {
     return () => {
@@ -583,15 +594,14 @@ export const ViewPage = (props: ViewPageProps) => {
             )}
 
           {/* Drawing components - only render when respective tool is selected */}
-          {(currentDrawingPage === 0 || currentDrawingPage === -1 || currentDrawingPage === pageNumber) && (
+          {shouldRenderDrawingLayers() && (
             <DraftLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
           )}
-          {drawingMode === 'drawArea' &&
-            (currentDrawingPage === 0 || currentDrawingPage === -1 || currentDrawingPage === pageNumber) && (
-              <DrawAreaLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
-            )}
+          {shouldRenderDrawingLayers() && drawingMode === 'drawArea' && (
+            <DrawAreaLayer pageNumber={pageNumber} onDrawingCreated={handleDrawingCreated} pdfCanvasRef={canvasRef} />
+          )}
           {/* Add rectSelection Layer */}
-          {drawingMode === 'rectSelection' && (
+          {shouldRenderDrawingLayers() && drawingMode === 'rectSelection' && (
             <RectSelectionDrawingComponent
               pageNumber={pageNumber}
               onDrawingCreated={handleDrawingCreated}
@@ -600,20 +610,18 @@ export const ViewPage = (props: ViewPageProps) => {
           )}
 
           {/* Add pinSelection Layer */}
-          {drawingMode === 'pinSelection' &&
-            (currentDrawingPage === 0 || currentDrawingPage === -1 || currentDrawingPage === pageNumber) && (
-              <PinSelectionDrawingComponent
-                pageNumber={pageNumber}
-                onDrawingCreated={handleDrawingCreated}
-                pdfCanvasRef={canvasRef}
-              />
-            )}
+          {shouldRenderDrawingLayers() && drawingMode === 'pinSelection' && (
+            <PinSelectionDrawingComponent
+              pageNumber={pageNumber}
+              onDrawingCreated={handleDrawingCreated}
+              pdfCanvasRef={canvasRef}
+            />
+          )}
 
           {/* Add ruler Layer */}
-          {drawingMode === 'ruler' &&
-            (currentDrawingPage === 0 || currentDrawingPage === -1 || currentDrawingPage === pageNumber) && (
-              <RulerDrawingLayer pageNumber={pageNumber} pdfCanvasRef={canvasRef} enableSnapPoints={false} />
-            )}
+          {shouldRenderDrawingLayers() && drawingMode === 'ruler' && (
+            <RulerDrawingLayer pageNumber={pageNumber} pdfCanvasRef={canvasRef} enableSnapPoints={false} />
+          )}
 
           {/* Add zoomArea Layer */}
           {drawingMode === 'zoomArea' &&

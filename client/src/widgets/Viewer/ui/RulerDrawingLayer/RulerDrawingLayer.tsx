@@ -36,7 +36,6 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
   const { pageNumber, pdfCanvasRef, enableSnapPoints = true } = props;
   const { state } = useContext(ViewerContext);
   const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations, calibration, currentPage } = state;
-  console.log('render ruker for page', pageNumber);
 
   // Get the rotation angle for this page - used in dependency array for redraw
   const rotation = pageRotations[pageNumber] || 0;
