@@ -2,7 +2,7 @@ import React, { useContext, useState, useEffect } from 'react';
 
 import { DraggableDialog } from '@/shared/UI/DraggableDialog';
 
-import { ViewerContext } from '../../model/context/viewerContext';
+import { ViewerContext, getCalibrationForPage } from '../../model/context/viewerContext';
 import { Ruler, Rulers, Drawing } from '../../model/types/Drawings';
 import { isLightColor } from '../../utils/textToolUtils';
 
@@ -24,7 +24,8 @@ export const RulerCalibrationMenu: React.FC<RulerCalibrationMenuProps> = ({
   onClearRulers,
 }) => {
   const { state, dispatch } = useContext(ViewerContext);
-  const { calibration, drawingColor } = state;
+  const { calibration: calibrationMap, drawingColor } = state;
+  const calibration = getCalibrationForPage(calibrationMap, pageNumber);
 
   // Local state for real value and units
   const [realValue, setRealValue] = useState<string>(pixelValue > 0 ? pixelValue.toString() : '');
@@ -34,14 +35,14 @@ export const RulerCalibrationMenu: React.FC<RulerCalibrationMenuProps> = ({
   useEffect(() => {
     if (pixelValue <= 0) {
       setRealValue('');
-      setUnits(calibration.unitName || 'px');
+      setUnits(calibration.unitName || 'mm');
       return;
     }
 
     // If calibration is default (pixelsPerUnit === 1 and unitName === 'px'), use pixel value
-    if (calibration.pixelsPerUnit === 1 && calibration.unitName === 'px') {
+    if (calibration.pixelsPerUnit === 1 && calibration.unitName === 'mm') {
       setRealValue(Math.round(pixelValue).toString());
-      setUnits('px');
+      setUnits('mm');
     } else {
       // Convert pixel value to calibrated units and round to whole number
       const calibratedValue = pixelValue / calibration.pixelsPerUnit;
@@ -62,6 +63,7 @@ export const RulerCalibrationMenu: React.FC<RulerCalibrationMenuProps> = ({
         dispatch({
           type: 'applyCalibration',
           payload: {
+            pageNumber,
             actualSize: numValue,
             unitName: units || 'px',
             pixelDistance: pixelValue,
@@ -83,6 +85,7 @@ export const RulerCalibrationMenu: React.FC<RulerCalibrationMenuProps> = ({
         dispatch({
           type: 'applyCalibration',
           payload: {
+            pageNumber,
             actualSize: numValue,
             unitName: newUnits,
             pixelDistance: pixelValue,

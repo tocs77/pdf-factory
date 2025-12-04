@@ -50,8 +50,8 @@ export interface ViewerSchema {
   compareMode: 'none' | 'diff' | 'sideBySide'; // Type of comparison mode active
   requestFinishDrawing: boolean; // Request to finish current drawing
   requestCancelDrawing: boolean; // Request to cancel current drawing
-  // Ruler calibration settings
-  calibration: CalibrationSettings;
+  // Ruler calibration settings - map of page numbers to calibration settings
+  calibration: Record<number, CalibrationSettings>;
   isMobile: boolean;
   isPinchZooming: boolean;
   isWheelZooming: boolean; // Track if user is actively zooming with wheel
@@ -79,12 +79,16 @@ type SetIsMobileAction = { type: 'setIsMobile'; payload: boolean };
 
 type SetCalibrationAction = {
   type: 'setCalibration';
-  payload: CalibrationSettings;
+  payload: {
+    pageNumber: number;
+    calibration: CalibrationSettings;
+  };
 };
 
 type ApplyCalibrationAction = {
   type: 'applyCalibration';
   payload: {
+    pageNumber: number;
     actualSize: number;
     unitName: string;
     pixelDistance: number;
@@ -93,6 +97,7 @@ type ApplyCalibrationAction = {
 
 type ResetCalibrationAction = {
   type: 'resetCalibration';
+  payload: number; // pageNumber
 };
 
 type SetCurrentPageAction = {

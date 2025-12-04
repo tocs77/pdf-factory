@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useContext, useCallback } from 'react';
 
 import { transformCoordinates, normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
-import { ViewerContext } from '../../model/context/viewerContext';
+import { ViewerContext, getCalibrationForPage } from '../../model/context/viewerContext';
 import { useSnapPoints } from '../../hooks/useSnapPoints';
 import { renderRuler, colorToRgba } from '../../utils/renderers/renderRuler';
 import { RulerCalibrationMenu } from '../RulerCalibrationMenu/RulerCalibrationMenu';
@@ -32,8 +32,19 @@ type Ruler = RulerType & { id: number };
 export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
   const { pageNumber, pdfCanvasRef, enableSnapPoints = true, onDrawingCreated } = props;
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, drawingColor, drawingLineWidth, drawingMode, pageRotations, calibration, currentPage, requestCancelDrawing } =
-    state;
+  const {
+    scale,
+    drawingColor,
+    drawingLineWidth,
+    drawingMode,
+    pageRotations,
+    calibration: calibrationMap,
+    currentPage,
+    requestCancelDrawing,
+  } = state;
+
+  // Get the calibration for this page
+  const calibration = getCalibrationForPage(calibrationMap, pageNumber);
 
   // Get the rotation angle for this page - used in dependency array for redraw
   const rotation = pageRotations[pageNumber] || 0;

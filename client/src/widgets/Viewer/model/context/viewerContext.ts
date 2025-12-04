@@ -1,5 +1,5 @@
 import { createContext, Dispatch } from 'react';
-import { Action, DrawingMode, RotationAngle, ViewerSchema } from '../types/viewerSchema';
+import { Action, CalibrationSettings, DrawingMode, RotationAngle, ViewerSchema } from '../types/viewerSchema';
 
 // Define the context type including state and dispatch
 interface ViewerContextType {
@@ -10,6 +10,18 @@ interface ViewerContextType {
 const MAX_ZOOM = 5;
 const DEFAULT_DRAWING_COLOR = '#2196f3';
 const DEFAULT_SCALE = 1.5;
+const DEFAULT_CALIBRATION: CalibrationSettings = {
+  pixelsPerUnit: 1,
+  unitName: 'mm',
+};
+
+// Helper function to get calibration for a page with default fallback
+export const getCalibrationForPage = (
+  calibration: Record<number, CalibrationSettings>,
+  pageNumber: number,
+): CalibrationSettings => {
+  return calibration[pageNumber] || DEFAULT_CALIBRATION;
+};
 
 // Define the initial state
 export const initialViewerState: ViewerSchema = {
@@ -27,10 +39,7 @@ export const initialViewerState: ViewerSchema = {
   compareMode: 'none',
   requestFinishDrawing: false,
   requestCancelDrawing: false,
-  calibration: {
-    pixelsPerUnit: 1,
-    unitName: 'px',
-  },
+  calibration: {},
   isMobile: false,
   isPinchZooming: false,
   isWheelZooming: false,
@@ -175,32 +184,40 @@ export const viewerReducer = (state: ViewerSchema, action: Action): ViewerSchema
         ...state,
         requestCancelDrawing: action.payload,
       };
-    case 'setCalibration':
+    case 'setCalibration': {
+      const { pageNumber, calibration } = action.payload;
       return {
         ...state,
-        calibration: action.payload,
+        calibration: {
+          ...state.calibration,
+          [pageNumber]: calibration,
+        },
       };
+    }
     case 'applyCalibration': {
-      const { actualSize, unitName, pixelDistance } = action.payload;
+      const { pageNumber, actualSize, unitName, pixelDistance } = action.payload;
       // Calculate pixels per unit
       const pixelsPerUnit = pixelDistance / actualSize;
 
       return {
         ...state,
         calibration: {
-          pixelsPerUnit,
-          unitName: unitName || '',
+          ...state.calibration,
+          [pageNumber]: {
+            pixelsPerUnit,
+            unitName: unitName || '',
+          },
         },
       };
     }
-    case 'resetCalibration':
+    case 'resetCalibration': {
+      const pageNumber = action.payload;
+      const { [pageNumber]: _, ...restCalibration } = state.calibration;
       return {
         ...state,
-        calibration: {
-          pixelsPerUnit: 1,
-          unitName: 'px',
-        },
+        calibration: restCalibration,
       };
+    }
     case 'setCurrentPage':
       return {
         ...state,
