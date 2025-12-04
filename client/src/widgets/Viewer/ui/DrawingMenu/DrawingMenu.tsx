@@ -17,8 +17,10 @@ export const DrawingMenu = () => {
   }
 
   // Check if we're in a selection-only mode
-  const selectionModes: DrawingMode[] = ['rectSelection', 'pinSelection', 'drawArea'];
-  const isSelectionMode = selectionModes.includes(drawingMode);
+  const onlyColorModes: DrawingMode[] = ['rectSelection', 'pinSelection', 'drawArea', 'ruler'];
+  const autoFinishModes: DrawingMode[] = ['rectSelection', 'pinSelection', 'drawArea'];
+  const isOnlyColorMode = onlyColorModes.includes(drawingMode);
+  const isAutoFinishMode = autoFinishModes.includes(drawingMode);
 
   // Check if we're in textArea mode
   const isTextAreaMode = drawingMode === 'textArea';
@@ -74,7 +76,7 @@ export const DrawingMenu = () => {
       resizable={false}>
       <div className={styles.drawingMenuContainer} data-dragscroll-ignore='true'>
         <div className={styles.drawingOptions}>
-          {!isSelectionMode && (
+          {!isAutoFinishMode && (
             <div className={styles.actionButtons}>
               <button
                 className={styles.actionButton}
@@ -131,7 +133,7 @@ export const DrawingMenu = () => {
               ))}
             </div>
           </div>
-          {!isSelectionMode && (
+          {!isOnlyColorMode && (
             <div className={styles.lineWidthPicker}>
               <span>{isTextAreaMode ? 'Размер текста:' : 'Толщина:'}</span>
               <div className={styles.lineWidthOptions}>
@@ -152,7 +154,7 @@ export const DrawingMenu = () => {
               </div>
             </div>
           )}
-          {!isSelectionMode && (
+          {!isOnlyColorMode && (
             <div className={styles.opacityPicker}>
               <span>Прозрачность:</span>
               <div className={styles.opacityOptions}>

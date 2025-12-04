@@ -178,15 +178,15 @@ export const RulerCalibrationMenu: React.FC<RulerCalibrationMenuProps> = ({
               />
             </div>
             <div className={styles.calibrationColumn}>
-              <label className={styles.label}>Реальное значение:</label>
+              <label className={styles.label}>Значение:</label>
               <input
                 type='number'
-                step='1'
-                min='1'
+                step='0.1'
+                min='0.1'
                 value={realValue}
                 onChange={handleRealValueChange}
                 className={styles.input}
-                placeholder='Введите значение'
+                placeholder='Значение'
                 disabled={pixelValue <= 0}
               />
             </div>

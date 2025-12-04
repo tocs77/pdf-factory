@@ -95,8 +95,10 @@ export const DrawingMenuMobile = () => {
   }
 
   // Check if we're in a selection-only mode
-  const selectionModes: DrawingMode[] = ['rectSelection', 'pinSelection', 'drawArea', 'ruler'];
-  const isSelectionMode = selectionModes.includes(drawingMode);
+  const onlyColorModes: DrawingMode[] = ['rectSelection', 'pinSelection', 'drawArea', 'ruler'];
+  const autoFinishModes: DrawingMode[] = ['rectSelection', 'pinSelection', 'drawArea'];
+  const isOnlyColorMode = onlyColorModes.includes(drawingMode);
+  const isAutoFinishMode = autoFinishModes.includes(drawingMode);
 
   // Check if we're in textArea mode
   const isTextAreaMode = drawingMode === 'textArea';
@@ -151,7 +153,7 @@ export const DrawingMenuMobile = () => {
       resizable={false}>
       <div className={styles.drawingMenuContainer} data-dragscroll-ignore='true'>
         <div className={styles.drawingOptions}>
-          {!isSelectionMode && (
+          {!isAutoFinishMode && (
             <div className={styles.actionButtons}>
               <button
                 className={styles.actionButton}
@@ -226,7 +228,7 @@ export const DrawingMenuMobile = () => {
             )}
           </div>
 
-          {!isSelectionMode && (
+          {!isOnlyColorMode && (
             <div className={styles.dropdownContainer}>
               <button
                 ref={widthButtonRef}
@@ -269,7 +271,7 @@ export const DrawingMenuMobile = () => {
             </div>
           )}
 
-          {!isSelectionMode && (
+          {!isOnlyColorMode && (
             <div className={styles.dropdownContainer}>
               <button
                 ref={opacityButtonRef}
