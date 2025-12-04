@@ -17,7 +17,7 @@ export const DrawingMenu = () => {
   }
 
   // Check if we're in a selection-only mode
-  const onlyColorModes: DrawingMode[] = ['rectSelection', 'pinSelection', 'drawArea', 'ruler'];
+  const onlyColorModes: DrawingMode[] = ['rectSelection', 'pinSelection', 'drawArea', 'ruler', 'extensionLine'];
   const autoFinishModes: DrawingMode[] = ['rectSelection', 'pinSelection', 'drawArea'];
   const isOnlyColorMode = onlyColorModes.includes(drawingMode);
   const isAutoFinishMode = autoFinishModes.includes(drawingMode);

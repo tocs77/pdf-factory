@@ -5,9 +5,10 @@ const MAX_ARROW_HEAD_LENGTH = 15; // Maximum length of the arrow head
 const ARROW_HEAD_WIDTH_FACTOR = 0.4; // Relative width of arrowhead base to length
 const ARROW_HEAD_LENGTH_FACTOR = 0.25; // Relative length of arrowhead to arrow segment length
 const DEFAULT_ARROW_TAIL_LENGTH_FACTOR = 5; // Factor for default tail length relative to pinSize
+const MAX_TAIL_LENGTH = 300; // Maximum length of the tail
 const TEXT_FONT_SIZE = 11;
 const TEXT_PADDING = 6;
-const TEXT_BG_HEIGHT = 16;
+const TEXT_LINE_HEIGHT = 14; // Height between text lines
 
 /**
  * Renders a pin on the canvas
@@ -57,22 +58,14 @@ export const renderExtensionLine = (ctx: CanvasRenderingContext2D, extensionLine
 
   // --- Calculate Tail Length ---
   const defaultArrowTailLength = pinSize * DEFAULT_ARROW_TAIL_LENGTH_FACTOR;
-  let requiredTextWidth = 0;
-  if (extensionLine.text && extensionLine.text.length > 0) {
-    // Temporarily set font to measure text accurately
-    const currentFont = ctx.font;
-    ctx.font = `bold ${TEXT_FONT_SIZE}px Arial, sans-serif`;
-    requiredTextWidth = ctx.measureText(extensionLine.text).width + TEXT_PADDING * 2;
-    ctx.font = currentFont; // Restore original font
-  }
-  // Tail must be at least the default length, but expand for text
-  const actualTailLength = Math.max(defaultArrowTailLength, requiredTextWidth);
+  // Tail must be at least the default length, but cap at maximum
+  const actualTailLength = Math.min(Math.max(defaultArrowTailLength, 0), MAX_TAIL_LENGTH);
 
   // Avoid zero-length vectors (fallback drawing)
   if (arrowDx === 0 && arrowDy === 0) {
     // If bend point equals the arrow tip (shouldn't normally happen),
     // just use a horizontal tail to the left as fallback
-    const tailEndX = bendX - actualTailLength; // Use calculated length
+    const tailEndX = bendX - actualTailLength; // Use capped length
     const tailEndY = bendY;
 
     // Draw a simple horizontal arrow line (no head needed here)
@@ -164,9 +157,41 @@ export const renderExtensionLine = (ctx: CanvasRenderingContext2D, extensionLine
 };
 
 /**
+ * Splits text into lines that fit within the maximum width
+ * @param ctx Canvas rendering context
+ * @param text Text to split
+ * @param maxWidth Maximum width for each line
+ * @returns Array of text lines
+ */
+const splitTextIntoLines = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] => {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let currentLine = '';
+
+  for (const word of words) {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    const metrics = ctx.measureText(testLine);
+    const testWidth = metrics.width;
+
+    if (testWidth > maxWidth && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = testLine;
+    }
+  }
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  return lines.length > 0 ? lines : [text];
+};
+
+/**
  * Renders text over the arrow tail
  * @param ctx Canvas rendering context
- * @param pin Pin data
+ * @param extensionLine Extension line data
  * @param pinSize Size of the pin
  * @param bendX X coordinate of the bend point
  * @param bendY Y coordinate of the bend point
@@ -176,7 +201,7 @@ export const renderExtensionLine = (ctx: CanvasRenderingContext2D, extensionLine
 export const renderArrowText = (
   ctx: CanvasRenderingContext2D,
   extensionLine: ExtensionLine,
-  pinSize: number,
+  _pinSize: number, // Kept for API compatibility
   bendX: number,
   bendY: number,
   tailEndX: number,
@@ -185,37 +210,42 @@ export const renderArrowText = (
   // Check for empty text
   if (!extensionLine.text || extensionLine.text.trim().length === 0) return;
 
-  // Calculate text position (centered over the horizontal tail)
-  const textX = (bendX + tailEndX) / 2;
-
-  // Position above the tail
-  const textY = bendY - pinSize * 0.8;
-
-  // Fixed font size that doesn't scale with zoom
-  // const fontSize = 11; // Use constant
-  // const padding = 6; // Use constant
-
   // Set font before measuring text
   ctx.font = `bold ${TEXT_FONT_SIZE}px Arial, sans-serif`;
 
-  // Measure text width
-  const textWidth = ctx.measureText(extensionLine.text).width;
+  // Calculate available width for text (tail length minus padding)
+  const tailLength = Math.abs(tailEndX - bendX);
+  const maxTextWidth = tailLength - TEXT_PADDING * 2;
 
-  // Calculate background width based directly on text width and padding
-  const textBgWidth = textWidth + TEXT_PADDING * 2;
-  // const textBgHeight = 16; // Use constant
+  // Split text into lines that fit within the available width
+  const textLines = splitTextIntoLines(ctx, extensionLine.text, maxTextWidth);
+
+  // Calculate text dimensions
+  const maxLineWidth = Math.max(...textLines.map((line) => ctx.measureText(line).width));
+  const textBgWidth = maxLineWidth + TEXT_PADDING * 2;
+  const textBgHeight = textLines.length * TEXT_LINE_HEIGHT + TEXT_PADDING * 2;
+
+  // Calculate text position (centered over the horizontal tail, positioned higher to avoid overlap)
+  const textX = (bendX + tailEndX) / 2;
+  // Position text so its bottom edge is above the tail line with spacing
+  // textY is the center, so bottom is at textY + textBgHeight/2
+  // We want: textY + textBgHeight/2 < bendY - spacing
+  const spacing = TEXT_PADDING + 2; // Extra spacing between text and tail line
+  const textY = bendY - textBgHeight / 2 - spacing;
 
   // Draw text background for better readability
   ctx.fillStyle = 'white';
   ctx.beginPath();
-  ctx.roundRect(textX - textBgWidth / 2, textY - TEXT_BG_HEIGHT / 2, textBgWidth, TEXT_BG_HEIGHT, 4);
+  ctx.roundRect(textX - textBgWidth / 2, textY - textBgHeight / 2, textBgWidth, textBgHeight, 4);
   ctx.fill();
 
-  // Draw text
-  ctx.fillStyle = '#333';
+  // Draw text lines
+  ctx.fillStyle = extensionLine.color; // Use arrow color for text
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  // No truncation needed as tail length is adjusted
-  ctx.fillText(extensionLine.text, textX, textY);
+  textLines.forEach((line, index) => {
+    const lineY = textY + (index - (textLines.length - 1) / 2) * TEXT_LINE_HEIGHT;
+    ctx.fillText(line, textX, lineY);
+  });
 };
