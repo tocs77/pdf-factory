@@ -41,7 +41,8 @@ export const renderTextArea = (
 
   // Draw the rectangle border
   ctx.strokeStyle = drawing.style.strokeColor;
-  ctx.lineWidth = drawing.style.strokeWidth * scale;
+  const strokeWidth = drawing.style.strokeWidth * scale;
+  ctx.lineWidth = strokeWidth;
   ctx.globalAlpha = drawing.style.opacity ?? 1;
   ctx.strokeRect(drawX, drawY, areaWidth, areaHeight);
 
@@ -56,12 +57,14 @@ export const renderTextArea = (
   ctx.fillStyle = drawing.style.strokeColor;
 
   // Padding for text (also scaled)
+  // Account for stroke width: half extends inside the rectangle on each side, so we add strokeWidth/2
   const padding = 5 * scale;
-  const textX = drawX + padding;
+  const textX = drawX + strokeWidth / 2 + padding;
   const lineHeight = scaledFontSize; // Line height matches font size
 
   // Calculate maximum width for text
-  const maxTextWidth = areaWidth - 2 * padding;
+  // Account for stroke width on both sides (strokeWidth/2 on each side) plus padding
+  const maxTextWidth = areaWidth - strokeWidth - 2 * padding;
 
   // Handle text wrapping with proper line, word, and character breaks
   const wrapText = (text: string, maxWidth: number) => {
@@ -146,13 +149,15 @@ export const renderTextArea = (
   const textLines = wrapText(drawing.text, maxTextWidth);
 
   // Always start from the top-left corner with padding
-  const startY = drawY + padding + lineHeight * 0.8; // Adjust baseline for proper text positioning
+  // Account for stroke width: half extends inside the rectangle at the top
+  const startY = drawY + strokeWidth / 2 + padding + lineHeight * 0.8; // Adjust baseline for proper text positioning
 
   // Draw each line of text
   let yPos = startY;
   for (const line of textLines) {
     // Check if we've reached the bottom boundary
-    if (yPos > drawY + areaHeight - padding) {
+    // Account for stroke width: half extends inside the rectangle at the bottom
+    if (yPos > drawY + areaHeight - strokeWidth / 2 - padding) {
       break;
     }
 
