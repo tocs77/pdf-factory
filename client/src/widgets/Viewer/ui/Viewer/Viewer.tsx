@@ -4,7 +4,7 @@ import { PDFDocumentProxy, PDFPageProxy, getDocument } from 'pdfjs-dist';
 import { classNames } from '../../utils/classNames';
 import { isSliderBeingDragged } from '../../utils/dragControl/dragControl';
 
-import { Thumbnail } from '../Thumbnail/Thumbnail';
+import { ThumbnailsMenu } from '../ThumbnailsMenu/ThubnaislMenu';
 import { ViewerMenu } from '../ViewerMenu/ViewerMenu';
 import { Page } from '../Page/Page';
 import { DrawingMenu } from '../DrawingMenu/DrawingMenu';
@@ -399,28 +399,24 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   return (
     <div className={classNames(classes.container, { [classes.noThumbnails]: !showThumbnails }, [])}>
       {showThumbnails && (
-        <div className={classes.thumbnailsContainer}>
-          {pages.map((page, index) => (
-            <Thumbnail
-              key={`thumbnail-${index + 1}`}
-              page={page}
-              pageNumber={index + 1}
-              isSelected={currentPage === index + 1}
-              onClick={() => handleThumbnailClick(index + 1)}
-            />
-          ))}
-        </div>
+        <ThumbnailsMenu
+          pages={pages}
+          currentPage={currentPage}
+          onThumbnailClick={handleThumbnailClick}
+          totalPages={pages.length}
+          onPageChange={handlePageChange}
+          compareMode={compareMode}
+          comparePage={currentComparePageNum}
+          totalComparePages={comparePages.length}
+          onComparePageChange={handleComparePageChange}
+        />
       )}
 
       <div className={classes.viewerContainer}>
         <ViewerMenu
           currentPage={currentPage}
-          totalPages={pages.length}
           onPageChange={handlePageChange}
           hasCompare={!!compareUrl}
-          comparePage={currentComparePageNum}
-          totalComparePages={comparePages.length}
-          onComparePageChange={handleComparePageChange}
           viewOnly={viewOnly}
           extendedControls={extendedControls}
           mobile={isMobile}

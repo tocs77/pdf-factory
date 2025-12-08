@@ -10,7 +10,6 @@ import {
   ZoomInIcon,
   ZoomOutIcon,
 } from '../Icons';
-import { PagesControl } from '../PagesControl/PagesControl';
 import { ToolsPanel } from '../ToolsPanel/ToolsPanel';
 
 import { ViewerContext } from '../../model/context/viewerContext';
@@ -21,30 +20,15 @@ import classes from './ViewerMenu.module.scss';
 
 interface ViewerMenuProps {
   currentPage: number;
-  totalPages?: number;
   onPageChange?: (pageNumber: number) => void;
   hasCompare?: boolean;
-  comparePage?: number;
-  totalComparePages?: number;
-  onComparePageChange?: (pageNumber: number) => void;
   viewOnly?: boolean;
   extendedControls?: React.ReactNode;
   mobile: boolean;
 }
 
 export const ViewerMenu = (props: ViewerMenuProps) => {
-  const {
-    currentPage,
-    totalPages = 0,
-    onPageChange,
-    hasCompare,
-    comparePage,
-    totalComparePages = 0,
-    onComparePageChange,
-    viewOnly = false,
-    extendedControls,
-    mobile,
-  } = props;
+  const { currentPage, onPageChange, hasCompare, viewOnly = false, extendedControls, mobile } = props;
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, drawingMode, showThumbnails, compareMode, zoomWithCtrl } = state;
 
@@ -201,16 +185,8 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
   };
 
   return (
-    <div className={classes.zoomControls}>
-      <PagesControl
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={onPageChange}
-        compareMode={compareMode}
-        comparePage={comparePage}
-        totalComparePages={totalComparePages}
-        onComparePageChange={onComparePageChange}
-      />
+    <div className={classes.ViewerMenu}>
+      {extendedControls}
       <button
         className={classNames(classes.thumbnailToggle, { [classes.active]: showThumbnails }, [])}
         onClick={() => dispatch({ type: 'toggleThumbnails' })}
@@ -252,7 +228,6 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
         </label>
       )}
 
-      {extendedControls}
       {hasCompare && (
         <>
           {/* Diff Compare Button */}
