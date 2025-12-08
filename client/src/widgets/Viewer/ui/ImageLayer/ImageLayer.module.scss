@@ -91,44 +91,26 @@
 }
 
 .dialogButton {
+  min-width: 120px;
+  height: 36px;
   padding: 8px 15px;
-
-  /* More balanced padding */
+  margin: 0;
   font-size: 13px;
-
-  /* Slightly smaller font for button */
   font-weight: 500;
-
-  /* Medium weight */
   cursor: pointer;
   background-color: #007bff;
-
-  /* Primary button color */
   color: #fff;
-
-  /* White text */
   border: none;
-
-  /* Remove default border */
   border-radius: 4px;
-
-  /* Remove fixed width/height */
+  box-sizing: border-box;
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
-
-  /* Smooth transition */
 
   &:hover {
     background-color: #0056b3;
-
-    /* Darker shade on hover */
     box-shadow: 0 2px 5px rgb(0 0 0 / 0.15);
-
-    /* Add subtle shadow on hover */
   }
 
   &:active {
     background-color: #004085;
-
-    /* Even darker when pressed */
   }
 }

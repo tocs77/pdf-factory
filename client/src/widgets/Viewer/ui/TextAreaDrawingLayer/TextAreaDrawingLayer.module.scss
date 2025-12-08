@@ -47,13 +47,26 @@
   position: absolute;
   bottom: -40px;
   right: 0;
+  min-width: 60px;
+  height: 28px;
   padding: 5px 10px;
+  margin: 0;
   background-color: #3498db;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+  box-sizing: border-box;
+}
+
+.shadowRect {
+  position: absolute;
+  pointer-events: none;
+  box-sizing: border-box;
+  display: none;
 }
 
 .resizeHandle {
