@@ -208,7 +208,7 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
       <button onClick={zoomIn} className={classes.zoomButton} title='Увеличить масштаб'>
         <ZoomInIcon />
       </button>
-      {!viewOnly && (
+      {!viewOnly && !mobile && (
         <button
           onClick={() => changeDrawingMode('zoomArea')}
           className={`${classes.zoomButton} ${drawingMode === 'zoomArea' ? classes.active : ''}`}
