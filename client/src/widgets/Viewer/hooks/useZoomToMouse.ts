@@ -9,7 +9,7 @@ const MAX_ZOOM_SCALE = 5; // Maximum zoom level (500%)
 const ZOOM_TRANSITION_DURATION = '0.05s'; // CSS transition duration (faster, was 0.08s)
 
 // Acceleration configuration - makes zoom faster when scrolling rapidly
-const ENABLE_ZOOM_ACCELERATION = true; // Enable/disable acceleration feature
+const ENABLE_ZOOM_ACCELERATION = false; // Enable/disable acceleration feature
 const ACCELERATION_THRESHOLD_MS = 200; // Time window to detect rapid scrolling (more forgiving, was 100ms)
 const ACCELERATION_MULTIPLIER = 1.3; // Speed multiplier per rapid event (reduced from 1.8 for slower acceleration)
 const MAX_ACCELERATION_MULTIPLIER = 3; // Maximum acceleration cap (reduced from 5 for slower max acceleration)

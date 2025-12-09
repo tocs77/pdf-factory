@@ -121,7 +121,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   // Enable drag-scroll if no drawing tool is active and PDF is rendered, regardless of compare mode
   // On mobile, disable scroll when in drawing mode to allow for touch drawing
   const isDragToScrollEnabled = drawingMode === 'none' && pdfRendered;
-  const isDragging = useDragToScroll({
+  useDragToScroll({
     containerRef: pdfContainerRef,
     isEnabled: isDragToScrollEnabled,
     isMobile,
@@ -423,10 +423,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
         />
 
         <div
-          className={classNames(classes.pdfContainer, {
-            [classes.draggable]: isDragToScrollEnabled,
-            [classes.dragging]: isDragging,
-          })}
+          className={classNames(classes.pdfContainer, { [classes.draggable]: isDragToScrollEnabled })}
           ref={pdfContainerRef}
           {...(isMobile ? pinchBind() : {})}
           onMouseDown={(e) => {
