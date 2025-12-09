@@ -31,7 +31,7 @@ interface ViewPageProps {
 
 // Threshold for determining when to re-render at the current scale
 // If scale difference is greater than this, re-render at the current scale
-const SCALE_THRESHOLD = 0.5;
+const SCALE_THRESHOLD = 0.8;
 
 export const ViewPage = (props: ViewPageProps) => {
   const { page, pageNumber, id, className, drawings, onDrawingCreated, onBecameVisible, onDrawingClicked, selectedPage, mobile } =

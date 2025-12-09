@@ -1,22 +1,13 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { usePinch } from '@use-gesture/react';
 
 import { Action } from '../model/types/viewerSchema';
 
-interface ZoomData {
-  oldScale: number;
-  newScale: number;
-  pinchCenterXDoc: number;
-  pinchCenterYDoc: number;
-  scrollTopBefore: number;
-  scrollLeftBefore: number;
-  pageElement: HTMLElement;
-  pageRect?: DOMRect;
-  pinchCenterXPercentPage: number;
-  pinchCenterYPercentPage: number;
-  pinchCenterXViewport: number;
-  pinchCenterYViewport: number;
-}
+// Zoom configuration constants
+const ZOOM_FINALIZE_DELAY_MS = 500; // Wait 500ms after last pinch event before finalizing
+const MIN_ZOOM_SCALE = 0.5; // Minimum zoom level (50%)
+const MAX_ZOOM_SCALE = 5; // Maximum zoom level (500%)
+const ZOOM_TRANSITION_DURATION = '0.05s'; // CSS transition duration
 
 interface UseZoomToPinchProps {
   scale: number;
@@ -26,12 +17,35 @@ interface UseZoomToPinchProps {
 }
 
 export const useZoomToPinch = ({ scale, dispatch, containerRef, isEnabled }: UseZoomToPinchProps) => {
-  // Zoom speed configuration - increase for faster zoom, decrease for slower
-  const ZOOM_SPEED = 3.0; // Adjust this value: 1.0 = normal, 2.0 = 2x faster, 0.5 = half speed
+  // Use ref to track scale without recreating event listeners
+  const scaleRef = useRef(scale);
 
-  // Use ref to always have the latest scale value (avoid stale closure)
-  const currentScaleRef = useRef(scale);
-  currentScaleRef.current = scale;
+  useEffect(() => {
+    scaleRef.current = scale;
+  }, [scale]);
+
+  // Add a lock to prevent concurrent zoom operations
+  const isZoomingRef = useRef(false);
+
+  // Ref to track the debounce timeout for pinch zooming end detection
+  const zoomEndTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Track cumulative CSS transform scale during zoom gesture
+  const cumulativeTransformScaleRef = useRef<number>(1);
+  const activeZoomPageRef = useRef<HTMLElement | null>(null);
+  const zoomPinchPositionRef = useRef<{ x: number; y: number; percentX: number; percentY: number } | null>(null);
+
+  // Track if finalization is in progress
+  const isFinalizingRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    return () => {
+      // Clean up timeout on unmount
+      if (zoomEndTimeoutRef.current) {
+        clearTimeout(zoomEndTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Find the page element that's most visible in the viewport
   const findVisiblePageElement = useCallback(() => {
@@ -74,51 +88,125 @@ export const useZoomToPinch = ({ scale, dispatch, containerRef, isEnabled }: Use
     return bestVisiblePage;
   }, [containerRef]);
 
-  // Function to adjust scroll position after zoom, keeping the pinch center fixed
-  const adjustScrollPositionAfterZoomOnPage = useCallback((container: HTMLDivElement, zoomData: ZoomData) => {
-    const { pinchCenterXViewport, pinchCenterYViewport, scrollTopBefore, scrollLeftBefore, oldScale, newScale } = zoomData;
+  // Function to handle zoom end with debounce
+  const handleZoomEnd = useCallback(() => {
+    // Clear any existing timeout
+    if (zoomEndTimeoutRef.current) {
+      clearTimeout(zoomEndTimeoutRef.current);
+    }
 
-    // Calculate how much the content scaled
-    const scaleRatio = newScale / oldScale;
+    // Set new timeout to finalize zoom after configured delay
+    zoomEndTimeoutRef.current = setTimeout(() => {
+      isFinalizingRef.current = true;
 
-    // Calculate the pinch center position relative to the container
-    const containerRect = container.getBoundingClientRect();
-    const pinchCenterXRelativeContainer = pinchCenterXViewport - containerRect.left;
-    const pinchCenterYRelativeContainer = pinchCenterYViewport - containerRect.top;
+      const pageElement = activeZoomPageRef.current;
+      const pinchPos = zoomPinchPositionRef.current;
+      const container = containerRef.current;
 
-    // Calculate the document position that was under the pinch center before zoom
-    const docXBeforeZoom = scrollLeftBefore + pinchCenterXRelativeContainer;
-    const docYBeforeZoom = scrollTopBefore + pinchCenterYRelativeContainer;
+      if (pageElement && pinchPos && container) {
+        // Calculate final scale
+        const baseScale = scaleRef.current;
+        const finalScale = Math.max(MIN_ZOOM_SCALE, Math.min(MAX_ZOOM_SCALE, baseScale * cumulativeTransformScaleRef.current));
+        const scaleRatio = finalScale / baseScale;
 
-    // After scaling, that same document position is now at a different location
-    const docXAfterZoom = docXBeforeZoom * scaleRatio;
-    const docYAfterZoom = docYBeforeZoom * scaleRatio;
+        // Get current page dimensions BEFORE removing transform
+        const pageRectBeforeFinalize = pageElement.getBoundingClientRect();
 
-    // Calculate the new scroll position needed to keep the pinch center fixed
-    const newScrollLeft = docXAfterZoom - pinchCenterXRelativeContainer;
-    const newScrollTop = docYAfterZoom - pinchCenterYRelativeContainer;
+        // Reset cumulative scale BEFORE applying new React scale
+        // This prevents the next pinch event from seeing stale cumulative value
+        cumulativeTransformScaleRef.current = 1;
 
-    // Apply the new scroll position
-    container.scrollLeft = newScrollLeft;
-    container.scrollTop = newScrollTop;
-  }, []);
+        // Apply final scale to React state (triggers re-render)
+        // Keep CSS transform active until React renders to prevent flash of old scale
+        dispatch({ type: 'setScale', payload: finalScale });
+
+        // Wait for React to render new scale, then remove CSS transform and adjust scroll
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            // React has rendered with new scale, but CSS transform is still active
+            // Now remove CSS transform - this prevents flash of old scale
+            pageElement.style.transition = '';
+            pageElement.style.transform = '';
+            pageElement.style.transformOrigin = '';
+
+            // Wait one more frame for transform removal to take effect, then calculate scroll
+            requestAnimationFrame(() => {
+              // Get page position and dimensions after removing transform
+              const finalPageRect = pageElement.getBoundingClientRect();
+
+              // Check if dimensions have actually changed
+              const expectedWidth = pageRectBeforeFinalize.width * scaleRatio;
+              const expectedHeight = pageRectBeforeFinalize.height * scaleRatio;
+              const widthChanged = Math.abs(finalPageRect.width - expectedWidth) > 1;
+              const heightChanged = Math.abs(finalPageRect.height - expectedHeight) > 1;
+
+              // Use calculated dimensions if DOM hasn't updated yet
+              const effectivePageWidth = widthChanged ? finalPageRect.width : expectedWidth;
+              const effectivePageHeight = heightChanged ? finalPageRect.height : expectedHeight;
+
+              // Calculate the point on the scaled page (in page-local coordinates)
+              const pointXInPage = effectivePageWidth * pinchPos.percentX;
+              const pointYInPage = effectivePageHeight * pinchPos.percentY;
+
+              // Calculate where this point currently is in viewport coordinates
+              const currentPointX = finalPageRect.left + pointXInPage;
+              const currentPointY = finalPageRect.top + pointYInPage;
+
+              // Calculate where we want the point to be (original pinch position in viewport)
+              const targetPointX = pinchPos.x;
+              const targetPointY = pinchPos.y;
+
+              // Calculate the difference
+              const deltaX = currentPointX - targetPointX;
+              const deltaY = currentPointY - targetPointY;
+
+              // Apply scroll adjustment
+              const maxScrollLeft = container.scrollWidth - container.clientWidth;
+              const maxScrollTop = container.scrollHeight - container.clientHeight;
+
+              const newScrollLeft = Math.max(0, Math.min(maxScrollLeft, container.scrollLeft + deltaX));
+              const newScrollTop = Math.max(0, Math.min(maxScrollTop, container.scrollTop + deltaY));
+
+              container.scrollLeft = newScrollLeft;
+              container.scrollTop = newScrollTop;
+
+              // Mark finalization complete
+              isFinalizingRef.current = false;
+
+              // Check if a new zoom gesture has already started (cumulative scale != 1)
+              if (cumulativeTransformScaleRef.current === 1) {
+                // No new zoom started - safe to clean up completely
+                dispatch({ type: 'setIsPinchZooming', payload: false });
+                activeZoomPageRef.current = null;
+                zoomPinchPositionRef.current = null;
+                isZoomingRef.current = false;
+              }
+              // If new zoom already in progress, keep refs alive and don't set isPinchZooming to false
+            });
+          });
+        });
+      } else {
+        // No active zoom data, just mark as complete
+        isFinalizingRef.current = false;
+        dispatch({ type: 'setIsPinchZooming', payload: false });
+        cumulativeTransformScaleRef.current = 1;
+        activeZoomPageRef.current = null;
+        zoomPinchPositionRef.current = null;
+        isZoomingRef.current = false;
+      }
+
+      zoomEndTimeoutRef.current = null;
+    }, ZOOM_FINALIZE_DELAY_MS);
+  }, [dispatch, containerRef]);
 
   // Setup pinch gesture handling
   const bind = usePinch(
-    ({ offset: [scale_offset], origin, event, memo, first, last }) => {
+    ({ offset: [scale_offset], origin, event, memo, first }) => {
       if (!isEnabled || !containerRef.current) return memo;
 
-      const container = containerRef.current;
-
-      // Handle pinch start/end detection
-      if (first) {
-        console.log('🤏 [Pinch Zoom] Pinch started - setting isPinchZooming = true');
-        dispatch({ type: 'setIsPinchZooming', payload: true });
-      }
-
-      if (last) {
-        console.log('🤏 [Pinch Zoom] Pinch ended - setting isPinchZooming = false');
-        dispatch({ type: 'setIsPinchZooming', payload: false });
+      // Only block if finalization is in progress (to prevent race conditions)
+      if (isFinalizingRef.current) {
+        return memo;
       }
 
       // Prevent default touch behavior during pinch
@@ -135,104 +223,89 @@ export const useZoomToPinch = ({ scale, dispatch, containerRef, isEnabled }: Use
         return memo;
       }
 
-      // Use the gesture library's scale_offset as our distance measure
+      // Use the gesture library's scale_offset (relative scale from initial pinch)
       // origin provides the center point between fingers
-      const currentDistance = Math.abs(scale_offset);
       const currentCenter = { x: origin[0], y: origin[1] };
+
+      // Get page element dimensions and position
+      const pageRect = pageElement.getBoundingClientRect();
+
+      // Calculate pinch center position relative to the page
+      const pinchXRelativePage = currentCenter.x - pageRect.left;
+      const pinchYRelativePage = currentCenter.y - pageRect.top;
+
+      // Calculate pinch center position as a percentage of page dimensions
+      const pinchXPercentPage = pinchXRelativePage / pageRect.width;
+      const pinchYPercentPage = pinchYRelativePage / pageRect.height;
+
+      // Store pinch center client coordinates
+      const pinchClientX = currentCenter.x;
+      const pinchClientY = currentCenter.y;
+
+      // Handle pinch start/end detection
+      if (first) {
+        dispatch({ type: 'setIsPinchZooming', payload: true });
+        isZoomingRef.current = true;
+      }
+
+      // Mark that pinch zooming is active (prevents expensive page re-renders)
+      if (!isZoomingRef.current) {
+        dispatch({ type: 'setIsPinchZooming', payload: true });
+        isZoomingRef.current = true;
+      }
+
+      // Check if this is a continuation or new gesture
+      const isSamePage = activeZoomPageRef.current === pageElement;
+      const isNewGesture = !activeZoomPageRef.current || !isSamePage;
+
+      if (isNewGesture) {
+        // New zoom gesture on a different page OR first gesture ever
+        activeZoomPageRef.current = pageElement;
+
+        // Set transform origin once at start of zoom gesture
+        const transformOriginX = (pinchXPercentPage * 100).toFixed(2);
+        const transformOriginY = (pinchYPercentPage * 100).toFixed(2);
+        pageElement.style.transformOrigin = `${transformOriginX}% ${transformOriginY}%`;
+
+        // Reset cumulative scale for new gesture
+        cumulativeTransformScaleRef.current = 1;
+      }
+
+      // Always update pinch position for accurate scroll adjustment during finalization
+      zoomPinchPositionRef.current = {
+        x: pinchClientX,
+        y: pinchClientY,
+        percentX: pinchXPercentPage,
+        percentY: pinchYPercentPage,
+      };
 
       // Initialize memo on first pinch gesture
       if (!memo) {
         memo = {
-          initialScale: currentScaleRef.current,
-          currentScale: currentScaleRef.current, // Track current scale in memo
-          initialDistance: currentDistance,
-          lastDistance: currentDistance,
-          accumulatedDelta: 0,
-          pinchCenterXViewport: currentCenter.x,
-          pinchCenterYViewport: currentCenter.y,
-          scrollTopBefore: container.scrollTop,
-          scrollLeftBefore: container.scrollLeft,
-          pageElement,
+          initialScale: scaleRef.current,
         };
-
-        return memo;
       }
 
-      // Calculate distance delta since last frame
-      const distanceDelta = currentDistance - memo.lastDistance;
-      memo.lastDistance = currentDistance;
+      // scale_offset is relative to the initial pinch (starts at 1.0)
+      // Convert to cumulative transform scale
+      cumulativeTransformScaleRef.current = scale_offset;
 
-      // Accumulate the delta
-      memo.accumulatedDelta += distanceDelta;
+      // Clamp cumulative scale to configured limits
+      const currentBaseScale = scaleRef.current;
+      const proposedFinalScale = currentBaseScale * cumulativeTransformScaleRef.current;
 
-      // Apply zoom threshold (adjust this value to control sensitivity)
-      const zoomThreshold = 0.1; // Lower threshold since scale_offset is normalized
-      const zoomSensitivity = 0.3 * ZOOM_SPEED; // Use ZOOM_SPEED to control zoom rate
-
-      console.log('📊 [Pinch Zoom] Gesture analysis:', {
-        currentDistance: currentDistance.toFixed(3),
-        distanceDelta: distanceDelta.toFixed(3),
-        accumulatedDelta: memo.accumulatedDelta.toFixed(3),
-        threshold: zoomThreshold,
-        exceedsThreshold: Math.abs(memo.accumulatedDelta) > zoomThreshold,
-        currentScale: memo.currentScale.toFixed(3),
-        reactScale: currentScaleRef.current.toFixed(3),
-        first,
-        last,
-      });
-
-      // Check if accumulated delta exceeds threshold
-      if (Math.abs(memo.accumulatedDelta) > zoomThreshold) {
-        // Calculate scale change based on accumulated delta
-        const scaleChange = memo.accumulatedDelta * zoomSensitivity;
-
-        // Use the scale from memo (always current) instead of React state
-        const currentScale = memo.currentScale;
-        const newScale = Math.max(0.5, Math.min(5, currentScale + scaleChange));
-
-        // Store the delta before resetting for logging
-        const appliedDelta = memo.accumulatedDelta;
-
-        // Reset accumulated delta after applying zoom
-        memo.accumulatedDelta = 0;
-
-        // Update the current scale in memo immediately
-        memo.currentScale = newScale;
-
-        // Store zoom data for scroll adjustment
-        const zoomData = {
-          oldScale: currentScale,
-          newScale,
-          pinchCenterXDoc: 0,
-          pinchCenterYDoc: 0,
-          scrollTopBefore: memo.scrollTopBefore,
-          scrollLeftBefore: memo.scrollLeftBefore,
-          pageElement: memo.pageElement,
-          pageRect: undefined,
-          pinchCenterXPercentPage: 0,
-          pinchCenterYPercentPage: 0,
-          pinchCenterXViewport: memo.pinchCenterXViewport,
-          pinchCenterYViewport: memo.pinchCenterYViewport,
-        };
-
-        // Update scale
-        console.log('🔍 [Pinch Zoom] Dispatching scale change:', {
-          oldScale: currentScale.toFixed(3),
-          newScale: newScale.toFixed(3),
-          scaleChange: scaleChange.toFixed(3),
-          accumulatedDelta: appliedDelta.toFixed(3),
-          sensitivity: zoomSensitivity.toFixed(3),
-          timestamp: Date.now(),
-        });
-        dispatch({ type: 'setScale', payload: newScale });
-
-        // Adjust scroll position to keep pinch center fixed
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            adjustScrollPositionAfterZoomOnPage(container, zoomData);
-          });
-        });
+      if (proposedFinalScale < MIN_ZOOM_SCALE) {
+        cumulativeTransformScaleRef.current = MIN_ZOOM_SCALE / currentBaseScale;
+      } else if (proposedFinalScale > MAX_ZOOM_SCALE) {
+        cumulativeTransformScaleRef.current = MAX_ZOOM_SCALE / currentBaseScale;
       }
+
+      // Apply smooth CSS transform for instant visual feedback
+      pageElement.style.transform = `scale(${cumulativeTransformScaleRef.current})`;
+      pageElement.style.transition = `transform ${ZOOM_TRANSITION_DURATION} ease-out`;
+
+      // Reset zoom end timer (will finalize when pinch ends)
+      handleZoomEnd();
 
       return memo;
     },
@@ -248,6 +321,5 @@ export const useZoomToPinch = ({ scale, dispatch, containerRef, isEnabled }: Use
   return {
     bind,
     findVisiblePageElement,
-    adjustScrollPositionAfterZoomOnPage,
   };
 };
