@@ -34,6 +34,7 @@ interface PdfViewerProps {
   isMobile?: boolean;
   viewOnly?: boolean;
   extendedControls?: React.ReactNode;
+  id?: string;
 }
 
 // Type for page override mapping
@@ -50,6 +51,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     isMobile = false,
     viewOnly = false,
     extendedControls,
+    id,
   } = props;
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, showThumbnails, compareMode, drawingMode, currentPage, zoomWithCtrl } = state;
@@ -61,6 +63,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const pdfContainerRef = useRef<HTMLDivElement>(null!);
+  const hasRestoredPageRef = useRef(false);
 
   useEffect(() => {
     dispatch({ type: 'setIsMobile', payload: isMobile });
@@ -294,6 +297,8 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       setError(null);
       // Reset page overrides when main URL changes
       setPageOverrides({});
+      // Reset restore flag when URL changes
+      hasRestoredPageRef.current = false;
       const pdf = await loadPdf(url);
       setPdfRef(pdf);
 
@@ -344,6 +349,39 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       setPdfRendered(true);
     }
   }, [pages.length, isLoading]);
+
+  // Restore last viewed page from localStorage when id is provided
+  useEffect(() => {
+    if (!id || pages.length === 0 || !pdfRendered || hasRestoredPageRef.current) return;
+
+    try {
+      const storageKey = `pdf-viewer-${id}-last-page`;
+      const savedPage = localStorage.getItem(storageKey);
+      if (savedPage) {
+        const pageNumber = Number.parseInt(savedPage, 10);
+        if (pageNumber >= 1 && pageNumber <= pages.length) {
+          hasRestoredPageRef.current = true;
+          handlePageChange(pageNumber);
+        }
+      }
+    } catch (error) {
+      console.error('Error restoring last page from localStorage:', error);
+    }
+  }, [id, pages, pdfRendered, handlePageChange]);
+
+  // Save current page to localStorage on unmount
+  useEffect(() => {
+    if (!id) return;
+
+    return () => {
+      try {
+        const storageKey = `pdf-viewer-${id}-last-page`;
+        localStorage.setItem(storageKey, currentPage.toString());
+      } catch (error) {
+        console.error('Error saving last page to localStorage:', error);
+      }
+    };
+  }, [id, currentPage]);
 
   // Render function for pages
   const renderPages = () => {
