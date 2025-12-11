@@ -1,5 +1,9 @@
 import { useContext, useEffect, useRef } from 'react';
 
+import { ViewerContext } from '../../model/context/viewerContext';
+import { DrawingMode } from '../../model/types/viewerSchema';
+import { classNames } from '../../utils/classNames';
+
 import {
   CompareDiffIcon,
   CompareSideBySideIcon,
@@ -11,10 +15,6 @@ import {
   ZoomOutIcon,
 } from '../Icons';
 import { ToolsPanel } from '../ToolsPanel/ToolsPanel';
-
-import { ViewerContext } from '../../model/context/viewerContext';
-import { DrawingMode } from '../../model/types/viewerSchema';
-import { classNames } from '../../utils/classNames';
 
 import classes from './ViewerMenu.module.scss';
 
@@ -185,7 +185,7 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
   };
 
   return (
-    <div className={classes.ViewerMenu}>
+    <div className={classNames(classes.ViewerMenu, { [classes.mobile]: mobile })}>
       {extendedControls}
       <button
         className={classNames(classes.thumbnailToggle, { [classes.active]: showThumbnails }, [])}
@@ -193,21 +193,30 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
         title={showThumbnails ? 'Скрыть миниатюры' : 'Показать миниатюры'}>
         <ThumbnailToggleIcon />
       </button>
-      <div className={classes.rotationControls}>
-        <button onClick={rotatePageCounterClockwise} className={classes.rotationButton} title='Повернуть против часовой стрелки'>
-          <RotateCcwIcon />
-        </button>
-        <button onClick={rotatePageClockwise} className={classes.rotationButton} title='Повернуть по часовой стрелке'>
-          <RotateCwIcon />
-        </button>
-      </div>
-      <button onClick={zoomOut} className={classes.zoomButton} title='Уменьшить масштаб'>
-        <ZoomOutIcon />
-      </button>
-      <span className={classes.zoomPercentage}>{Math.round(scale * 100)}%</span>
-      <button onClick={zoomIn} className={classes.zoomButton} title='Увеличить масштаб'>
-        <ZoomInIcon />
-      </button>
+      {!mobile && (
+        <div className={classes.rotationControls}>
+          <button
+            onClick={rotatePageCounterClockwise}
+            className={classes.rotationButton}
+            title='Повернуть против часовой стрелки'>
+            <RotateCcwIcon />
+          </button>
+          <button onClick={rotatePageClockwise} className={classes.rotationButton} title='Повернуть по часовой стрелке'>
+            <RotateCwIcon />
+          </button>
+        </div>
+      )}
+      {!mobile && (
+        <>
+          <button onClick={zoomOut} className={classes.zoomButton} title='Уменьшить масштаб'>
+            <ZoomOutIcon />
+          </button>
+          <span className={classes.zoomPercentage}>{Math.round(scale * 100)}%</span>
+          <button onClick={zoomIn} className={classes.zoomButton} title='Увеличить масштаб'>
+            <ZoomInIcon />
+          </button>
+        </>
+      )}
       {!viewOnly && !mobile && (
         <button
           onClick={() => changeDrawingMode('zoomArea')}

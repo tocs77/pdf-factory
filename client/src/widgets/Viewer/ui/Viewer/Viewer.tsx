@@ -1,23 +1,22 @@
-import { useContext, useEffect, useState, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
-import { PDFDocumentProxy, PDFPageProxy, getDocument } from 'pdfjs-dist';
+import { forwardRef, useCallback, useContext, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { getDocument, PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 
-import { classNames } from '../../utils/classNames';
-import { isSliderBeingDragged } from '../../utils/dragControl/dragControl';
-
-import { ThumbnailsMenu } from '../ThumbnailsMenu/ThubnaislMenu';
-import { ViewerMenu } from '../ViewerMenu/ViewerMenu';
-import { Page } from '../Page/Page';
-import { DrawingMenu } from '../DrawingMenu/DrawingMenu';
-import { DrawingMenuMobile } from '../DrawingMenuMobile';
-import { ViewerContext } from '../../model/context/viewerContext';
-import { ViewerProvider } from '../../model/context/ViewerProvider';
-import { scrollToPage } from '../../utils/pageScrollUtils';
-import { Drawing } from '../../model/types/Drawings';
-import { RotationAngle } from '../../model/types/viewerSchema';
-import { useZoomToMouse } from '../../hooks/useZoomToMouse';
-import { useZoomToPinch } from '../../hooks/useZoomToPinch';
 import { useDragToScroll } from '../../hooks/useDragToScroll';
 import { useScrollToDraw } from '../../hooks/useScrollToDraw';
+import { useZoomToMouse } from '../../hooks/useZoomToMouse';
+import { useZoomToPinch } from '../../hooks/useZoomToPinch';
+import { ViewerContext } from '../../model/context/viewerContext';
+import { ViewerProvider } from '../../model/context/ViewerProvider';
+import { Drawing } from '../../model/types/Drawings';
+import { RotationAngle } from '../../model/types/viewerSchema';
+import { classNames } from '../../utils/classNames';
+import { isSliderBeingDragged } from '../../utils/dragControl/dragControl';
+import { scrollToPage } from '../../utils/pageScrollUtils';
+import { DrawingMenu } from '../DrawingMenu/DrawingMenu';
+import { DrawingMenuMobile } from '../DrawingMenuMobile';
+import { Page } from '../Page/Page';
+import { ThumbnailsMenu } from '../ThumbnailsMenu/ThubnaislMenu';
+import { ViewerMenu } from '../ViewerMenu/ViewerMenu';
 
 import classes from './Viewer.module.scss';
 
