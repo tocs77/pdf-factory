@@ -146,62 +146,59 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef, zoomWithCtrl }: 
             pageElement.style.transform = '';
             pageElement.style.transformOrigin = '';
 
-            // Wait one more frame for transform removal to take effect, then calculate scroll
-            requestAnimationFrame(() => {
-              // Get page position and dimensions after removing transform
-              const finalPageRect = pageElement.getBoundingClientRect();
+            // Get page position and dimensions IMMEDIATELY after removing transform
+            const finalPageRect = pageElement.getBoundingClientRect();
 
-              // Check if dimensions have actually changed
-              const expectedWidth = pageRectBeforeFinalize.width * scaleRatio;
-              const expectedHeight = pageRectBeforeFinalize.height * scaleRatio;
-              const widthChanged = Math.abs(finalPageRect.width - expectedWidth) > 1;
-              const heightChanged = Math.abs(finalPageRect.height - expectedHeight) > 1;
+            // Check if dimensions have actually changed
+            const expectedWidth = pageRectBeforeFinalize.width * scaleRatio;
+            const expectedHeight = pageRectBeforeFinalize.height * scaleRatio;
+            const widthChanged = Math.abs(finalPageRect.width - expectedWidth) > 1;
+            const heightChanged = Math.abs(finalPageRect.height - expectedHeight) > 1;
 
-              // Use calculated dimensions if DOM hasn't updated yet
-              const effectivePageWidth = widthChanged ? finalPageRect.width : expectedWidth;
-              const effectivePageHeight = heightChanged ? finalPageRect.height : expectedHeight;
+            // Use calculated dimensions if DOM hasn't updated yet
+            const effectivePageWidth = widthChanged ? finalPageRect.width : expectedWidth;
+            const effectivePageHeight = heightChanged ? finalPageRect.height : expectedHeight;
 
-              // Calculate the point on the scaled page (in page-local coordinates)
-              const pointXInPage = effectivePageWidth * mousePos.percentX;
-              const pointYInPage = effectivePageHeight * mousePos.percentY;
+            // Calculate the point on the scaled page (in page-local coordinates)
+            const pointXInPage = effectivePageWidth * mousePos.percentX;
+            const pointYInPage = effectivePageHeight * mousePos.percentY;
 
-              // Calculate where this point currently is in viewport coordinates
-              const currentPointX = finalPageRect.left + pointXInPage;
-              const currentPointY = finalPageRect.top + pointYInPage;
+            // Calculate where this point currently is in viewport coordinates
+            const currentPointX = finalPageRect.left + pointXInPage;
+            const currentPointY = finalPageRect.top + pointYInPage;
 
-              // Calculate where we want the point to be (original mouse position in viewport)
-              const targetPointX = mousePos.x;
-              const targetPointY = mousePos.y;
+            // Calculate where we want the point to be (original mouse position in viewport)
+            const targetPointX = mousePos.x;
+            const targetPointY = mousePos.y;
 
-              // Calculate the difference
-              const deltaX = currentPointX - targetPointX;
-              const deltaY = currentPointY - targetPointY;
+            // Calculate the difference
+            const deltaX = currentPointX - targetPointX;
+            const deltaY = currentPointY - targetPointY;
 
-              // Apply scroll adjustment
-              const maxScrollLeft = container.scrollWidth - container.clientWidth;
-              const maxScrollTop = container.scrollHeight - container.clientHeight;
+            // Apply scroll adjustment IMMEDIATELY - don't wait another frame
+            const maxScrollLeft = container.scrollWidth - container.clientWidth;
+            const maxScrollTop = container.scrollHeight - container.clientHeight;
 
-              const newScrollLeft = Math.max(0, Math.min(maxScrollLeft, container.scrollLeft + deltaX));
-              const newScrollTop = Math.max(0, Math.min(maxScrollTop, container.scrollTop + deltaY));
+            const newScrollLeft = Math.max(0, Math.min(maxScrollLeft, container.scrollLeft + deltaX));
+            const newScrollTop = Math.max(0, Math.min(maxScrollTop, container.scrollTop + deltaY));
 
-              container.scrollLeft = newScrollLeft;
-              container.scrollTop = newScrollTop;
+            container.scrollLeft = newScrollLeft;
+            container.scrollTop = newScrollTop;
 
-              // Mark finalization complete
-              isFinalizingRef.current = false;
+            // Mark finalization complete
+            isFinalizingRef.current = false;
 
-              // Check if a new zoom gesture has already started (cumulative scale != 1)
-              if (cumulativeTransformScaleRef.current === 1) {
-                // No new zoom started - safe to clean up completely
-                dispatch({ type: 'setIsWheelZooming', payload: false });
-                activeZoomPageRef.current = null;
-                zoomMousePositionRef.current = null;
-                isZoomingRef.current = false;
-                lastWheelEventTimeRef.current = 0;
-                accelerationMultiplierRef.current = 1;
-              }
-              // If new zoom already in progress, keep refs alive and don't set isWheelZooming to false
-            });
+            // Check if a new zoom gesture has already started (cumulative scale != 1)
+            if (cumulativeTransformScaleRef.current === 1) {
+              // No new zoom started - safe to clean up completely
+              dispatch({ type: 'setIsWheelZooming', payload: false });
+              activeZoomPageRef.current = null;
+              zoomMousePositionRef.current = null;
+              isZoomingRef.current = false;
+              lastWheelEventTimeRef.current = 0;
+              accelerationMultiplierRef.current = 1;
+            }
+            // If new zoom already in progress, keep refs alive and don't set isWheelZooming to false
           });
         });
       } else {
@@ -451,7 +448,7 @@ export const useZoomToMouse = ({ scale, dispatch, containerRef, zoomWithCtrl }: 
     return () => {
       document.removeEventListener('keydown', preventBrowserZoomShortcuts, { capture: true });
     };
-  }, [dispatch, findVisiblePageElement, containerRef, handleZoomEnd]);
+  }, [dispatch, findVisiblePageElement, containerRef]);
 
   // Function to handle scale changes and preserve scroll position
   const handleScaleChange = useCallback(() => {

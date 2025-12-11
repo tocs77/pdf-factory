@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, useContext } from 'react';
+import { useEffect, useRef, useState, useContext, useCallback } from 'react';
 import type { PDFPageProxy, RenderTask } from 'pdfjs-dist';
 
 import { classNames } from '../../utils/classNames';
+import { getMaxCanvasSize, getOptimalPixelRatio } from '../../utils/canvasUtils';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { Drawing } from '../../model/types/Drawings';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
@@ -53,6 +54,11 @@ export const ViewPage = (props: ViewPageProps) => {
 
   // Track the scale at which the PDF was last rendered
   const [baseScale, setBaseScale] = useState<number>(scale);
+
+  // Track when HQ canvas was created and at what scale
+  const hqCanvasScaleRef = useRef<number>(0);
+  // Track the actual pixelRatio used when rendering (may be reduced due to canvas size limits)
+  const actualPixelRatioRef = useRef<number>(window.devicePixelRatio || 1);
 
   // Refs to track previous rotation to avoid unnecessary re-renders
   const prevRotationRef = useRef<number>(pageRotations[pageNumber] || 0);
@@ -153,7 +159,7 @@ export const ViewPage = (props: ViewPageProps) => {
   };
 
   // Helper function to check if this page contains the center of the viewport
-  const checkIfPageContainsViewportCenter = () => {
+  const checkIfPageContainsViewportCenter = useCallback(() => {
     if (!containerRef.current) return false;
 
     // Get viewport dimensions and calculate midpoint
@@ -167,17 +173,19 @@ export const ViewPage = (props: ViewPageProps) => {
 
     // Check if viewport center is within this page
     return viewportCenter >= pageTop && viewportCenter <= pageBottom;
-  };
+  }, []);
 
   // Render the PDF page at the current scale
   const renderPageAtCurrentScale = async () => {
-    if (!page || !canvasRef.current) return;
+    if (!page || !canvasRef.current) {
+      return;
+    }
 
     try {
       // If there's an ongoing render task, cancel it first
       if (currentRenderTaskRef.current) {
         try {
-          await currentRenderTaskRef.current.cancel();
+          currentRenderTaskRef.current.cancel();
         } catch (_error) {
           // Ignore cancellation errors
         }
@@ -190,6 +198,17 @@ export const ViewPage = (props: ViewPageProps) => {
       }
 
       isRenderingRef.current = true;
+
+      // Clean up old high-quality canvas to free memory before creating new one
+      if (highQualityCanvasRef.current) {
+        // Clear the canvas to free memory
+        const oldCanvas = highQualityCanvasRef.current;
+        const oldCtx = oldCanvas.getContext('2d');
+        if (oldCtx) {
+          oldCtx.clearRect(0, 0, oldCanvas.width, oldCanvas.height);
+        }
+        highQualityCanvasRef.current = null;
+      }
 
       // Create viewport with rotation at the current scale
       const currentViewport = page.getViewport({
@@ -227,11 +246,38 @@ export const ViewPage = (props: ViewPageProps) => {
       }
 
       // Apply device pixel ratio for high-resolution rendering
-      const pixelRatio = window.devicePixelRatio || 1;
+      // Use optimal pixelRatio (reduced for small screens to save memory)
+      let pixelRatio = getOptimalPixelRatio();
 
-      // Set actual size in memory
-      canvas.width = Math.floor(currentViewport.width * pixelRatio);
-      canvas.height = Math.floor(currentViewport.height * pixelRatio);
+      // Calculate desired size
+      let desiredWidth = Math.floor(currentViewport.width * pixelRatio);
+      let desiredHeight = Math.floor(currentViewport.height * pixelRatio);
+
+      // Check for canvas size limits and adjust pixelRatio if necessary
+      const maxCanvasSize = getMaxCanvasSize();
+      if (desiredWidth > maxCanvasSize || desiredHeight > maxCanvasSize) {
+        // Calculate what pixelRatio would fit within limits
+        const maxRatioX = maxCanvasSize / currentViewport.width;
+        const maxRatioY = maxCanvasSize / currentViewport.height;
+        const adjustedPixelRatio = Math.min(maxRatioX, maxRatioY, pixelRatio);
+
+        pixelRatio = adjustedPixelRatio;
+        desiredWidth = Math.floor(currentViewport.width * pixelRatio);
+        desiredHeight = Math.floor(currentViewport.height * pixelRatio);
+
+        // Safety check: If pixelRatio is too low (< 0.5), the quality will be terrible
+        // Better to skip rendering than crash the browser
+        if (pixelRatio < 0.5) {
+          isRenderingRef.current = false;
+          return;
+        }
+      }
+
+      // Store the actual pixelRatio used (may be reduced)
+      actualPixelRatioRef.current = pixelRatio;
+
+      canvas.width = desiredWidth;
+      canvas.height = desiredHeight;
 
       // Clear the canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -255,20 +301,27 @@ export const ViewPage = (props: ViewPageProps) => {
 
       // Create a copy of the rendered canvas for future scaling operations
       const backupCanvas = document.createElement('canvas');
+
+      // Since we already limited the main canvas size, backup can be 1:1 copy
       backupCanvas.width = canvas.width;
       backupCanvas.height = canvas.height;
       const backupCtx = backupCanvas.getContext('2d', { willReadFrequently: true });
       if (backupCtx) {
+        // Copy canvas content 1:1
         backupCtx.drawImage(canvas, 0, 0);
+
         highQualityCanvasRef.current = backupCanvas;
+        hqCanvasScaleRef.current = scale; // Track the scale at which this canvas was created
       }
 
       // Update the base scale
       setBaseScale(scale);
+
       setHasRendered(true);
     } catch (error: any) {
+      // Ignore cancellation errors
       if (!error?.message?.includes('cancelled')) {
-        console.error(`[ERROR][Page ${pageNumber}] Error rendering page:`, error);
+        // Error rendering - will be retried on next render cycle
       }
     } finally {
       isRenderingRef.current = false;
@@ -277,11 +330,15 @@ export const ViewPage = (props: ViewPageProps) => {
 
   // Apply scale to the display canvas
   const updateDisplayCanvas = () => {
-    if (!canvasRef.current || !highQualityCanvasRef.current || !baseViewport) return;
+    if (!canvasRef.current || !highQualityCanvasRef.current || !baseViewport) {
+      return;
+    }
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return;
+    if (!ctx) {
+      return;
+    }
 
     // Calculate the current viewport based on user scale
     const currentViewport = page.getViewport({
@@ -313,11 +370,30 @@ export const ViewPage = (props: ViewPageProps) => {
     }
 
     // Apply device pixel ratio for high-resolution rendering
-    const pixelRatio = window.devicePixelRatio || 1;
+    // Use the actual pixelRatio that was used when creating the HQ canvas
+    // If not set, use optimal pixelRatio (reduced for small screens)
+    let pixelRatio = actualPixelRatioRef.current || getOptimalPixelRatio();
+
+    // Calculate desired size
+    let desiredWidth = Math.floor(currentViewport.width * pixelRatio);
+    let desiredHeight = Math.floor(currentViewport.height * pixelRatio);
+
+    // Check for canvas size limits (same as in renderPageAtCurrentScale)
+    const maxCanvasSize = getMaxCanvasSize();
+    if (desiredWidth > maxCanvasSize || desiredHeight > maxCanvasSize) {
+      const maxRatioX = maxCanvasSize / currentViewport.width;
+      const maxRatioY = maxCanvasSize / currentViewport.height;
+      pixelRatio = Math.min(maxRatioX, maxRatioY, pixelRatio);
+      desiredWidth = Math.floor(currentViewport.width * pixelRatio);
+      desiredHeight = Math.floor(currentViewport.height * pixelRatio);
+    }
 
     // Set actual size in memory
-    canvas.width = Math.floor(currentViewport.width * pixelRatio);
-    canvas.height = Math.floor(currentViewport.height * pixelRatio);
+    canvas.width = desiredWidth;
+    canvas.height = desiredHeight;
+
+    // Save the context state before transformations
+    ctx.save();
 
     // Clear the canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -326,13 +402,17 @@ export const ViewPage = (props: ViewPageProps) => {
     ctx.scale(pixelRatio, pixelRatio);
 
     // Calculate dimensions for drawing
-    const sourceWidth = baseViewport.width * pixelRatio;
-    const sourceHeight = baseViewport.height * pixelRatio;
+    // IMPORTANT: Use the actual high-quality canvas dimensions, not calculated values
+    const sourceWidth = highQualityCanvasRef.current.width;
+    const sourceHeight = highQualityCanvasRef.current.height;
     const targetWidth = currentViewport.width;
     const targetHeight = currentViewport.height;
 
     // Draw the high quality canvas onto the display canvas with proper scaling
     ctx.drawImage(highQualityCanvasRef.current, 0, 0, sourceWidth, sourceHeight, 0, 0, targetWidth, targetHeight);
+
+    // Restore context state (removes transformations)
+    ctx.restore();
   };
 
   // Initial rendering and scale change handling
@@ -345,22 +425,45 @@ export const ViewPage = (props: ViewPageProps) => {
       const isAdjacent = Math.abs(pageNumber - selectedPage) <= 1;
       const shouldRenderNow = inView || pageNumber === selectedPage || isAdjacent;
 
-      if (!shouldRenderNow) return;
+      if (!shouldRenderNow) {
+        return;
+      }
 
       // Calculate scale difference for determining if full render is needed
       const scaleDifference = Math.abs(scale - baseScale);
       const rotationChanged = rotation !== prevRotationRef.current;
+      const isCurrentPage = pageNumber === selectedPage;
+
+      // Check if HQ canvas actually has content
+      let hqIsEmpty = false;
+      if (highQualityCanvasRef.current) {
+        try {
+          const hqCtx = highQualityCanvasRef.current.getContext('2d', { willReadFrequently: true });
+          if (hqCtx) {
+            const hqW = highQualityCanvasRef.current.width;
+            const hqH = highQualityCanvasRef.current.height;
+            const imageData = hqCtx.getImageData(Math.floor(hqW / 2), Math.floor(hqH / 2), 1, 1);
+            hqIsEmpty = imageData.data[3] === 0; // Check if alpha is 0
+          }
+        } catch {
+          hqIsEmpty = true; // If we can't check, assume empty
+        }
+      }
 
       // For initial render or when scale difference exceeds threshold
       if (
         // Only do a full render if:
         // 1. Never rendered before, OR
         // 2. No high quality canvas available, OR
-        // 3. Scale difference exceeds threshold AND not currently pinch/wheel zooming, OR
-        // 4. Rotation changed
+        // 3. HQ canvas exists but is EMPTY (no content), OR
+        // 4. Scale difference exceeds threshold AND not currently pinch/wheel zooming, OR
+        // 5. Rotation changed, OR
+        // 6. This is the current page and hasn't been marked as rendered yet (force render for current page)
         !highQualityCanvasRef.current ||
+        hqIsEmpty ||
         (scaleDifference > SCALE_THRESHOLD && !isPinchZooming && !isWheelZooming) ||
-        rotationChanged
+        rotationChanged ||
+        (isCurrentPage && !hasRendered)
       ) {
         // Update the rotation ref
         prevRotationRef.current = rotation;
@@ -409,8 +512,11 @@ export const ViewPage = (props: ViewPageProps) => {
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
+
         // Check if page is intersecting with the viewport
-        const isNowVisible = entry.isIntersecting && entry.intersectionRatio >= 0.1;
+        // Use a very low threshold (0.0001) to handle high zoom levels where only a tiny
+        // fraction of the page is visible but it's still on screen
+        const isNowVisible = entry.isIntersecting && entry.intersectionRatio >= 0.0001;
 
         // Only update state if visibility actually changed to prevent unnecessary re-renders
         if (isNowVisible !== inView) {
@@ -427,7 +533,9 @@ export const ViewPage = (props: ViewPageProps) => {
       },
       {
         rootMargin: '300px 0px', // Increase pre-rendering margin for high scales
-        threshold: [0.01, 0.1, 0.2, 0.3, 0.4, 0.5], // Add lower threshold for better detection
+        // Add very low thresholds (0.0001, 0.001) for high zoom scenarios where large pages
+        // have only tiny fractions visible in small viewports
+        threshold: [0.0001, 0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5],
       },
     );
 

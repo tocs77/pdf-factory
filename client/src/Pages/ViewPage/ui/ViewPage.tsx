@@ -104,6 +104,7 @@ export const ViewPage = () => {
         compareUrl={compareFileBlobUrl || undefined}
         onDrawingClicked={pdfDrawingClicked}
         isMobile={isMobile}
+        id={id}
       />
 
       <div className={classes.drawings} ref={drawingsContainerRef}>
