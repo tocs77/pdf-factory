@@ -27,6 +27,8 @@ export const captureDrawingImage = (
     return '';
   }
 
+  // Bounding box is already in actual pixel coordinates (not CSS pixels)
+  // So we use it directly without multiplying by devicePixelRatio
   newCanvas.width = width;
   newCanvas.height = height;
 
@@ -36,11 +38,10 @@ export const captureDrawingImage = (
     return '';
   }
 
-  const dpr = window.devicePixelRatio;
-
   // Draw PDF portion first
+  // left, top, width, height are already in actual pixel coordinates
   try {
-    newCanvasContext.drawImage(pdfCanvas, left * dpr, top * dpr, width * dpr, height * dpr, 0, 0, width, height);
+    newCanvasContext.drawImage(pdfCanvas, left, top, width, height, 0, 0, width, height);
   } catch (_error) {
     // Silent fail
   }
@@ -54,10 +55,10 @@ export const captureDrawingImage = (
     try {
       newCanvasContext.drawImage(
         drawingCanvas,
-        left * dpr * scaleFactorX,
-        top * dpr * scaleFactorY,
-        width * dpr * scaleFactorX,
-        height * dpr * scaleFactorY,
+        left * scaleFactorX,
+        top * scaleFactorY,
+        width * scaleFactorX,
+        height * scaleFactorY,
         0,
         0,
         width,

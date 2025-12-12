@@ -135,38 +135,54 @@ export const DraftLayer = (props: DraftLayerProps) => {
     const currentScale = state.scale;
     const currentRotation = state.pageRotations[pageNumber] || 0;
 
+    // Get CSS dimensions (logical dimensions) from canvas style
+    // pdfCanvas.width/height are actual pixel dimensions (including pixelRatio)
+    // We need CSS dimensions for transformCoordinates
+    const cssWidth = Number.parseInt(pdfCanvas.style.width) || pdfCanvas.width;
+    const cssHeight = Number.parseInt(pdfCanvas.style.height) || pdfCanvas.height;
+    
+    // Calculate actual pixelRatio used (may be reduced for mobile)
+    const actualPixelRatio = pdfCanvas.width / cssWidth;
+
     const { x: screenMinX, y: screenMinY } = transformCoordinates(
       finalMiscBoundingBox.left, // Use calculated final bounds
       finalMiscBoundingBox.top,
-      pdfCanvas.width,
-      pdfCanvas.height,
+      cssWidth,
+      cssHeight,
       currentScale,
       currentRotation,
     );
     const { x: screenMaxX, y: screenMaxY } = transformCoordinates(
       finalMiscBoundingBox.right,
       finalMiscBoundingBox.bottom,
-      pdfCanvas.width,
-      pdfCanvas.height,
+      cssWidth,
+      cssHeight,
       currentScale,
       currentRotation,
     );
 
     // Add padding and calculate the final screen bounding box for capture
+    // Convert CSS coordinates to actual pixel coordinates
     const padding = 10;
+    const pixelPadding = padding * actualPixelRatio;
+    const pixelMinX = screenMinX * actualPixelRatio;
+    const pixelMinY = screenMinY * actualPixelRatio;
+    const pixelMaxX = screenMaxX * actualPixelRatio;
+    const pixelMaxY = screenMaxY * actualPixelRatio;
+    
     const finalCaptureBounds = {
-      left: Math.max(0, Math.min(screenMinX, screenMaxX) - padding),
-      top: Math.max(0, Math.min(screenMinY, screenMaxY) - padding),
+      left: Math.max(0, Math.min(pixelMinX, pixelMaxX) - pixelPadding),
+      top: Math.max(0, Math.min(pixelMinY, pixelMaxY) - pixelPadding),
       width: 0,
       height: 0,
     };
     finalCaptureBounds.width = Math.min(
       pdfCanvas.width - finalCaptureBounds.left,
-      Math.abs(screenMaxX - screenMinX) + padding * 2,
+      Math.abs(pixelMaxX - pixelMinX) + pixelPadding * 2,
     );
     finalCaptureBounds.height = Math.min(
       pdfCanvas.height - finalCaptureBounds.top,
-      Math.abs(screenMaxY - screenMinY) + padding * 2,
+      Math.abs(pixelMaxY - pixelMinY) + pixelPadding * 2,
     );
 
     let image = '';

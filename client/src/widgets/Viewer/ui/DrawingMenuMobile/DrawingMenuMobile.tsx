@@ -108,6 +108,7 @@ export const DrawingMenuMobile = () => {
     // Reset the request flag after a short delay
     setTimeout(() => {
       dispatch({ type: 'requestFinishDrawing', payload: false });
+      handleCancelClick()
     }, 100);
   };
 
