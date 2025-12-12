@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useContext } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useContext } from 'react';
 import { ViewerContext } from '../../model/context/viewerContext';
 import { normalizeCoordinatesToZeroRotation } from '../../utils/rotationUtils';
 import { captureDrawingImage } from '../../utils/captureDrawingImage';
@@ -25,12 +25,14 @@ export const DrawAreaLayer = (props: DrawAreaLayerProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([]);
+  const isDrawingRef = useRef(false);
+  const currentPathRef = useRef<{ x: number; y: number }[]>([]);
 
   // Constant for the thick line width used for drawing (32px)
   const DRAW_AREA_LINE_WIDTH = 32;
 
   // Create a function to initialize the canvas with correct dimensions and context
-  const initializeCanvas = () => {
+  const initializeCanvas = useCallback(() => {
     if (!canvasRef.current) return null;
 
     const canvas = canvasRef.current;
@@ -57,13 +59,13 @@ export const DrawAreaLayer = (props: DrawAreaLayerProps) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Initialize drawing styles
-    ctx.strokeStyle = drawingColor + '80'; // 50% opacity for drawing preview
+    ctx.strokeStyle = `${drawingColor}80`; // 50% opacity for drawing preview
     ctx.lineWidth = DRAW_AREA_LINE_WIDTH; // Fixed 32px width
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
     return ctx;
-  };
+  }, [drawingColor]);
 
   // Hide canvas when not in drawArea mode
   useEffect(() => {
@@ -100,7 +102,7 @@ export const DrawAreaLayer = (props: DrawAreaLayerProps) => {
 
       ctx.stroke();
     }
-  }, [scale, pageNumber, rotation, isDrawing, currentPath, drawingColor]);
+  }, [scale, pageNumber, rotation, isDrawing, currentPath, initializeCanvas]);
 
   // Set cursor to crosshair
   useEffect(() => {
@@ -121,7 +123,7 @@ export const DrawAreaLayer = (props: DrawAreaLayerProps) => {
   }, [drawingMode]);
 
   // Get raw coordinates relative to canvas
-  const getRawCoordinates = (clientX: number, clientY: number): { x: number; y: number } => {
+  const getRawCoordinates = useCallback((clientX: number, clientY: number): { x: number; y: number } => {
     if (!canvasRef.current) return { x: 0, y: 0 };
 
     const canvas = canvasRef.current;
@@ -132,7 +134,7 @@ export const DrawAreaLayer = (props: DrawAreaLayerProps) => {
     const y = clientY - rect.top;
 
     return { x, y };
-  };
+  }, []);
 
   // Drawing handlers
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -191,7 +193,7 @@ export const DrawAreaLayer = (props: DrawAreaLayerProps) => {
     });
   };
 
-  const endDrawing = () => {
+  const endDrawing = useCallback(() => {
     if (!isDrawing || drawingMode !== 'drawArea') {
       setIsDrawing(false);
       setCurrentPath([]);
@@ -310,86 +312,129 @@ export const DrawAreaLayer = (props: DrawAreaLayerProps) => {
     if (ctx) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
-  };
+  }, [
+    isDrawing,
+    drawingMode,
+    currentPath,
+    pdfCanvasRef,
+    scale,
+    rotation,
+    drawingColor,
+    drawingLineWidth,
+    pageNumber,
+    onDrawingCreated,
+  ]);
 
-  // Touch event handlers
-  const startTouchDrawing = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (drawingMode !== 'drawArea') return;
+  // Sync refs with state
+  useEffect(() => {
+    isDrawingRef.current = isDrawing;
+  }, [isDrawing]);
 
-    // Prevent default to avoid scrolling
-    e.preventDefault();
+  useEffect(() => {
+    currentPathRef.current = currentPath;
+  }, [currentPath]);
 
-    // Initialize or reinitialize the canvas
-    const ctx = initializeCanvas();
-    if (!ctx) return;
+  // Set up native touch event listeners with passive: false to allow preventDefault
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || drawingMode !== 'drawArea') return;
 
-    // Get the first touch point
-    const touch = e.touches[0];
-    if (!touch) return;
+    const handleTouchStart = (e: TouchEvent) => {
+      if (drawingMode !== 'drawArea') return;
 
-    // Get raw coordinates
-    const { x, y } = getRawCoordinates(touch.clientX, touch.clientY);
+      // Prevent default to avoid scrolling
+      e.preventDefault();
 
-    // Start drawing and tracking
-    setIsDrawing(true);
-    setCurrentPath([{ x, y }]);
+      // Initialize or reinitialize the canvas
+      const ctx = initializeCanvas();
+      if (!ctx) return;
 
-    // Start drawing
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-  };
+      // Get the first touch point
+      const touch = e.touches[0];
+      if (!touch) return;
 
-  const touchDraw = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || drawingMode !== 'drawArea') return;
+      // Get raw coordinates
+      const { x, y } = getRawCoordinates(touch.clientX, touch.clientY);
 
-    // Prevent default to avoid scrolling
-    e.preventDefault();
+      // Start drawing and tracking
+      setIsDrawing(true);
+      setCurrentPath([{ x, y }]);
 
-    // Get or reinitialize the canvas context
-    const ctx = canvasRef.current?.getContext('2d');
-    if (!ctx || !canvasRef.current) return;
+      // Start drawing
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+    };
 
-    // Get the first touch point
-    const touch = e.touches[0];
-    if (!touch) return;
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isDrawingRef.current || drawingMode !== 'drawArea') return;
 
-    // Get raw coordinates
-    const { x, y } = getRawCoordinates(touch.clientX, touch.clientY);
+      // Prevent default to avoid scrolling
+      e.preventDefault();
 
-    // Add point to current path
-    setCurrentPath((prevPath) => {
-      const newPath = [...prevPath, { x, y }];
+      // Get or reinitialize the canvas context
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-      // Redraw the entire path to ensure it's visible
-      if (ctx && newPath.length > 1) {
-        // Clear the canvas first
-        const canvas = canvasRef.current;
-        if (canvas) {
+      // Get the first touch point
+      const touch = e.touches[0];
+      if (!touch) return;
+
+      // Get raw coordinates
+      const { x, y } = getRawCoordinates(touch.clientX, touch.clientY);
+
+      // Add point to current path
+      setCurrentPath((prevPath) => {
+        const newPath = [...prevPath, { x, y }];
+
+        // Redraw the entire path to ensure it's visible
+        if (ctx && newPath.length > 1) {
+          // Clear the canvas first
           ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          // Draw the complete path
+          ctx.beginPath();
+          ctx.moveTo(newPath[0].x, newPath[0].y);
+
+          for (let i = 1; i < newPath.length; i++) {
+            ctx.lineTo(newPath[i].x, newPath[i].y);
+          }
+
+          ctx.stroke();
         }
 
-        // Draw the complete path
-        ctx.beginPath();
-        ctx.moveTo(newPath[0].x, newPath[0].y);
+        return newPath;
+      });
+    };
 
-        for (let i = 1; i < newPath.length; i++) {
-          ctx.lineTo(newPath[i].x, newPath[i].y);
-        }
+    const handleTouchEnd = (e: TouchEvent) => {
+      // Prevent default to avoid triggering mouse events
+      e.preventDefault();
 
-        ctx.stroke();
-      }
+      // Call the same end drawing logic
+      endDrawing();
+    };
 
-      return newPath;
-    });
-  };
+    const handleTouchCancel = (e: TouchEvent) => {
+      // Prevent default to avoid triggering mouse events
+      e.preventDefault();
 
-  const endTouchDrawing = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    // Prevent default to avoid triggering mouse events
-    e.preventDefault();
+      // Call the same end drawing logic
+      endDrawing();
+    };
 
-    // Call the same end drawing logic
-    endDrawing();
-  };
+    // Add event listeners with passive: false to allow preventDefault
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+    canvas.addEventListener('touchcancel', handleTouchCancel, { passive: false });
+
+    return () => {
+      canvas.removeEventListener('touchstart', handleTouchStart);
+      canvas.removeEventListener('touchmove', handleTouchMove);
+      canvas.removeEventListener('touchend', handleTouchEnd);
+      canvas.removeEventListener('touchcancel', handleTouchCancel);
+    };
+  }, [drawingMode, initializeCanvas, getRawCoordinates, endDrawing]);
 
   return (
     <canvas
@@ -399,10 +444,6 @@ export const DrawAreaLayer = (props: DrawAreaLayerProps) => {
       onMouseMove={draw}
       onMouseUp={endDrawing}
       onMouseLeave={endDrawing}
-      onTouchStart={startTouchDrawing}
-      onTouchMove={touchDraw}
-      onTouchEnd={endTouchDrawing}
-      onTouchCancel={endTouchDrawing}
       data-testid='draw-area-canvas'
     />
   );

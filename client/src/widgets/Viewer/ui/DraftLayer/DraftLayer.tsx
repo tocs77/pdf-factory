@@ -1,4 +1,4 @@
-import { useContext, useState, useRef, useEffect } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 import { ViewerContext } from '../../model/context/viewerContext';
 import { Drawing, DrawingMisc } from '../../model/types/Drawings';
@@ -40,79 +40,24 @@ export const DraftLayer = (props: DraftLayerProps) => {
     boundingBox: { left: 0, top: 0, right: 0, bottom: 0 },
   });
 
-  // Handle finish and cancel drawing requests
-  useEffect(() => {
-    if (requestFinishDrawing && (currentDrawingPage === pageNumber || currentDrawingPage === 0)) {
-      handleFinish();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestFinishDrawing]);
-
-  useEffect(() => {
-    if (requestCancelDrawing && (currentDrawingPage === pageNumber || currentDrawingPage === 0)) {
-      handleCancel();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestCancelDrawing]);
-
-  const handleDrawingAdded = (drawing: Drawing) => {
-    console.log('add drawing', drawing);
-    switch (drawing.type) {
-      case 'freehand':
-        setDraftDrawing((prev) => ({ ...prev, pathes: [...prev.pathes, drawing] }));
-        break;
-      case 'rectangle':
-        setDraftDrawing((prev) => ({ ...prev, rectangles: [...prev.rectangles, drawing] }));
-        break;
-      case 'extensionLine':
-        setDraftDrawing((prev) => ({ ...prev, extensionLines: [...prev.extensionLines, drawing] }));
-        break;
-      case 'line':
-        setDraftDrawing((prev) => ({ ...prev, lines: [...prev.lines, drawing] }));
-        break;
-      case 'textArea':
-        setDraftDrawing((prev) => ({ ...prev, textAreas: [...prev.textAreas, drawing] }));
-        break;
-      case 'image':
-        setDraftDrawing((prev) => ({ ...prev, images: [...prev.images, drawing] }));
-        break;
-      case 'rulers':
-        setDraftDrawing((prev) => ({ ...prev, rulers: [...prev.rulers, drawing] }));
-        break;
-      default:
-        break;
-    }
-    dispatch({ type: 'setCurrentDrawingPage', payload: pageNumber });
-  };
-
   // Helper to update normalized bounding box from another bounding box
-  const updateBoundsFromBox = (
-    targetBounds: { minX: number; minY: number; maxX: number; maxY: number },
-    sourceBox: { left: number; top: number; right: number; bottom: number } | undefined,
-  ) => {
-    if (!sourceBox) return; // Skip if the drawing doesn't have a bounding box
-    targetBounds.minX = Math.min(targetBounds.minX, sourceBox.left);
-    targetBounds.minY = Math.min(targetBounds.minY, sourceBox.top);
-    targetBounds.maxX = Math.max(targetBounds.maxX, sourceBox.right);
-    targetBounds.maxY = Math.max(targetBounds.maxY, sourceBox.bottom);
-  };
+  const updateBoundsFromBox = useCallback(
+    (
+      targetBounds: { minX: number; minY: number; maxX: number; maxY: number },
+      sourceBox: { left: number; top: number; right: number; bottom: number } | undefined,
+    ) => {
+      if (!sourceBox) return; // Skip if the drawing doesn't have a bounding box
+      targetBounds.minX = Math.min(targetBounds.minX, sourceBox.left);
+      targetBounds.minY = Math.min(targetBounds.minY, sourceBox.top);
+      targetBounds.maxX = Math.max(targetBounds.maxX, sourceBox.right);
+      targetBounds.maxY = Math.max(targetBounds.maxY, sourceBox.bottom);
+    },
+    [],
+  );
 
-  const handleFinish = () => {
-    const hasDrawing =
-      draftDrawing.pathes.length > 0 ||
-      draftDrawing.rectangles.length > 0 ||
-      draftDrawing.extensionLines.length > 0 ||
-      draftDrawing.lines.length > 0 ||
-      draftDrawing.textAreas.length > 0 ||
-      draftDrawing.images.length > 0 ||
-      draftDrawing.rulers.length > 0;
-
-    if (hasDrawing) {
-      createDraftDrawing();
-    }
-
-    dispatch({ type: 'setCurrentDrawingPage', payload: 0 }); // allow drawing on all pages
-    // Optionally clear the draft state
+  const handleCancel = useCallback(() => {
+    // Reset state with boundingBox
+    dispatch({ type: 'setCurrentDrawingPage', payload: -1 });
     setDraftDrawing({
       id: '',
       type: 'misc',
@@ -126,9 +71,14 @@ export const DraftLayer = (props: DraftLayerProps) => {
       pageNumber: pageNumber,
       boundingBox: { left: 0, top: 0, right: 0, bottom: 0 },
     });
-  };
+  }, [dispatch, pageNumber]);
 
-  const createDraftDrawing = () => {
+  const handleCancelRef = useRef(handleCancel);
+  useEffect(() => {
+    handleCancelRef.current = handleCancel;
+  }, [handleCancel]);
+
+  const createDraftDrawing = useCallback(() => {
     const drawingsCanvas = completeDrawingsCanvasRef.current;
     const pdfCanvas = pdfCanvasRef?.current;
     if (!drawingsCanvas || !pdfCanvas) {
@@ -244,11 +194,24 @@ export const DraftLayer = (props: DraftLayerProps) => {
       boundingBox: finalMiscBoundingBox, // Add the calculated combined bounds
     };
     onDrawingCreated(drawing);
-  };
+  }, [draftDrawing, pageNumber, pdfCanvasRef, state.scale, state.pageRotations, onDrawingCreated, updateBoundsFromBox]);
 
-  const handleCancel = () => {
-    // Reset state with boundingBox
-    dispatch({ type: 'setCurrentDrawingPage', payload: -1 });
+  const handleFinish = useCallback(() => {
+    const hasDrawing =
+      draftDrawing.pathes.length > 0 ||
+      draftDrawing.rectangles.length > 0 ||
+      draftDrawing.extensionLines.length > 0 ||
+      draftDrawing.lines.length > 0 ||
+      draftDrawing.textAreas.length > 0 ||
+      draftDrawing.images.length > 0 ||
+      draftDrawing.rulers.length > 0;
+
+    if (hasDrawing) {
+      createDraftDrawing();
+    }
+
+    dispatch({ type: 'setCurrentDrawingPage', payload: 0 }); // allow drawing on all pages
+    // Optionally clear the draft state
     setDraftDrawing({
       id: '',
       type: 'misc',
@@ -262,6 +225,49 @@ export const DraftLayer = (props: DraftLayerProps) => {
       pageNumber: pageNumber,
       boundingBox: { left: 0, top: 0, right: 0, bottom: 0 },
     });
+  }, [draftDrawing, createDraftDrawing, dispatch, pageNumber]);
+
+  // Handle finish and cancel drawing requests
+  useEffect(() => {
+    if (requestFinishDrawing && (currentDrawingPage === pageNumber || currentDrawingPage === 0)) {
+      handleFinish();
+    }
+  }, [requestFinishDrawing, currentDrawingPage, pageNumber, handleFinish]);
+
+  useEffect(() => {
+    if (requestCancelDrawing && (currentDrawingPage === pageNumber || currentDrawingPage === 0)) {
+      handleCancelRef.current();
+    }
+  }, [requestCancelDrawing, currentDrawingPage, pageNumber]);
+
+  const handleDrawingAdded = (drawing: Drawing) => {
+    console.log('add drawing', drawing);
+    switch (drawing.type) {
+      case 'freehand':
+        setDraftDrawing((prev) => ({ ...prev, pathes: [...prev.pathes, drawing] }));
+        break;
+      case 'rectangle':
+        setDraftDrawing((prev) => ({ ...prev, rectangles: [...prev.rectangles, drawing] }));
+        break;
+      case 'extensionLine':
+        setDraftDrawing((prev) => ({ ...prev, extensionLines: [...prev.extensionLines, drawing] }));
+        break;
+      case 'line':
+        setDraftDrawing((prev) => ({ ...prev, lines: [...prev.lines, drawing] }));
+        break;
+      case 'textArea':
+        setDraftDrawing((prev) => ({ ...prev, textAreas: [...prev.textAreas, drawing] }));
+        break;
+      case 'image':
+        setDraftDrawing((prev) => ({ ...prev, images: [...prev.images, drawing] }));
+        break;
+      case 'rulers':
+        setDraftDrawing((prev) => ({ ...prev, rulers: [...prev.rulers, drawing] }));
+        break;
+      default:
+        break;
+    }
+    dispatch({ type: 'setCurrentDrawingPage', payload: pageNumber });
   };
 
   return (
