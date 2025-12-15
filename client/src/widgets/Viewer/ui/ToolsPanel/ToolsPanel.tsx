@@ -63,29 +63,6 @@ export const ToolsPanel = ({ mobile }: ToolsPanelProps) => {
       <div className={classes.toolButtons}>
         <div className={classes.toolGroup}>
           <button
-            className={`${classes.toolButton} ${drawingMode === 'textHighlight' ? classes.active : ''}`}
-            onClick={toggleTextHighlight}
-            title={drawingMode === 'textHighlight' ? 'Отключить выделение текста' : 'Включить выделение текста'}>
-            <TextHighlightIcon />
-          </button>
-          <button
-            className={`${classes.toolButton} ${drawingMode === 'textUnderline' ? classes.active : ''}`}
-            onClick={toggleTextUnderline}
-            title={drawingMode === 'textUnderline' ? 'Отключить подчеркивание текста' : 'Включить подчеркивание текста'}>
-            <TextUnderlineIcon />
-          </button>
-          <button
-            className={`${classes.toolButton} ${drawingMode === 'textCrossedOut' ? classes.active : ''}`}
-            onClick={toggleTextCrossedOut}
-            title={drawingMode === 'textCrossedOut' ? 'Отключить зачеркивание текста' : 'Включить зачеркивание текста'}>
-            <TextStrikethroughIcon />
-          </button>
-        </div>
-
-        <div className={classes.separator}></div>
-
-        <div className={classes.toolGroup}>
-          <button
             className={`${classes.toolButton} ${drawingMode === 'freehand' ? classes.active : ''}`}
             onClick={() => changeDrawingMode('freehand')}
             title={drawingMode === 'freehand' ? 'Отключить рисование от руки' : 'Включить рисование от руки'}>
@@ -169,6 +146,29 @@ export const ToolsPanel = ({ mobile }: ToolsPanelProps) => {
             onClick={() => changeDrawingMode('pinSelection')}
             title={drawingMode === 'pinSelection' ? 'Отключить инструмент выбора пином' : 'Включить инструмент выбора пином'}>
             <PinSelectionIcon />
+          </button>
+        </div>
+
+        <div className={classes.separator}></div>
+
+        <div className={classes.toolGroup}>
+          <button
+            className={`${classes.toolButton} ${drawingMode === 'textHighlight' ? classes.active : ''}`}
+            onClick={toggleTextHighlight}
+            title={drawingMode === 'textHighlight' ? 'Отключить выделение текста' : 'Включить выделение текста'}>
+            <TextHighlightIcon />
+          </button>
+          <button
+            className={`${classes.toolButton} ${drawingMode === 'textUnderline' ? classes.active : ''}`}
+            onClick={toggleTextUnderline}
+            title={drawingMode === 'textUnderline' ? 'Отключить подчеркивание текста' : 'Включить подчеркивание текста'}>
+            <TextUnderlineIcon />
+          </button>
+          <button
+            className={`${classes.toolButton} ${drawingMode === 'textCrossedOut' ? classes.active : ''}`}
+            onClick={toggleTextCrossedOut}
+            title={drawingMode === 'textCrossedOut' ? 'Отключить зачеркивание текста' : 'Включить зачеркивание текста'}>
+            <TextStrikethroughIcon />
           </button>
         </div>
       </div>
