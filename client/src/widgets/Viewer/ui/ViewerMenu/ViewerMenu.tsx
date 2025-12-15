@@ -184,50 +184,97 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
     }
   };
 
-  return (
-    <div className={classNames(classes.ViewerMenu, { [classes.mobile]: mobile })}>
-      {extendedControls}
-      <button
-        className={classNames(classes.thumbnailToggle, { [classes.active]: showThumbnails }, [])}
-        onClick={() => dispatch({ type: 'toggleThumbnails' })}
-        title={showThumbnails ? 'Скрыть миниатюры' : 'Показать миниатюры'}>
-        <ThumbnailToggleIcon />
-      </button>
-      {!mobile && (
-        <div className={classes.rotationControls}>
-          <button
-            onClick={rotatePageCounterClockwise}
-            className={classes.rotationButton}
-            title='Повернуть против часовой стрелки'>
-            <RotateCcwIcon />
-          </button>
-          <button onClick={rotatePageClockwise} className={classes.rotationButton} title='Повернуть по часовой стрелке'>
-            <RotateCwIcon />
-          </button>
-        </div>
-      )}
-      {!mobile && (
-        <>
-          <button onClick={zoomOut} className={classes.zoomButton} title='Уменьшить масштаб'>
-            <ZoomOutIcon />
-          </button>
-          <span className={classes.zoomPercentage}>{Math.round(scale * 100)}%</span>
-          <button onClick={zoomIn} className={classes.zoomButton} title='Увеличить масштаб'>
-            <ZoomInIcon />
-          </button>
-        </>
-      )}
-      {!viewOnly && !mobile && (
+  type MenuButton = {
+    key: string;
+    element: React.ReactNode;
+    show?: boolean;
+  };
+
+  const menuButtons: MenuButton[] = [
+    {
+      key: 'thumbnailToggle',
+      element: (
         <button
+          key='thumbnailToggle'
+          className={classNames(classes.thumbnailToggle, { [classes.active]: showThumbnails }, [])}
+          onClick={() => dispatch({ type: 'toggleThumbnails' })}
+          title={showThumbnails ? 'Скрыть миниатюры' : 'Показать миниатюры'}>
+          <ThumbnailToggleIcon />
+        </button>
+      ),
+    },
+    {
+      key: 'rotateCounterClockwise',
+      show: !mobile,
+      element: (
+        <button
+          key='rotateCounterClockwise'
+          onClick={rotatePageCounterClockwise}
+          className={classes.rotationButton}
+          title='Повернуть против часовой стрелки'>
+          <RotateCcwIcon />
+        </button>
+      ),
+    },
+    {
+      key: 'rotateClockwise',
+      show: !mobile,
+      element: (
+        <button
+          key='rotateClockwise'
+          onClick={rotatePageClockwise}
+          className={classes.rotationButton}
+          title='Повернуть по часовой стрелке'>
+          <RotateCwIcon />
+        </button>
+      ),
+    },
+    {
+      key: 'zoomOut',
+      show: !mobile,
+      element: (
+        <button key='zoomOut' onClick={zoomOut} className={classes.zoomButton} title='Уменьшить масштаб'>
+          <ZoomOutIcon />
+        </button>
+      ),
+    },
+    {
+      key: 'zoomPercentage',
+      show: !mobile,
+      element: (
+        <span key='zoomPercentage' className={classes.zoomPercentage}>
+          {Math.round(scale * 100)}%
+        </span>
+      ),
+    },
+    {
+      key: 'zoomIn',
+      show: !mobile,
+      element: (
+        <button key='zoomIn' onClick={zoomIn} className={classes.zoomButton} title='Увеличить масштаб'>
+          <ZoomInIcon />
+        </button>
+      ),
+    },
+    {
+      key: 'zoomArea',
+      show: !viewOnly && !mobile,
+      element: (
+        <button
+          key='zoomArea'
           onClick={() => changeDrawingMode('zoomArea')}
           className={`${classes.zoomButton} ${drawingMode === 'zoomArea' ? classes.active : ''}`}
           style={{ padding: '4px' }}
           title='Увеличить выбранную область'>
           <ZoomAreaIcon />
         </button>
-      )}
-      {!mobile && (
-        <label className={classes.zoomCheckbox} title='Масштабирование колесиком мыши только с клавишей Ctrl'>
+      ),
+    },
+    {
+      key: 'zoomCheckbox',
+      show: !mobile,
+      element: (
+        <label key='zoomCheckbox' className={classes.zoomCheckbox} title='Масштабирование колесиком мыши только с клавишей Ctrl'>
           <input
             type='checkbox'
             checked={zoomWithCtrl}
@@ -235,37 +282,56 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
           />
           <span>Масштаб с Ctrl</span>
         </label>
-      )}
+      ),
+    },
+    {
+      key: 'compareDiff',
+      show: hasCompare,
+      element: (
+        <button
+          key='compareDiff'
+          onClick={() =>
+            dispatch({
+              type: 'setCompareMode',
+              payload: compareMode === 'diff' ? 'none' : 'diff',
+            })
+          }
+          className={`${classes.zoomButton} ${compareMode === 'diff' ? classes.active : ''}`}
+          title={compareMode === 'diff' ? 'Отключить сравнение изменений' : 'Включить сравнение изменений'}>
+          <CompareDiffIcon />
+        </button>
+      ),
+    },
+    {
+      key: 'compareSideBySide',
+      show: hasCompare,
+      element: (
+        <button
+          key='compareSideBySide'
+          onClick={() =>
+            dispatch({
+              type: 'setCompareMode',
+              payload: compareMode === 'sideBySide' ? 'none' : 'sideBySide',
+            })
+          }
+          className={`${classes.zoomButton} ${compareMode === 'sideBySide' ? classes.active : ''}`}
+          title={compareMode === 'sideBySide' ? 'Отключить сравнение бок о бок' : 'Включить сравнение бок о бок'}>
+          <CompareSideBySideIcon />
+        </button>
+      ),
+    },
+  ];
 
-      {hasCompare && (
+  return (
+    <div className={classNames(classes.ViewerMenu, { [classes.mobile]: mobile })}>
+      {extendedControls}
+      {menuButtons.filter((button) => button.show !== false).map((button) => button.element)}
+      {!viewOnly && (
         <>
-          {/* Diff Compare Button */}
-          <button
-            onClick={() =>
-              dispatch({
-                type: 'setCompareMode',
-                payload: compareMode === 'diff' ? 'none' : 'diff',
-              })
-            }
-            className={`${classes.zoomButton} ${compareMode === 'diff' ? classes.active : ''}`}
-            title={compareMode === 'diff' ? 'Отключить сравнение изменений' : 'Включить сравнение изменений'}>
-            <CompareDiffIcon />
-          </button>
-          {/* Side-by-Side Compare Button */}
-          <button
-            onClick={() =>
-              dispatch({
-                type: 'setCompareMode',
-                payload: compareMode === 'sideBySide' ? 'none' : 'sideBySide',
-              })
-            }
-            className={`${classes.zoomButton} ${compareMode === 'sideBySide' ? classes.active : ''}`}
-            title={compareMode === 'sideBySide' ? 'Отключить сравнение бок о бок' : 'Включить сравнение бок о бок'}>
-            <CompareSideBySideIcon />
-          </button>
+          <div className={classes.spacer}></div>
+          <ToolsPanel mobile={mobile} />
         </>
       )}
-      {!viewOnly && <ToolsPanel mobile={mobile} />}
     </div>
   );
 };
