@@ -140,7 +140,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
     // We need CSS dimensions for transformCoordinates
     const cssWidth = Number.parseInt(pdfCanvas.style.width) || pdfCanvas.width;
     const cssHeight = Number.parseInt(pdfCanvas.style.height) || pdfCanvas.height;
-    
+
     // Calculate actual pixelRatio used (may be reduced for mobile)
     const actualPixelRatio = pdfCanvas.width / cssWidth;
 
@@ -169,7 +169,7 @@ export const DraftLayer = (props: DraftLayerProps) => {
     const pixelMinY = screenMinY * actualPixelRatio;
     const pixelMaxX = screenMaxX * actualPixelRatio;
     const pixelMaxY = screenMaxY * actualPixelRatio;
-    
+
     const finalCaptureBounds = {
       left: Math.max(0, Math.min(pixelMinX, pixelMaxX) - pixelPadding),
       top: Math.max(0, Math.min(pixelMinY, pixelMaxY) - pixelPadding),
@@ -257,7 +257,6 @@ export const DraftLayer = (props: DraftLayerProps) => {
   }, [requestCancelDrawing, currentDrawingPage, pageNumber]);
 
   const handleDrawingAdded = (drawing: Drawing) => {
-    console.log('add drawing', drawing);
     switch (drawing.type) {
       case 'freehand':
         setDraftDrawing((prev) => ({ ...prev, pathes: [...prev.pathes, drawing] }));

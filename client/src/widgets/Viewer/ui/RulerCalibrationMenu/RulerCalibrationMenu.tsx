@@ -164,7 +164,7 @@ export const RulerCalibrationMenu: React.FC<RulerCalibrationMenuProps> = ({
     <div className={styles.wrapper}>
       <DraggableDialog
         initialXPos={100}
-        initialYPos={100}
+        initialYPos={200}
         showHeader={false}
         grabAreas={['left', 'right']}
         onPositionChange={() => {}} // Position not stored in state for now

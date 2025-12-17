@@ -107,10 +107,10 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
   useEffect(() => {
     if (requestCancelDrawing && drawingMode === 'ruler') {
       cancelAllRulers();
+      dispatch({ type: 'setDrawingMode', payload: 'none' });
       dispatch({ type: 'requestCancelDrawing', payload: false });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestCancelDrawing, drawingMode]);
+  }, [requestCancelDrawing, drawingMode, dispatch]);
 
   // Function to cancel all rulers
   const cancelAllRulers = () => {
@@ -132,7 +132,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
   };
 
   // Create a function to initialize the canvas with correct dimensions and context
-  const initializeCanvas = () => {
+  const initializeCanvas = useCallback(() => {
     if (!canvasRef.current) return null;
 
     const canvas = canvasRef.current;
@@ -158,7 +158,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     return ctx;
-  };
+  }, []);
 
   // Ensure canvas dimensions update when page rotation changes
   useEffect(() => {
@@ -167,13 +167,15 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
       const ctx = initializeCanvas();
       if (ctx) {
         // Force recalculation of DOM markers after rotation
+        // Reference rotation to ensure effect runs when it changes
+        void rotation;
         updateRulerPositions();
         drawRuler();
       }
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [rotation]);
+  }, [rotation, initializeCanvas]);
 
   // Handle scale changes specifically
   useEffect(() => {
@@ -185,7 +187,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
       // Force a state update to recalculate DOM markers
       updateRulerPositions();
     }
-  }, [scale]);
+  }, [scale, initializeCanvas]);
 
   // Update DOM positions of all ruler elements
   const updateRulerPositions = useCallback(() => {
@@ -1501,14 +1503,23 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
     const canvas = canvasRef.current;
     if (!canvas) return {};
 
-    // Calculate angle and midpoint
+    // Calculate angle and midpoint from normalized coordinates
     const dx = endPoint.x - startPoint.x;
     const dy = endPoint.y - startPoint.y;
     let textAngle = Math.atan2(dy, dx) * (180 / Math.PI);
 
+    // Add rotation to account for page rotation (normalized coords are at 0 rotation, but text is displayed in rotated screen space)
+    textAngle += rotation;
+
+    // Normalize angle to 0-360 range
+    textAngle = ((textAngle % 360) + 360) % 360;
+
     // Adjust angle for readability (ensure text is not upside down)
-    if (textAngle > 90 || textAngle < -90) {
+    // If angle is between 90 and 270 degrees, flip it by 180 to keep it readable
+    if (textAngle > 90 && textAngle <= 270) {
       textAngle += 180;
+      // Normalize again after flipping
+      textAngle = ((textAngle % 360) + 360) % 360;
     }
 
     // Position in the center of the line
@@ -1518,7 +1529,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
     // Transform the midpoint back to screen space
     const transformedMidPoint = transformCoordinates(midPointX, midPointY, canvas.width, canvas.height, scale, rotation);
 
-    // Calculate offset to position text above the line
+    // Calculate offset to position text above the line (using the rotated angle)
     const offsetX = Math.sin((textAngle * Math.PI) / 180) * 15;
     const offsetY = -Math.cos((textAngle * Math.PI) / 180) * 15;
 
@@ -1555,9 +1566,18 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
     const dy = normalizedEndPoint.y - normalizedStartPoint.y;
     let textAngle = Math.atan2(dy, dx) * (180 / Math.PI);
 
+    // Add rotation to account for page rotation (normalized coords are at 0 rotation, but text is displayed in rotated screen space)
+    textAngle += rotation;
+
+    // Normalize angle to 0-360 range
+    textAngle = ((textAngle % 360) + 360) % 360;
+
     // Adjust angle for readability (ensure text is not upside down)
-    if (textAngle > 90 || textAngle < -90) {
+    // If angle is between 90 and 270 degrees, flip it by 180 to keep it readable
+    if (textAngle > 90 && textAngle <= 270) {
       textAngle += 180;
+      // Normalize again after flipping
+      textAngle = ((textAngle % 360) + 360) % 360;
     }
 
     // Position in the center of the line using normalized coordinates
@@ -1567,7 +1587,7 @@ export const RulerDrawingLayer = (props: RulerDrawingLayerProps) => {
     // Transform the midpoint back to screen space
     const transformedMidPoint = transformCoordinates(midPointX, midPointY, canvas.width, canvas.height, scale, rotation);
 
-    // Calculate offset to position text above the line
+    // Calculate offset to position text above the line (using the rotated angle)
     const offsetX = Math.sin((textAngle * Math.PI) / 180) * 15;
     const offsetY = -Math.cos((textAngle * Math.PI) / 180) * 15;
 
