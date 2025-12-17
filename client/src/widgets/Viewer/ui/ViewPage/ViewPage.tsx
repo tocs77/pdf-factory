@@ -190,6 +190,10 @@ export const ViewPage = (props: ViewPageProps) => {
           // Ignore cancellation errors
         }
         currentRenderTaskRef.current = null;
+        // Reset render flag when cancelling so new render can proceed
+        if (isRenderingRef.current) {
+          isRenderingRef.current = false;
+        }
       }
 
       // Set rendering flag to prevent concurrent renders
