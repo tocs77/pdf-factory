@@ -17,8 +17,10 @@ export const DrawingMenu = () => {
   }
 
   // Check if we're in a selection-only mode
+  const onlyDoneModes: DrawingMode[] = ['image'];
   const onlyColorModes: DrawingMode[] = ['rectSelection', 'pinSelection', 'drawArea', 'ruler', 'extensionLine'];
   const autoFinishModes: DrawingMode[] = ['rectSelection', 'pinSelection', 'drawArea'];
+  const isOnlyDoneMode = onlyDoneModes.includes(drawingMode);
   const isOnlyColorMode = onlyColorModes.includes(drawingMode);
   const isAutoFinishMode = autoFinishModes.includes(drawingMode);
 
@@ -76,7 +78,7 @@ export const DrawingMenu = () => {
       resizable={false}>
       <div className={styles.drawingMenuContainer} data-dragscroll-ignore='true'>
         <div className={styles.drawingOptions}>
-          {!isAutoFinishMode && (
+          {(!isAutoFinishMode || isOnlyDoneMode) && (
             <div className={styles.actionButtons}>
               <button
                 className={styles.actionButton}
@@ -118,22 +120,24 @@ export const DrawingMenu = () => {
               </button>
             </div>
           )}
-          <div className={styles.colorPicker}>
-            <span>Цвет:</span>
-            <div className={styles.colorOptions}>
-              {colorOptions.map((color) => (
-                <button
-                  key={color}
-                  className={`${styles.colorOption} ${color === drawingColor ? styles.active : ''}`}
-                  style={{ backgroundColor: color }}
-                  onClick={() => changeDrawingColor(color)}
-                  title={`Установить цвет: ${color}`}
-                  aria-label={`Установить цвет: ${color}`}
-                />
-              ))}
+          {!isOnlyDoneMode && (
+            <div className={styles.colorPicker}>
+              <span>Цвет:</span>
+              <div className={styles.colorOptions}>
+                {colorOptions.map((color) => (
+                  <button
+                    key={color}
+                    className={`${styles.colorOption} ${color === drawingColor ? styles.active : ''}`}
+                    style={{ backgroundColor: color }}
+                    onClick={() => changeDrawingColor(color)}
+                    title={`Установить цвет: ${color}`}
+                    aria-label={`Установить цвет: ${color}`}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-          {!isOnlyColorMode && (
+          )}
+          {!isOnlyDoneMode && !isOnlyColorMode && (
             <div className={styles.lineWidthPicker}>
               <span>{isTextAreaMode ? 'Размер текста:' : 'Толщина:'}</span>
               <div className={styles.lineWidthOptions}>
@@ -154,7 +158,7 @@ export const DrawingMenu = () => {
               </div>
             </div>
           )}
-          {!isOnlyColorMode && (
+          {!isOnlyDoneMode && !isOnlyColorMode && (
             <div className={styles.opacityPicker}>
               <span>Прозрачность:</span>
               <div className={styles.opacityOptions}>
