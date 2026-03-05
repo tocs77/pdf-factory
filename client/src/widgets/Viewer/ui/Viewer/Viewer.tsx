@@ -76,6 +76,13 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     }
   }, [viewOnly, drawingMode, dispatch]);
 
+  // Set compare mode to 'none' when compareUrl is empty or undefined
+  useEffect(() => {
+    if ((!compareUrl || compareUrl === '') && compareMode !== 'none') {
+      dispatch({ type: 'setCompareMode', payload: 'none' });
+    }
+  }, [compareUrl, compareMode, dispatch]);
+
   // State for comparison page overrides
   const [pageOverrides, setPageOverrides] = useState<PageOverrides>({});
 
