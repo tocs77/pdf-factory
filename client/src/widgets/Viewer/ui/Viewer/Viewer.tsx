@@ -54,7 +54,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     id,
   } = props;
   const { state, dispatch } = useContext(ViewerContext);
-  const { scale, showThumbnails, compareMode, drawingMode, currentPage, zoomWithCtrl } = state;
+  const { scale, showThumbnails, compareMode, drawingMode, currentPage, zoomWithCtrl, currentDrawingPage } = state;
 
   const [pdfRef, setPdfRef] = useState<PDFDocumentProxy | null>(null);
   const [comparePdfRef, setComparePdfRef] = useState<PDFDocumentProxy | null>(null);
@@ -404,6 +404,8 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       const comparePageObject =
         comparePageNumToShow >= 1 && comparePageNumToShow <= comparePages.length ? comparePages[comparePageNumToShow - 1] : null;
 
+      const inactiveDrawingPage = currentDrawingPage > 0 && pageNumber !== currentDrawingPage;
+
       return (
         <Page
           key={`page-${pageNumber}`}
@@ -414,7 +416,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
           drawings={drawings}
           drawingCreated={drawingCreated}
           onDrawingClicked={onDrawingClicked}
-          className={classes.pageItem}
+          className={classNames(classes.pageItem, { [classes.inactive]: inactiveDrawingPage })}
           mobile={isMobile}
         />
       );
