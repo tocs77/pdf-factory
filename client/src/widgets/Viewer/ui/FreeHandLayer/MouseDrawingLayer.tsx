@@ -63,6 +63,31 @@ export const MouseDrawingLayer = (props: MouseDrawingLayerProps) => {
     onEndDrawing();
   };
 
+  const handleMouseEnter = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Left mouse button was released outside canvas - end drawing
+    if (!(e.buttons & 1)) return;
+
+    // Get raw coordinates
+    const { x, y } = getRawCoordinates(e.clientX, e.clientY);
+
+    // End current drawing - saves path to allPaths
+    onEndDrawing();
+
+    // Initialize or reinitialize the canvas
+    const ctx = initializeCanvas();
+    if (!ctx) return;
+
+    onStartDrawing({ x, y });
+
+    // Start drawing
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.strokeStyle = currentStyle.strokeColor;
+    ctx.lineWidth = currentStyle.strokeWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  };
+
   return (
     <canvas
       ref={canvasRef}
@@ -71,6 +96,7 @@ export const MouseDrawingLayer = (props: MouseDrawingLayerProps) => {
       onMouseMove={draw}
       onMouseUp={endDrawing}
       onMouseLeave={endDrawing}
+      onMouseEnter={handleMouseEnter}
       data-testid='freehand-drawing-canvas-mouse'
     />
   );
