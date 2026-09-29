@@ -1,14 +1,15 @@
+import { getDocument, type PDFDocumentProxy, type PDFPageProxy } from 'pdfjs-dist';
+import type { DocumentInitParameters } from 'pdfjs-dist/types/src/display/api';
 import { forwardRef, useCallback, useContext, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { getDocument, PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 
 import { useDragToScroll } from '../../hooks/useDragToScroll';
 import { useScrollToDraw } from '../../hooks/useScrollToDraw';
 import { useZoomToMouse } from '../../hooks/useZoomToMouse';
 import { useZoomToPinch } from '../../hooks/useZoomToPinch';
-import { ViewerContext } from '../../model/context/viewerContext';
 import { ViewerProvider } from '../../model/context/ViewerProvider';
-import { Drawing } from '../../model/types/Drawings';
-import { RotationAngle } from '../../model/types/viewerSchema';
+import { ViewerContext } from '../../model/context/viewerContext';
+import type { Drawing } from '../../model/types/Drawings';
+import type { RotationAngle } from '../../model/types/viewerSchema';
 import { classNames } from '../../utils/classNames';
 import { isSliderBeingDragged } from '../../utils/dragControl/dragControl';
 import { scrollToPage } from '../../utils/pageScrollUtils';
@@ -26,19 +27,32 @@ export type PdfViewerRef = {
 };
 
 interface PdfViewerProps {
-  url: string;
   compareUrl?: string;
-  drawings: Drawing[];
   drawingCreated: (drawing: Omit<Drawing, 'id'>) => void;
-  onDrawingClicked?: (id: string) => void;
-  isMobile?: boolean;
-  viewOnly?: boolean;
+  drawings: Drawing[];
   extendedControls?: React.ReactNode;
   id?: string;
+  isMobile?: boolean;
+  onDrawingClicked?: (id: string) => void;
+  url: string;
+  viewOnly?: boolean;
 }
 
 // Type for page override mapping
 type PageOverrides = Record<number, number>;
+
+// pdfjs-dist assets (wasm decoders, cmaps, standard fonts, icc profiles) are
+// served from `<base>/pdfjs/` by the pdfjsAssets vite plugin.
+const pdfjsAssetsBase = `${import.meta.env.BASE_URL}/pdfjs/`.replace(/\/{2,}/g, '/');
+
+const createDocumentParams = (url: string): DocumentInitParameters => ({
+  url,
+  cMapUrl: `${pdfjsAssetsBase}cmaps/`,
+  cMapPacked: true,
+  iccUrl: `${pdfjsAssetsBase}iccs/`,
+  standardFontDataUrl: `${pdfjsAssetsBase}standard_fonts/`,
+  wasmUrl: `${pdfjsAssetsBase}wasm/`,
+});
 
 // Internal viewer component that will be wrapped with the provider
 const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) => {
@@ -231,7 +245,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   const loadPdf = useCallback(async (pdfUrl: string): Promise<PDFDocumentProxy | null> => {
     if (!pdfUrl) return null;
     try {
-      const loadingTask = getDocument(pdfUrl);
+      const loadingTask = getDocument(createDocumentParams(pdfUrl));
       return await loadingTask.promise;
     } catch (err) {
       console.error('Error loading PDF:', err);
@@ -249,7 +263,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       }
 
       try {
-        const loadingTask = getDocument(comparePdfUrl);
+        const loadingTask = getDocument(createDocumentParams(comparePdfUrl));
         return await loadingTask.promise;
       } catch (err) {
         console.error('Error loading comparison PDF:', err);
@@ -408,16 +422,16 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
       return (
         <Page
-          key={`page-${pageNumber}`}
-          page={page}
-          pageNumber={pageNumber}
+          className={classNames(classes.pageItem, { [classes.inactive]: inactiveDrawingPage })}
           compareMode={state.compareMode}
           comparePage={comparePageObject}
-          drawings={drawings}
           drawingCreated={drawingCreated}
-          onDrawingClicked={onDrawingClicked}
-          className={classNames(classes.pageItem, { [classes.inactive]: inactiveDrawingPage })}
+          drawings={drawings}
+          key={`page-${pageNumber}`}
           mobile={isMobile}
+          onDrawingClicked={onDrawingClicked}
+          page={page}
+          pageNumber={pageNumber}
         />
       );
     });
@@ -446,26 +460,26 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     <div className={classNames(classes.container, { [classes.noThumbnails]: !showThumbnails }, [])}>
       {showThumbnails && (
         <ThumbnailsMenu
-          pages={pages}
-          currentPage={currentPage}
-          onThumbnailClick={handleThumbnailClick}
-          totalPages={pages.length}
-          onPageChange={handlePageChange}
           compareMode={compareMode}
           comparePage={currentComparePageNum}
-          totalComparePages={comparePages.length}
+          currentPage={currentPage}
           onComparePageChange={handleComparePageChange}
+          onPageChange={handlePageChange}
+          onThumbnailClick={handleThumbnailClick}
+          pages={pages}
+          totalComparePages={comparePages.length}
+          totalPages={pages.length}
         />
       )}
 
       <div className={classes.viewerContainer}>
         <ViewerMenu
           currentPage={currentPage}
-          onPageChange={handlePageChange}
-          hasCompare={!!compareUrl}
-          viewOnly={viewOnly}
           extendedControls={extendedControls}
+          hasCompare={!!compareUrl}
           mobile={isMobile}
+          onPageChange={handlePageChange}
+          viewOnly={viewOnly}
         />
 
         <div

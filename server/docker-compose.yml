@@ -9,7 +9,8 @@ services:
       - ./uploads:/app/uploads
       - ./public:/app/public
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: always
     env_file:
       - .env
@@ -22,7 +23,12 @@ services:
       POSTGRES_USER: ${DB_USER}      
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - pdf_data:/var/lib/postgresql/data 
+      - pdf_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   pgadmin:
     image: dpage/pgadmin4:latest  
@@ -33,7 +39,8 @@ services:
     ports:
       - "5051:80" 
     depends_on:
-      - db 
+      db:
+        condition: service_healthy
     volumes:
       - ./pgadmin:/pgadmin
 volumes:
