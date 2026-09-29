@@ -1,6 +1,7 @@
 import { rtkApi } from '@/shared/api/rtkApi/rtkApi';
 import { FileDto } from '../model/File';
 import { fileController } from '@/shared/api/controllers/fileController';
+import { compareController, PageMatchResult } from '@/shared/api/controllers/compareController';
 const fileApi = rtkApi.enhanceEndpoints({ addTagTypes: ['files', 'file'] }).injectEndpoints({
   endpoints: (build) => ({
     getFilesList: build.query<FileDto[], void>({
@@ -35,7 +36,20 @@ const fileApi = rtkApi.enhanceEndpoints({ addTagTypes: ['files', 'file'] }).inje
       },
       providesTags: () => [{ type: 'file' }],
     }),
+    matchPages: build.mutation<PageMatchResult, { fileIdA: string; fileIdB: string }>({
+      queryFn: async ({ fileIdA, fileIdB }) => {
+        const response = await compareController.matchPages(fileIdA, fileIdB);
+        if (response.type === 'error') return { error: response.message };
+        return { data: response.payload };
+      },
+    }),
   }),
 });
 
-export const { useGetFilesListQuery, useDeleteFileMutation, useUploadFileMutation, useGetFileBlobUrlQuery } = fileApi;
+export const {
+  useGetFilesListQuery,
+  useDeleteFileMutation,
+  useUploadFileMutation,
+  useGetFileBlobUrlQuery,
+  useMatchPagesMutation,
+} = fileApi;

@@ -9,7 +9,7 @@ interface PagesControlProps {
   totalPages: number;
   onPageChange?: (pageNumber: number) => void;
   compareMode: 'none' | 'diff' | 'sideBySide';
-  comparePage?: number;
+  comparePage?: number | null;
   totalComparePages?: number;
   onComparePageChange?: (pageNumber: number) => void;
 }
@@ -24,6 +24,9 @@ export const PagesControl = (props: PagesControlProps) => {
 
   const [comparePageInputValue, setComparePageInputValue] = useState<string>(comparePage ? comparePage.toString() : '');
   const comparePageDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // `null` means the current page has no counterpart in the compare document
+  const comparePageLabel = comparePage === null ? '—' : (comparePage?.toString() ?? '');
 
   useEffect(() => {
     setPageInputValue(currentPage.toString());
@@ -67,20 +70,20 @@ export const PagesControl = (props: PagesControlProps) => {
   };
 
   useEffect(() => {
-    setComparePageInputValue(comparePage ? comparePage.toString() : '');
-  }, [comparePage]);
+    setComparePageInputValue(comparePageLabel);
+  }, [comparePageLabel]);
 
   const navigateToEnteredComparePage = () => {
     const pageNumber = Number.parseInt(comparePageInputValue, 10);
     if (pageNumber && pageNumber >= 1 && pageNumber <= totalComparePages && onComparePageChange) {
       onComparePageChange(pageNumber);
     } else {
-      setComparePageInputValue(comparePage ? comparePage.toString() : '');
+      setComparePageInputValue(comparePageLabel);
     }
   };
 
   useEffect(() => {
-    if (!onComparePageChange || comparePageInputValue === (comparePage?.toString() ?? '')) return;
+    if (!onComparePageChange || comparePageInputValue === comparePageLabel) return;
 
     if (comparePageDebounceTimerRef.current) clearTimeout(comparePageDebounceTimerRef.current);
     comparePageDebounceTimerRef.current = setTimeout(() => {
@@ -88,13 +91,13 @@ export const PagesControl = (props: PagesControlProps) => {
       if (pageNumber && pageNumber >= 1 && pageNumber <= totalComparePages && onComparePageChange) {
         onComparePageChange(pageNumber);
       } else {
-        setComparePageInputValue(comparePage ? comparePage.toString() : '');
+        setComparePageInputValue(comparePageLabel);
       }
     }, DEBOUNCE_TIME);
     return () => {
       if (comparePageDebounceTimerRef.current) clearTimeout(comparePageDebounceTimerRef.current);
     };
-  }, [comparePageInputValue, comparePage, totalComparePages, onComparePageChange]);
+  }, [comparePageInputValue, comparePageLabel, totalComparePages, onComparePageChange]);
 
   const handleComparePageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9]/g, '');

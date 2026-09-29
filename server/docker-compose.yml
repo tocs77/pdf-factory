@@ -12,8 +12,17 @@ services:
       db:
         condition: service_healthy
     restart: always
+    environment:
+      - MATCHER_URL=http://matcher:8000
     env_file:
       - .env
+
+  matcher:
+    build: ../matcher
+    container_name: pdf-matcher
+    volumes:
+      - ./uploads:/app/uploads:ro
+    restart: always
 
   db:
     image: postgres:latest

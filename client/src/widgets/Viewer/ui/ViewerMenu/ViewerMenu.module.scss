@@ -63,6 +63,21 @@
   }
 }
 
+.buttonSpinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgb(0 120 212 / 0.3);
+  border-top-color: #0078d4;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .zoomPercentage {
   font-size: 0.95rem;
   color: #495057;

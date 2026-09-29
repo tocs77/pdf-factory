@@ -102,6 +102,8 @@ export const ViewPage = () => {
         drawings={drawings}
         drawingCreated={handleDrawingCreated}
         compareUrl={compareFileBlobUrl || undefined}
+        compareFileId={compare || undefined}
+        fileId={id}
         onDrawingClicked={pdfDrawingClicked}
         isMobile={isMobile}
         id={id}

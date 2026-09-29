@@ -8,6 +8,7 @@ export { ZoomInIcon } from './ZoomInIcon';
 export { ZoomAreaIcon } from './ZoomAreaIcon';
 export { RulerIcon } from './RulerIcon';
 export { CompareDiffIcon } from './CompareDiffIcon';
+export { AutoMatchIcon } from './AutoMatchIcon';
 export { CompareSideBySideIcon } from './CompareSideBySideIcon';
 export { TextHighlightIcon } from './TextHighlightIcon';
 export { TextUnderlineIcon } from './TextUnderlineIcon';

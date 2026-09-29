@@ -2,6 +2,8 @@ import { getDocument, type PDFDocumentProxy, type PDFPageProxy } from 'pdfjs-dis
 import type { DocumentInitParameters } from 'pdfjs-dist/types/src/display/api';
 import { forwardRef, useCallback, useContext, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
+import { useMatchPagesMutation } from '@/entities/File';
+
 import { useDragToScroll } from '../../hooks/useDragToScroll';
 import { useScrollToDraw } from '../../hooks/useScrollToDraw';
 import { useZoomToMouse } from '../../hooks/useZoomToMouse';
@@ -28,9 +30,11 @@ export type PdfViewerRef = {
 
 interface PdfViewerProps {
   compareUrl?: string;
+  compareFileId?: string;
   drawingCreated: (drawing: Omit<Drawing, 'id'>) => void;
   drawings: Drawing[];
   extendedControls?: React.ReactNode;
+  fileId?: string;
   id?: string;
   isMobile?: boolean;
   onDrawingClicked?: (id: string) => void;
@@ -38,8 +42,9 @@ interface PdfViewerProps {
   viewOnly?: boolean;
 }
 
-// Type for page override mapping
-type PageOverrides = Record<number, number>;
+// Type for page override mapping. `null` means the page has no counterpart
+// in the compare document (it was removed in the compare version).
+type PageOverrides = Record<number, number | null>;
 
 // pdfjs-dist assets (wasm decoders, cmaps, standard fonts, icc profiles) are
 // served from `<base>/pdfjs/` by the pdfjsAssets vite plugin.
@@ -61,11 +66,13 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     drawings,
     drawingCreated,
     compareUrl,
+    compareFileId,
     onDrawingClicked,
     isMobile = false,
     viewOnly = false,
     extendedControls,
     id,
+    fileId,
   } = props;
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, showThumbnails, compareMode, drawingMode, currentPage, zoomWithCtrl, currentDrawingPage } = state;
@@ -99,6 +106,10 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
   // State for comparison page overrides
   const [pageOverrides, setPageOverrides] = useState<PageOverrides>({});
+  // Number of compare-only pages inserted after a given main page
+  // (key 0 = pages added before the first main page)
+  const [addedPages, setAddedPages] = useState<Record<number, number>>({});
+  const [matchPages, { isLoading: isMatching }] = useMatchPagesMutation();
 
   // Track when the PDF is fully loaded and rendered
   const [pdfRendered, setPdfRendered] = useState(false);
@@ -218,6 +229,8 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
 
         if (shift !== 0) {
           for (let pageNum = currentPage + 1; pageNum <= pages.length; pageNum++) {
+            // Pages explicitly marked as having no counterpart keep that status
+            if (newOverrides[pageNum] === null) continue;
             const currentComparePage = newOverrides[pageNum] ?? pageNum;
 
             const shiftedComparePage = currentComparePage + shift;
@@ -235,6 +248,33 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     },
     [comparePages.length, pages.length, currentPage],
   );
+
+  // Auto-match pages between the main and compare documents
+  const handleAutoMatch = useCallback(async () => {
+    if (!fileId || !compareFileId || isMatching) return;
+
+    try {
+      const result = await matchPages({ fileIdA: fileId, fileIdB: compareFileId }).unwrap();
+
+      const overrides: PageOverrides = {};
+      const added: Record<number, number> = {};
+      let lastPageA = 0;
+
+      for (const pair of result.pairs) {
+        if (pair.page_a !== null) {
+          lastPageA = pair.page_a;
+          overrides[pair.page_a] = pair.status === 'matched' ? pair.page_b : null;
+        } else if (pair.page_b !== null) {
+          added[lastPageA] = (added[lastPageA] ?? 0) + 1;
+        }
+      }
+
+      setPageOverrides(overrides);
+      setAddedPages(added);
+    } catch (err) {
+      console.error('Page auto-match failed:', err);
+    }
+  }, [fileId, compareFileId, isMatching, matchPages]);
 
   // Expose scrollToDraw function to parent component
   useImperativeHandle(ref, () => ({
@@ -318,6 +358,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
       setError(null);
       // Reset page overrides when main URL changes
       setPageOverrides({});
+      setAddedPages({});
       // Reset restore flag when URL changes
       hasRestoredPageRef.current = false;
       const pdf = await loadPdf(url);
@@ -411,28 +452,46 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
     return pages.map((page, index) => {
       const pageNumber = index + 1;
 
-      // Determine the comparison page number to use
-      const comparePageNumToShow = pageOverrides[pageNumber] ?? pageNumber; // Use override or default
+      // Determine the comparison page number to use. A key explicitly set to
+      // `null` means the page has no counterpart in the compare document.
+      const comparePageNumToShow = pageNumber in pageOverrides ? pageOverrides[pageNumber] : pageNumber;
 
       // Get the actual compare page object (adjusting for 0-based index)
       const comparePageObject =
-        comparePageNumToShow >= 1 && comparePageNumToShow <= comparePages.length ? comparePages[comparePageNumToShow - 1] : null;
+        comparePageNumToShow !== null && comparePageNumToShow >= 1 && comparePageNumToShow <= comparePages.length
+          ? comparePages[comparePageNumToShow - 1]
+          : null;
 
       const inactiveDrawingPage = currentDrawingPage > 0 && pageNumber !== currentDrawingPage;
+      const showMatchBadges = compareMode !== 'none';
+      const isRemoved = showMatchBadges && pageNumber in pageOverrides && pageOverrides[pageNumber] === null;
+      // addedPages[0] = compare-only pages that come before main page 1
+      const addedBefore = pageNumber === 1 ? (addedPages[0] ?? 0) : 0;
+      const addedAfter = addedPages[pageNumber] ?? 0;
 
       return (
-        <Page
-          className={classNames(classes.pageItem, { [classes.inactive]: inactiveDrawingPage })}
-          compareMode={state.compareMode}
-          comparePage={comparePageObject}
-          drawingCreated={drawingCreated}
-          drawings={drawings}
-          key={`page-${pageNumber}`}
-          mobile={isMobile}
-          onDrawingClicked={onDrawingClicked}
-          page={page}
-          pageNumber={pageNumber}
-        />
+        <div className={classes.pageWrapper} key={`page-${pageNumber}`}>
+          {showMatchBadges && addedBefore > 0 && (
+            <div className={classes.addedChip}>+{addedBefore} стр. только в файле сравнения</div>
+          )}
+          <div className={classes.pageBox}>
+            <Page
+              className={classNames(classes.pageItem, { [classes.inactive]: inactiveDrawingPage })}
+              compareMode={state.compareMode}
+              comparePage={comparePageObject}
+              drawingCreated={drawingCreated}
+              drawings={drawings}
+              mobile={isMobile}
+              onDrawingClicked={onDrawingClicked}
+              page={page}
+              pageNumber={pageNumber}
+            />
+            {isRemoved && <div className={classes.removedBadge}>Нет соответствия в файле сравнения</div>}
+          </div>
+          {showMatchBadges && addedAfter > 0 && (
+            <div className={classes.addedChip}>+{addedAfter} стр. только в файле сравнения</div>
+          )}
+        </div>
       );
     });
   };
@@ -454,7 +513,7 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
   }
 
   // Calculate the comparison page number to pass to the menu
-  const currentComparePageNum = pageOverrides[currentPage] ?? currentPage;
+  const currentComparePageNum = currentPage in pageOverrides ? pageOverrides[currentPage] : currentPage;
 
   return (
     <div className={classNames(classes.container, { [classes.noThumbnails]: !showThumbnails }, [])}>
@@ -477,7 +536,9 @@ const PdfViewerInternal = forwardRef<PdfViewerRef, PdfViewerProps>((props, ref) 
           currentPage={currentPage}
           extendedControls={extendedControls}
           hasCompare={!!compareUrl}
+          isMatching={isMatching}
           mobile={isMobile}
+          onAutoMatch={fileId && compareFileId ? handleAutoMatch : undefined}
           onPageChange={handlePageChange}
           viewOnly={viewOnly}
         />

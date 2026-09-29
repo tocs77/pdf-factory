@@ -5,6 +5,7 @@ import { DrawingMode } from '../../model/types/viewerSchema';
 import { classNames } from '../../utils/classNames';
 
 import {
+  AutoMatchIcon,
   CompareDiffIcon,
   CompareSideBySideIcon,
   RotateCcwIcon,
@@ -22,13 +23,16 @@ interface ViewerMenuProps {
   currentPage: number;
   onPageChange?: (pageNumber: number) => void;
   hasCompare?: boolean;
+  onAutoMatch?: () => void;
+  isMatching?: boolean;
   viewOnly?: boolean;
   extendedControls?: React.ReactNode;
   mobile: boolean;
 }
 
 export const ViewerMenu = (props: ViewerMenuProps) => {
-  const { currentPage, onPageChange, hasCompare, viewOnly = false, extendedControls, mobile } = props;
+  const { currentPage, onPageChange, hasCompare, onAutoMatch, isMatching = false, viewOnly = false, extendedControls, mobile } =
+    props;
   const { state, dispatch } = useContext(ViewerContext);
   const { scale, drawingMode, showThumbnails, compareMode, zoomWithCtrl } = state;
 
@@ -299,6 +303,20 @@ export const ViewerMenu = (props: ViewerMenuProps) => {
           className={`${classes.zoomButton} ${compareMode === 'diff' ? classes.active : ''}`}
           title={compareMode === 'diff' ? 'Отключить сравнение изменений' : 'Включить сравнение изменений'}>
           <CompareDiffIcon />
+        </button>
+      ),
+    },
+    {
+      key: 'autoMatch',
+      show: hasCompare && !!onAutoMatch,
+      element: (
+        <button
+          key='autoMatch'
+          onClick={onAutoMatch}
+          disabled={isMatching}
+          className={classes.zoomButton}
+          title='Автоматически сопоставить страницы'>
+          {isMatching ? <span className={classes.buttonSpinner} /> : <AutoMatchIcon />}
         </button>
       ),
     },

@@ -23,4 +23,7 @@ func SetupRoutes(app *fiber.App) {
 	api.Delete("/drawings/file", controllers.DeleteDrawingsByFile) // With query param ?fileId=X
 	api.Delete("/drawings/:id", controllers.DeleteDrawing)
 	api.Post("/drawings/bulk", controllers.BulkCreateDrawings)
+
+	// Compare routes
+	api.Post("/compare/match", controllers.MatchPages)
 }

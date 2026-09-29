@@ -29,3 +29,4 @@ dist-ssr
 uploads
 public
 tsconfig.tsbuildinfo
+*.pyc

@@ -12,7 +12,7 @@ interface ThumbnailsMenuProps {
   totalPages?: number;
   onPageChange?: (pageNumber: number) => void;
   compareMode: 'none' | 'diff' | 'sideBySide';
-  comparePage?: number;
+  comparePage?: number | null;
   totalComparePages?: number;
   onComparePageChange?: (pageNumber: number) => void;
 }
