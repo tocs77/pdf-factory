@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { useGetFilesListQuery, useDeleteFileMutation, useUploadFileMutation } from '@/entities/File';
-import { SelectableTable } from '@/shared/ui/Table';
+import { SelectableTable } from '@/shared/UI/Table';
 
 import { makeColumns } from '../model/columns';
 

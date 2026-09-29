@@ -1,13 +1,13 @@
 {
   "compilerOptions": {
-    "module": "ES2020",
+    "module": "ESNext",
     "target": "ES2021",
     "strict": true,
     "lib": ["es2021", "dom"],
     "sourceMap": true,
     "allowJs": true,
     "jsx": "react-jsx",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "noImplicitReturns": true,
     "noImplicitThis": true,
     "noImplicitAny": true,
@@ -19,11 +19,11 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "plugins": [{ "name": "typescript-plugin-css-modules" }],
-    "baseUrl": ".",
     "forceConsistentCasingInFileNames": true,
+    "types": ["node"],
     "paths": { "@/*": ["./src/*"] }
   },
-  "exclude": ["node_modules", "build", "scripts", "acceptance-tests", "webpack", "jest", "src/setupTests.ts"],
+  "exclude": ["node_modules", "build", "scripts", "acceptance-tests", "webpack", "jest", "src/setupTests.ts", "**/*.stories.tsx"],
   "include": ["src/**/*", "src/assets/js/pdf.worker.min.js", "./config/jest/setupTests.ts"],
   "types": ["typePatches"],
   "ts-node": {

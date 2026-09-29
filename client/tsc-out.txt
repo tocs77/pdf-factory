@@ -1,0 +1,31 @@
+src/Pages/MainPage/ui/MainPage.tsx(4,33): error TS1261: Already included file name 'D:/projects/pdf-factory/client/src/shared/ui/Table/index.ts' differs from file name 'D:/projects/pdf-factory/client/src/shared/UI/Table/index.ts' only in casing.
+  The file is in the program because:
+    Imported via '@/shared/ui/Table' from file 'D:/projects/pdf-factory/client/src/Pages/MainPage/ui/MainPage.tsx'
+    Matched by include pattern 'src/**/*' in 'D:/projects/pdf-factory/client/tsconfig.json'
+src/shared/UI/DraggableDialog/ui/DraggableDialog.stories.tsx(1,37): error TS2307: Cannot find module '@storybook/react' or its corresponding type declarations.
+src/shared/UI/DraggableDialog/ui/DraggableDialog.stories.tsx(2,24): error TS2307: Cannot find module '@storybook/addon-actions' or its corresponding type declarations.
+src/shared/ui/Table/index.ts(1,39): error TS1261: Already included file name 'D:/projects/pdf-factory/client/src/shared/ui/Table/ui/Table/Table.tsx' differs from file name 'D:/projects/pdf-factory/client/src/shared/UI/Table/ui/Table/Table.tsx' only in casing.
+  The file is in the program because:
+    Imported via './ui/Table/Table' from file 'D:/projects/pdf-factory/client/src/shared/ui/Table/index.ts'
+    Imported via '../Table/Table' from file 'D:/projects/pdf-factory/client/src/shared/ui/Table/ui/SelectableTable/SelectableTable.tsx'
+    Matched by include pattern 'src/**/*' in 'D:/projects/pdf-factory/client/tsconfig.json'
+src/shared/ui/Table/index.ts(2,29): error TS1261: Already included file name 'D:/projects/pdf-factory/client/src/shared/ui/Table/ui/ExpandTable/ExpandTable.tsx' differs from file name 'D:/projects/pdf-factory/client/src/shared/UI/Table/ui/ExpandTable/ExpandTable.tsx' only in casing.
+  The file is in the program because:
+    Imported via './ui/ExpandTable/ExpandTable' from file 'D:/projects/pdf-factory/client/src/shared/ui/Table/index.ts'
+    Matched by include pattern 'src/**/*' in 'D:/projects/pdf-factory/client/tsconfig.json'
+src/shared/ui/Table/index.ts(3,33): error TS1261: Already included file name 'D:/projects/pdf-factory/client/src/shared/ui/Table/ui/SelectableTable/SelectableTable.tsx' differs from file name 'D:/projects/pdf-factory/client/src/shared/UI/Table/ui/SelectableTable/SelectableTable.tsx' only in casing.
+  The file is in the program because:
+    Imported via './ui/SelectableTable/SelectableTable' from file 'D:/projects/pdf-factory/client/src/shared/ui/Table/index.ts'
+    Imported via './ui/SelectableTable/SelectableTable' from file 'D:/projects/pdf-factory/client/src/shared/ui/Table/index.ts'
+    Matched by include pattern 'src/**/*' in 'D:/projects/pdf-factory/client/tsconfig.json'
+src/shared/ui/Table/ui/Table/Table.tsx(14,33): error TS1261: Already included file name 'D:/projects/pdf-factory/client/src/shared/ui/Table/lib/calcColumnSizes.ts' differs from file name 'D:/projects/pdf-factory/client/src/shared/UI/Table/lib/calcColumnSizes.ts' only in casing.
+  The file is in the program because:
+    Imported via '../../lib/calcColumnSizes' from file 'D:/projects/pdf-factory/client/src/shared/ui/Table/ui/Table/Table.tsx'
+    Imported via '../../lib/calcColumnSizes' from file 'D:/projects/pdf-factory/client/src/shared/ui/Table/ui/ExpandTable/ExpandTable.tsx'
+    Matched by include pattern 'src/**/*' in 'D:/projects/pdf-factory/client/tsconfig.json'
+src/widgets/Viewer/hooks/useZoomToMouse.ts(44,36): error TS2503: Cannot find namespace 'NodeJS'.
+src/widgets/Viewer/hooks/useZoomToPinch.ts(31,36): error TS2503: Cannot find namespace 'NodeJS'.
+src/widgets/Viewer/ui/Page/Page.tsx(44,48): error TS2503: Cannot find namespace 'NodeJS'.
+src/widgets/Viewer/ui/PagesControl/PagesControl.tsx(23,43): error TS2503: Cannot find namespace 'NodeJS'.
+src/widgets/Viewer/ui/PagesControl/PagesControl.tsx(26,46): error TS2503: Cannot find namespace 'NodeJS'.
+src/widgets/Viewer/ui/ViewerMenu/ViewerMenu.tsx(37,43): error TS2503: Cannot find namespace 'NodeJS'.
