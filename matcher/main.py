@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 import threading
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -9,6 +11,12 @@ from pydantic import BaseModel, Field
 
 from pagematch.embed import PageEmbedder
 from pagematch.matcher import PageMatcher
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger("matcher")
 
 # The ONNX session is expensive to create, so the embedder is shared across
 # requests while PageMatcher (which only holds tuning params) is built per request.
@@ -19,7 +27,9 @@ match_lock = threading.Lock()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global embedder
+    logger.info("loading embedding model...")
     embedder = PageEmbedder()
+    logger.info("embedding model ready")
     yield
 
 
@@ -48,6 +58,16 @@ def match(req: MatchRequest) -> dict:
         if not Path(path).is_file():
             raise HTTPException(status_code=400, detail=f"file not found: {path}")
 
+    logger.info(
+        "match request: %s vs %s (dpi=%d, gap=%.2f, threshold=%.2f)",
+        Path(req.path_a).name,
+        Path(req.path_b).name,
+        req.dpi,
+        req.gap_penalty,
+        req.match_threshold,
+    )
+    started = time.monotonic()
+
     matcher = PageMatcher(
         dpi=req.dpi,
         gap_penalty=req.gap_penalty,
@@ -61,7 +81,16 @@ def match(req: MatchRequest) -> dict:
     except HTTPException:
         raise
     except Exception as exc:
+        logger.exception("matching failed")
         raise HTTPException(status_code=500, detail=f"matching failed: {exc}") from exc
+
+    logger.info(
+        "match done in %.1fs: %d matched, %d removed, %d added",
+        time.monotonic() - started,
+        len(result.matched),
+        len(result.removed_from_a),
+        len(result.added_in_b),
+    )
 
     pairs = []
     for pair in result.pairs:

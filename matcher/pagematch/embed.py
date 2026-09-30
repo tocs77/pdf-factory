@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
 from huggingface_hub import hf_hub_download
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
@@ -40,7 +43,8 @@ class PageEmbedder:
             return np.empty((0, 0), dtype=np.float32)
 
         vectors: list[np.ndarray] = []
-        for start in range(0, len(images), batch_size):
+        total = len(images)
+        for start in range(0, total, batch_size):
             batch = images[start : start + batch_size]
             batch_input = np.concatenate([self._preprocess(image) for image in batch], axis=0)
             outputs = self.session.run(None, {self.input_name: batch_input})
@@ -48,6 +52,9 @@ class PageEmbedder:
             norms = np.linalg.norm(cls_tokens, axis=1, keepdims=True)
             cls_tokens = cls_tokens / np.maximum(norms, 1e-12)
             vectors.append(cls_tokens.astype(np.float32))
+            done = min(start + batch_size, total)
+            if done % (batch_size * 10) < batch_size or done == total:
+                logger.info("  embedded %d/%d pages", done, total)
 
         return np.vstack(vectors)
 

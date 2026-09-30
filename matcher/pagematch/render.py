@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 
 import pypdfium2 as pdfium
 from PIL import Image
 
+logger = logging.getLogger(__name__)
 
 PAGE_IMAGE_PATTERN = re.compile(r"^page-(\d+)\.(png|jpg|jpeg|webp)$", re.IGNORECASE)
 
@@ -16,11 +18,15 @@ def render_pdf_pages(pdf_path: str | Path, dpi: int = 150) -> list[Image.Image]:
     images: list[Image.Image] = []
 
     pdf = pdfium.PdfDocument(str(pdf_path))
+    total = len(pdf)
+    logger.info("rendering %d pages from %s", total, pdf_path.name)
     try:
-        for page_index in range(len(pdf)):
+        for page_index in range(total):
             page = pdf[page_index]
             bitmap = page.render(scale=scale)
             images.append(bitmap.to_pil().convert("RGB"))
+            if (page_index + 1) % 10 == 0 or page_index + 1 == total:
+                logger.info("  rendered %d/%d pages", page_index + 1, total)
     finally:
         pdf.close()
 

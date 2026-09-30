@@ -9,5 +9,5 @@ func AutoMigrate() {
 	if database.DB == nil {
 		panic("DB is not initialized")
 	}
-	database.DB.AutoMigrate(models.File{}, models.Drawing{})
+	database.DB.AutoMigrate(models.File{}, models.Drawing{}, models.PageMatch{})
 }

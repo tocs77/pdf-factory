@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -9,6 +10,8 @@ from PIL import Image
 from pagematch.align import AlignmentPair, needleman_wunsch
 from pagematch.embed import PageEmbedder, cosine_similarity_matrix
 from pagematch.render import load_page_images, render_pdf_pages
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -62,6 +65,13 @@ class PageMatcher:
         embeddings_a = self.embedder.embed(pages_a)
         embeddings_b = self.embedder.embed(pages_b)
         similarity = cosine_similarity_matrix(embeddings_a, embeddings_b)
+        logger.info(
+            "aligning %d x %d pages (gap=%.2f, threshold=%.2f)",
+            similarity.shape[0],
+            similarity.shape[1],
+            self.gap_penalty,
+            self.match_threshold,
+        )
         pairs = needleman_wunsch(
             similarity,
             gap_penalty=self.gap_penalty,

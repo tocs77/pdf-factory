@@ -117,8 +117,11 @@ func DeleteFile(c *fiber.Ctx) error {
 		os.Remove(hashDir) // Ignore error if directory is not empty
 	}
 
-	// Delete the file record from the database
+	// Delete the file record and any cached page matches involving it
 	database.DB.Delete(&file)
+	database.DB.
+		Where("file_a_id = ? OR file_b_id = ?", file.ID, file.ID).
+		Delete(&models.PageMatch{})
 
 	return c.JSON(fiber.Map{
 		"message": "File deleted successfully",
