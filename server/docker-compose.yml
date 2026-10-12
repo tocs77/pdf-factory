@@ -1,6 +1,8 @@
 services:
   backend:
-    build: .
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
     container_name: pdf-backend
     ports:
       - "4050:${APP_PORT}"
@@ -14,6 +16,7 @@ services:
     restart: always
     environment:
       - MATCHER_URL=http://matcher:8000
+      - DWG2PDF_PATH=/usr/local/bin/dwg2pdf
     env_file:
       - .env
 

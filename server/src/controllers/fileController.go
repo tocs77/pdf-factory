@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"pdfsrv/src/database"
 	"pdfsrv/src/models"
+	"pdfsrv/src/services"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -61,24 +64,84 @@ func UploadFile(c *fiber.Ctx) error {
 	// New path for the file in the hash-named directory
 	newFilePath := hashDir + "/" + file.Filename
 
-	// Move the file to the new directory
-	if err := os.Rename(filePath, newFilePath); err != nil {
+	filename := file.Filename
+	var sourceFilename string
+	size := file.Size
+
+	// CAD files can't be viewed or matched directly — convert to PDF and
+	// point the file record at the converted document. Conversion I/O runs
+	// on container-local temp paths; the source is read at filePath, which
+	// is still the plain SaveFile-created file.
+	if services.IsCADFile(filename) {
+		pdfName := strings.TrimSuffix(filename, filepath.Ext(filename)) + ".pdf"
+		pdfPath := hashDir + "/" + pdfName
+
+		tmpDir, err := os.MkdirTemp("", "dwg2pdf-")
+		if err == nil {
+			defer os.RemoveAll(tmpDir)
+			tmpIn := filepath.Join(tmpDir, "input"+filepath.Ext(filename))
+			tmpOut := filepath.Join(tmpDir, "output.pdf")
+			if err = copyFile(filePath, tmpIn); err == nil {
+				err = services.ConvertToPdf(c.UserContext(), tmpIn, tmpOut)
+			}
+			if err == nil {
+				err = copyFile(tmpOut, pdfPath)
+			}
+		}
+		if err != nil {
+			os.Remove(filePath)
+			os.Remove(pdfPath)
+			os.Remove(hashDir)
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
+				"error": fmt.Sprintf("DWG/DXF conversion failed: %v", err),
+			})
+		}
+
+		sourceFilename, filename = filename, pdfName
+		if st, err := os.Stat(pdfPath); err == nil {
+			size = st.Size()
+		}
+	}
+
+	// Move the uploaded file into the hash dir via copy+remove — os.Rename
+	// leaves the destination un-stat'able on the bind-mounted volume until
+	// its cache expires.
+	if err := copyFile(filePath, newFilePath); err != nil {
 		c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to move file to hash directory",
 		})
 		return err
 	}
+	os.Remove(filePath)
 
 	database.DB.Create(&models.File{
-		Filename: file.Filename,
-		Hash:     fileHash,
-		Size:     file.Size,
+		Filename:       filename,
+		SourceFilename: sourceFilename,
+		Hash:           fileHash,
+		Size:           size,
 	})
 
 	return c.JSON(fiber.Map{
 		"message": "File uploaded successfully",
-		"file":    file.Filename,
+		"file":    filename,
 	})
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	return err
 }
 
 func GetFilesList(c *fiber.Ctx) error {
@@ -112,6 +175,10 @@ func DeleteFile(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Failed to delete file from uploads",
 			})
+		}
+		// Remove the original CAD file kept next to the converted PDF
+		if file.SourceFilename != "" {
+			os.Remove(hashDir + "/" + file.SourceFilename)
 		}
 		// Try to remove the directory if it's empty
 		os.Remove(hashDir) // Ignore error if directory is not empty

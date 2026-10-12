@@ -30,3 +30,8 @@ uploads
 public
 tsconfig.tsbuildinfo
 *.pyc
+
+# Rust
+target/
+**/*.rs.bk
+*.pdb

@@ -1,0 +1,19 @@
+[package]
+name = "dwg2pdf"
+version = "0.1.0"
+edition = "2021"
+description = "Standalone DWG/DXF to PDF converter built on opencadcodec + printpdf"
+license = "MIT OR Apache-2.0"
+
+# Own workspace root: this project is standalone and must not join the
+# OpenCADStudio workspace one directory up.
+[workspace]
+
+[dependencies]
+codec = { package = "opencadcodec", git = "https://github.com/HakanSeven12/opencadcodec.git", rev = "8189f83" }
+printpdf = { version = "0.9.1", default-features = false, features = ["images"] }
+# printpdf built without `text_layout` only ships a ParsedFont stub — we
+# subset the TTF ourselves and feed it via ParsedFont::with_glyph_data.
+allsorts = { version = "0.16", default-features = false, features = ["flate2_rust"] }
+ttf-parser = "0.25"
+clap = { version = "4", features = ["derive"] }

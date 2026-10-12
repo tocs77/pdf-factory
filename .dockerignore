@@ -1,0 +1,12 @@
+**/target
+**/node_modules
+**/.git
+**/.idea
+**/.vscode
+**/dist
+**/tmp
+**/uploads
+**/public
+dbdata
+*.log
+*.code-workspace
